@@ -123,10 +123,22 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     setError('')
 
     try {
-      await signInWithPopup(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
+      console.log('Google login successful:', result.user)
       handleClose()
-    } catch (err) {
-      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
+    } catch (err: unknown) {
+      const error = err as { code?: string, message?: string }
+      console.error('Google login error:', error)
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('การเข้าสู่ระบบถูกยกเลิก')
+      } else if (error.code === 'auth/popup-blocked') {
+        setError('Popup ถูกบล็อค กรุณาอนุญาต popup และลองใหม่อีกครั้ง')
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        setError('การเข้าสู่ระบบถูกยกเลิก')
+      } else {
+        setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google กรุณาลองใหม่อีกครั้ง')
+      }
     } finally {
       setLoading(false)
     }
@@ -137,10 +149,22 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     setError('')
 
     try {
-      await signInWithPopup(auth, facebookProvider)
+      const result = await signInWithPopup(auth, facebookProvider)
+      console.log('Facebook login successful:', result.user)
       handleClose()
-    } catch (err) {
-      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')
+    } catch (err: unknown) {
+      const error = err as { code?: string, message?: string }
+      console.error('Facebook login error:', error)
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('การเข้าสู่ระบบถูกยกเลิก')
+      } else if (error.code === 'auth/popup-blocked') {
+        setError('Popup ถูกบล็อค กรุณาอนุญาต popup และลองใหม่อีกครั้ง')
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        setError('การเข้าสู่ระบบถูกยกเลิก')
+      } else {
+        setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook กรุณาลองใหม่อีกครั้ง')
+      }
     } finally {
       setLoading(false)
     }
