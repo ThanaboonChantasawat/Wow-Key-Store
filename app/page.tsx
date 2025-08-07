@@ -1,27 +1,30 @@
 import Image from "next/image";
 import { Search, ShoppingBag, MessageCircle, Bell } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <main className="min-h-screen">
       {/* Hero Section */}
       <section className="bg-[#111111] text-white">
-          <div className="w-full h-[800px] overflow-hidden">
-            <Image
-              src="/landscape-placeholder-svgrepo-com.svg"
-              alt=""
-              width={1000}
-              height={800}
-              className="w-full h-full object-none"
-            />
-          </div>
+        <div className="w-full h-[800px] overflow-hidden">
+          <Image
+            src="/landscape-placeholder-svgrepo-com.svg"
+            alt=""
+            width={1000}
+            height={800}
+            className="w-full h-full object-none"
+          />
+        </div>
       </section>
 
       {/* Products Section */}
       <section className="py-12 bg-[#fcfbfc]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-center items-center mb-8">
-            <h3 className="text-5xl font-bold text-[#ff9800]">อันดับเกมขายดี</h3>
+            <h3 className="text-5xl font-bold text-[#ff9800]">
+              อันดับเกมขายดี
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -31,13 +34,15 @@ export default function Home() {
                 className="bg-white rounded-lg shadow-sm overflow-hidden"
               >
                 <div className="h-48 overflow-hidden">
-                  <Image
-                    src={game.image || "/placeholder.svg"}
-                    alt={game.title}
-                    width={400}
-                    height={200}
-                    className="w-full h-full object-cover"
-                  />
+                  <Link href={"/products/{id}"}>
+                    <Image
+                      src={game.image || "/placeholder.svg"}
+                      alt={game.title}
+                      width={400}
+                      height={200}
+                      className="w-full h-full object-cover"
+                    />
+                  </Link>
                 </div>
                 <div className="p-4">
                   <p className="font-bold text-lg">200 ฿</p>
