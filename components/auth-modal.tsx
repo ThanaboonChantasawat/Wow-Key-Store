@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, X } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth, googleProvider, facebookProvider } from '@/components/firebase-config'
 
@@ -66,7 +66,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithEmailAndPassword(auth, loginData.email, loginData.password)
       handleClose()
-    } catch (error: any) {
+    } catch (err) {
       setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง')
     } finally {
       setLoading(false)
@@ -103,7 +103,8 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       })
 
       handleClose()
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { code?: string }
       if (error.code === 'auth/email-already-in-use') {
         setError('อีเมลนี้ถูกใช้งานแล้ว')
       } else if (error.code === 'auth/weak-password') {
@@ -124,7 +125,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithPopup(auth, googleProvider)
       handleClose()
-    } catch (error: any) {
+    } catch (err) {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
     } finally {
       setLoading(false)
@@ -138,7 +139,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithPopup(auth, facebookProvider)
       handleClose()
-    } catch (error: any) {
+    } catch (err) {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')
     } finally {
       setLoading(false)

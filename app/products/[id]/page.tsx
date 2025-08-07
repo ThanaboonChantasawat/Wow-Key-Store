@@ -1,16 +1,11 @@
 import {
-  Search,
   ShoppingCart,
-  Bell,
-  ChevronLeft,
   Heart,
   Star,
   Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -61,7 +56,7 @@ const ProductDetailPage = () => {
                   </h3>
                   <p className="text-[#3c3c3c] text-sm leading-relaxed">
                     Lorem Ipsum is simply dummy text of the printing and
-                    typesetting industry. Lorem Ipsum has been the industry's
+                    typesetting industry. Lorem Ipsum has been the industry&apos;s
                     standard dummy text ever since the 1500s, when an unknown
                     printer took a galley of type and scrambled it to make a
                     type specimen book.

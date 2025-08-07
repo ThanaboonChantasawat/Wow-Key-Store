@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, ShoppingBag, MessageCircle, Bell, Menu, X, User, LogOut } from 'lucide-react'
+import { Search, ShoppingBag, Bell, Menu, X, User, LogOut } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -14,7 +14,7 @@ import { useAuthModal } from './use-auth-modal'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { isOpen, defaultTab, openLogin, openRegister, close } = useAuthModal()
+  const { isOpen, defaultTab, openLogin, close } = useAuthModal()
   const { user, logout } = useAuth()
 
   const toggleMobileMenu = () => {
@@ -146,9 +146,9 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-6">
           <ul className="flex space-x-8 justify-center">
             <li className="py-4">
-              <a href="/products" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
+              <Link href="/products" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
                 สินค้าทั้งหมด
-              </a>
+              </Link>
             </li>
             <li className="py-4">
               <a href="#" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
@@ -175,13 +175,13 @@ export function Navbar() {
           <div className="px-4 py-2">
             <ul className="space-y-2">
               <li>
-                <a 
+                <Link 
                   href="/products" 
                   className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   สินค้าทั้งหมด
-                </a>
+                </Link>
               </li>
               <li>
                 <a 

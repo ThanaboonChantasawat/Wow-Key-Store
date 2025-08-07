@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Search, ShoppingBag, MessageCircle, Bell } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {

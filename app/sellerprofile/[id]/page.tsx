@@ -1,9 +1,9 @@
 "use client";
 
-import { Store, Star, ShoppingCart, User } from "lucide-react";
+import { Star, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import Image from "next/image";
 

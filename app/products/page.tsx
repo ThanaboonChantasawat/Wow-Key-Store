@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, ShoppingCart, Bell, ChevronDown, Plus } from 'lucide-react'
+import { Search, ShoppingCart, ChevronDown, Plus } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -33,20 +33,8 @@ export default function WowKeystore() {
     description: "200 เข้าเกมแล้ว"
   })
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isCategoriesSectionOpen, setIsCategoriesSectionOpen] = useState(false)
-
-  const searchSuggestions = [
-    "Pokémon TCG Pocket",
-    "League of Legends RP",
-    "Valorant Points", 
-    "Mobile Legends Diamonds",
-    "Free Fire Diamonds",
-    "PUBG Mobile UC",
-    "Genshin Impact Genesis Crystals",
-    "Honkai Star Rail Oneiric Shards"
-  ]
 
   return (
     <div onClick={() => setIsCategoriesOpen(false)}>
