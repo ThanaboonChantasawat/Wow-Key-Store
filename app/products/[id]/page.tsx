@@ -9,6 +9,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
 
+// Generate static params for static export
+export async function generateStaticParams() {
+  // สร้าง static paths สำหรับ demo
+  const ids = ['1', '2', '3', '4', '5']
+  
+  return ids.map((id) => ({
+    id: id,
+  }))
+}
+
 const ProductDetailPage = () => {
   return (
     <div className="min-h-screen bg-[#f2f2f4]">

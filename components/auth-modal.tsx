@@ -66,7 +66,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithEmailAndPassword(auth, loginData.email, loginData.password)
       handleClose()
-    } catch (err) {
+    } catch {
       setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง')
     } finally {
       setLoading(false)

@@ -7,6 +7,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import Image from "next/image";
 
+// Generate static params for static export
+export async function generateStaticParams() {
+  // สร้าง static paths สำหรับ demo
+  const ids = ['1', '2', '3', '4', '5']
+  
+  return ids.map((id) => ({
+    id: id,
+  }))
+}
+
 const products = [
   {
     id: 1,

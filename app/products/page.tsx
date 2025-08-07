@@ -33,11 +33,10 @@ export default function WowKeystore() {
     description: "200 เข้าเกมแล้ว"
   })
 
-  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isCategoriesSectionOpen, setIsCategoriesSectionOpen] = useState(false)
 
   return (
-    <div onClick={() => setIsCategoriesOpen(false)}>
+    <div>
       <div className="min-h-screen bg-[#f2f2f4]">
         {/* Collapsible Categories Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
