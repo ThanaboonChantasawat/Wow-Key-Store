@@ -8,11 +8,11 @@ import Image from "next/image";
 // Generate static params for static export
 export async function generateStaticParams() {
   // สร้าง static paths สำหรับ demo
-  const ids = ['1', '2', '3', '4', '5']
-  
+  const ids = ["1", "2", "3", "4", "5"];
+
   return ids.map((id) => ({
     id: id,
-  }))
+  }));
 }
 
 const products = [
@@ -150,13 +150,15 @@ export default function SellerProfile() {
               >
                 <CardContent className="p-4">
                   <div className="aspect-square mb-4 overflow-hidden rounded-lg">
-                    <Image
-                      src={"/landscape-placeholder-svgrepo-com.svg"}
-                      alt=""
-                      width={400}
-                      height={400}
-                      className="object-contain"
-                    />
+                    <Link href={"/products/1"}>
+                      <Image
+                        src={"/landscape-placeholder-svgrepo-com.svg"}
+                        alt=""
+                        width={400}
+                        height={400}
+                        className="object-contain"
+                      />
+                    </Link>
                   </div>
                   <h3 className="font-semibold text-[#000000] mb-2 text-sm">
                     {product.name}

@@ -11,8 +11,8 @@ import Link from "next/link";
 
 // Generate static params for static export
 export async function generateStaticParams() {
-  // สร้าง static paths สำหรับ demo
-  const ids = ['1', '2', '3', '4', '5']
+  // สร้าง static paths สำหรับ demo (ครอบคลุมทุก ID ที่ใช้)
+  const ids = ['1', '2', '3', '4', '5', '6', '7', '8']
   
   return ids.map((id) => ({
     id: id,
@@ -99,7 +99,7 @@ const ProductDetailPage = () => {
               {/* Shop Avatar */}
               <div className="w-20 h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 flex-shrink-0">
                   <div className="w-full h-full bg-[#f2f2f4] rounded-full flex items-center justify-center border-2 border-[#d9d9d9] overflow-hidden hover:shadow-lg transition-shadow">
-                    <Link href={"/sellerprofile/{id}"}>
+                    <Link href={"/sellerprofile/1"}>
                       <Image
                         src={"/landscape-placeholder-svgrepo-com.svg"}
                         alt=""
@@ -190,7 +190,7 @@ const ProductDetailPage = () => {
                   className="bg-gray-50 rounded-lg p-3 hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-square bg-gray-200 rounded-lg mb-2 overflow-hidden">
-                    <Link href={"/products/{id}"}>
+                    <Link href={"/products/1"}>
                       <Image
                         src={"/landscape-placeholder-svgrepo-com.svg"}
                         alt=""

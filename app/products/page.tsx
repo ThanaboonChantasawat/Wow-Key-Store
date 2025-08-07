@@ -113,7 +113,7 @@ export default function WowKeystore() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {pokemonProducts.map((product, index) => (
                   <div key={index} className="bg-[#f2f2f4] rounded-lg p-3 sm:p-4">
-                    <Link href={'/products/{id}'}>
+                    <Link href={`/products/${index + 1}`}>
                     <Image
                     src={'/landscape-placeholder-svgrepo-com.svg'}
                     alt=''

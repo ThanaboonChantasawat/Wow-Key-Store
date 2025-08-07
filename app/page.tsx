@@ -34,7 +34,7 @@ export default function Home() {
                 className="bg-white rounded-lg shadow-sm overflow-hidden"
               >
                 <div className="h-48 overflow-hidden">
-                  <Link href={"/products/{id}"}>
+                  <Link href={`/products/${index + 1}`}>
                     <Image
                       src={game.image || "/placeholder.svg"}
                       alt={game.title}
