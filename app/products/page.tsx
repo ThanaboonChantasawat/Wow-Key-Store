@@ -30,7 +30,7 @@ export default function WowKeystore() {
   const pokemonProducts = Array(8).fill({
     name: "Pokémon TCG Pocket",
     price: "200 ฿",
-    description: "200 เข้าเกมแล้ว"
+    description: "200 เข้าชมแล้ว"
   })
 
   const [isCategoriesSectionOpen, setIsCategoriesSectionOpen] = useState(false)

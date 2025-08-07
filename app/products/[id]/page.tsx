@@ -46,7 +46,7 @@ const ProductDetailPage = () => {
                     Rov
                   </h1>
                   <div className="flex gap-4 text-[#999999] text-sm">
-                    <span>100 ชายเมล์ว</span>
+                    <span>100 ขายแล้ว</span>
                     <span>200 เข้าชมแล้ว</span>
                   </div>
                 </div>
@@ -204,6 +204,7 @@ const ProductDetailPage = () => {
                     สินค้า {item}
                   </h4>
                   <p className="text-[#ff9800] font-bold text-sm">200฿</p>
+                  <p className="text-sm text-gray-500">200 เข้าชมแล้ว</p>
                 </div>
               ))}
             </div>

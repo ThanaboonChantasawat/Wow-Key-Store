@@ -108,7 +108,6 @@ export default function SellerProfile() {
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start gap-6">
               <div className="w-40 h-40 flex items-center justify-center">
-                <Link href={"/sellerprofile/{id}"}>
                   <Image
                     src={"/landscape-placeholder-svgrepo-com.svg"}
                     alt=""
@@ -116,7 +115,6 @@ export default function SellerProfile() {
                     height={200}
                     className="object-contain rounded-full shadow-xl"
                   />
-                </Link>
               </div>
 
               {/* Shop Details */}
@@ -168,6 +166,7 @@ export default function SellerProfile() {
                       {product.price}
                     </span>
                   </div>
+                  <p className="text-lg text-gray-500">200 เข้าชมแล้ว</p>
                   <Button className="w-full mt-3 bg-[#ff9800] hover:bg-[#ff9800]/90 text-white">
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     ใส่ตะกร้า

@@ -47,7 +47,7 @@ export default function Home() {
                 <div className="p-4">
                   <p className="font-bold text-lg">200 ฿</p>
                   <h4 className="font-medium">{game.title}</h4>
-                  <p className="text-sm text-gray-500">200 เหรียญเกม</p>
+                  <p className="text-sm text-gray-500">200 เข้าชมแล้ว</p>
                 </div>
                 <div className="px-4 pb-4">
                   <button className="w-full bg-[#ff9800] hover:bg-[#e08800] text-white py-2 rounded flex items-center justify-center">
