@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false
       unsubscribe()
     }
-  }, [])
+  }, [isInitialized])
 
   const logout = useCallback(async () => {
     try {

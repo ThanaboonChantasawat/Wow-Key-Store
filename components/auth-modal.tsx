@@ -125,7 +125,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithPopup(auth, googleProvider)
       handleClose()
-    } catch (err) {
+    } catch {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
     } finally {
       setLoading(false)
@@ -139,7 +139,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     try {
       await signInWithPopup(auth, facebookProvider)
       handleClose()
-    } catch (err) {
+    } catch {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')
     } finally {
       setLoading(false)

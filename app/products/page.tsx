@@ -1,8 +1,5 @@
 "use client";
 
-import { Search, ChevronDown, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import GameListWithFilter from "@/components/game/GameListWithFilter";
 
 export default function Products() {

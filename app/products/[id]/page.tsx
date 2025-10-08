@@ -16,7 +16,7 @@ export async function generateStaticParams() {
   }
 }
 
-const ProductDetailPage = async({ params }: { params: { id: string } }) => {
+const ProductDetailPage = async({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   
   // ดึงข้อมูลเกมตาม id

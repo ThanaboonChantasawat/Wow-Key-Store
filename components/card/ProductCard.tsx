@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 const ProductCard = ({ game }: { game: Game }) => {
-  const { id, name, gameId, gameImages, description, price, categoryIds } = game;
+  const { name, gameImages, description, price } = game;
   
   // แยก images array จาก gameImages structure
   const getImagesArray = (): GameImage[] => {
@@ -127,13 +127,13 @@ const ProductCard = ({ game }: { game: Game }) => {
                 w-full
                 "
             >
-              {game.price}฿
+              {price}฿
             </div>
 
             <div>
               <h3 className="font-semibold text-[#000000] mb-2">รายละเอียด</h3>
               <p className="text-[#3c3c3c] text-sm leading-relaxed">
-                {game.description}
+                {description}
               </p>
             </div>
 
