@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 
 import { AuthModal } from './auth-modal'
@@ -15,19 +15,19 @@ import { useAuthModal } from './use-auth-modal'
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isOpen, defaultTab, openLogin, close } = useAuthModal()
-  const { user, logout } = useAuth()
+  const { user, logout, isInitialized } = useAuth()
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen)
-  }
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(prev => !prev)
+  }, [])
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await logout()
     } catch (error) {
       console.error('Logout error:', error)
     }
-  }
+  }, [logout])
 
   return (
     <>
@@ -60,12 +60,14 @@ export function Navbar() {
               <Bell className="h-5 w-5" />
             </Link>
             
-            {user ? (
+            {!isInitialized ? (
+              <div className="h-10 w-10 rounded-full bg-white/20 animate-pulse transition-opacity duration-300" />
+            ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800]">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
+                      {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || ''} />}
                       <AvatarFallback className="bg-[#ff9800] text-white">
                         {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
                       </AvatarFallback>
@@ -151,9 +153,9 @@ export function Navbar() {
               </Link>
             </li>
             <li className="py-4">
-              <a href="#" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
+              <Link href="/seller" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
                 ขายสินค้ากับเรา
-              </a>
+              </Link>
             </li>
             <li className="py-4">
               <a href="#" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
@@ -184,13 +186,13 @@ export function Navbar() {
                 </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link 
+                  href="/seller" 
                   className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   ขายสินค้ากับเรา
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
@@ -211,7 +213,12 @@ export function Navbar() {
                 </a>
               </li>
               <li className="pt-2 border-t border-gray-200">
-                {user ? (
+                {!isInitialized ? (
+                  <div className="px-4 py-3">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                ) : user ? (
                   <div className="space-y-2">
                     <div className="px-4 py-2">
                       <p className="font-medium text-gray-900">{user.displayName || 'ผู้ใช้'}</p>
