@@ -161,3 +161,48 @@ export const useSearchGames = (queryText: string | null, categoryId?: string | n
 
   return { games, loading, error };
 };
+
+// Hook สำหรับดึงข้อมูลเกมตาม game ID ที่เลือก
+export const useGamesByGameId = (gameId: string | null) => {
+  const [games, setGames] = useState<GameWithCategories[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchGamesByGameId = async () => {
+      if (!gameId) {
+        // ถ้าไม่มี gameId ให้ดึงเกมทั้งหมด
+        try {
+          setLoading(true);
+          setError(null);
+          const gamesData = await getGamesWithCategories();
+          setGames(gamesData);
+        } catch (err) {
+          setError('เกิดข้อผิดพลาดในการดึงข้อมูลเกม');
+          console.error('Error fetching all games:', err);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const allGames = await getGamesWithCategories();
+        // Filter games that match the selected game's gameId
+        const filteredGames = allGames.filter(game => game.id === gameId || game.gameId === gameId);
+        setGames(filteredGames);
+      } catch (err) {
+        setError('เกิดข้อผิดพลาดในการดึงข้อมูลเกม');
+        console.error('Error fetching games by game ID:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGamesByGameId();
+  }, [gameId]);
+
+  return { games, loading, error };
+};

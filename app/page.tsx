@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Hero from "@/components/hero/Hero";
-import GameListWithFilter from "@/components/game/GameListWithFilter";
 import SearchContainer from '@/components/search/SearchContainer';
 
 export default function Home() {

@@ -1,18 +1,19 @@
 "use client";
 
 import { Search, ShoppingBag, Bell, Menu, X, User, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from "../ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchGames } from "@/hooks/useFirestore";
+import SearchDropdown from './SearchDropdown';
 import {
   useRouter,
   useSearchParams,
@@ -133,72 +134,25 @@ export function Navbar() {
             )}
             {/* Dropdown suggestions */}
             {showDropdown && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 right-0 mt-2 bg-white shadow-lg rounded-lg z-50"
-              >
-                <div className="p-3">
-                  {suggestionLoading ? (
-                    <div className="text-sm text-gray-500">กำลังค้นหา...</div>
-                  ) : suggestionGames.length === 0 ? (
-                    <div className="text-sm text-gray-500">ไม่พบสินค้า</div>
-                  ) : (
-                    <ul className="divide-y">
-                      {suggestionGames.slice(0, 4).map((g) => (
-                        <li key={g.id} className="py-2">
-                          <a
-                            onClick={() => {
-                              // Navigate directly to product detail and close dropdown
-                              router.push(`/products/${g.id}`);
-                              setSearchTerm("");
-                              setDebounced("");
-                              desktopInputRef.current?.blur();
-                              mobileInputRef.current?.blur();
-                            }}
-                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                          >
-                            <img
-                              src={
-                                g.gameImages?.[0]?.images?.[0]?.url ||
-                                "/landscape-placeholder-svgrepo-com.svg"
-                              }
-                              alt={g.name}
-                              className="w-12 h-8 object-cover rounded"
-                            />
-                            <div>
-                              <div className="text-sm font-medium">
-                                {g.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {g.price?.toLocaleString()} ฿
-                              </div>
-                            </div>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div className="border-t p-3 text-right">
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setDebounced("");
-                      desktopInputRef.current?.blur();
-                      mobileInputRef.current?.blur();
-                      router.push(
-                        `/products?q=${encodeURIComponent(debounced)}`
-                      );
-                    }}
-                    className="text-md text-white bg-orange-400 p-2 rounded-xl 
-                    hover:bg-white hover:text-orange-400 hover:border hover:border-black 
-                    duration-300
-                    cursor-pointer"
-                  >
-                    ดูสินค้าทั้งหมด
-                  </button>
-                </div>
-              </div>
+              <SearchDropdown
+                query={debounced}
+                suggestionGames={suggestionGames}
+                suggestionLoading={suggestionLoading}
+                onSelectProduct={(id) => {
+                  router.push(`/products/${id}`);
+                  setSearchTerm("");
+                  setDebounced("");
+                  desktopInputRef.current?.blur();
+                  mobileInputRef.current?.blur();
+                }}
+                onViewAll={() => {
+                  setSearchTerm("");
+                  setDebounced("");
+                  desktopInputRef.current?.blur();
+                  mobileInputRef.current?.blur();
+                  router.push(`/products?q=${encodeURIComponent(debounced)}`);
+                }}
+              />
             )}
           </div>
 
@@ -222,21 +176,11 @@ export function Navbar() {
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative h-10 w-10 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800]"
-                  >
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800]">
                     <Avatar className="h-8 w-8">
-                      {user.photoURL && (
-                        <AvatarImage
-                          src={user.photoURL}
-                          alt={user.displayName || ""}
-                        />
-                      )}
+                      {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || ''} />}
                       <AvatarFallback className="bg-[#ff9800] text-white">
-                        {user.displayName?.charAt(0) ||
-                          user.email?.charAt(0) ||
-                          "U"}
+                        {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -261,10 +205,7 @@ export function Navbar() {
                       <span>โปรไฟล์</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer"
-                  >
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>ออกจากระบบ</span>
                   </DropdownMenuItem>
