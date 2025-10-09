@@ -77,12 +77,16 @@ export const useGamesByCategory = (categoryId: string | null) => {
 
   useEffect(() => {
     const fetchGamesByCategory = async () => {
+      console.log('useGamesByCategory - fetching with categoryId:', categoryId);
+      
       if (!categoryId) {
         // ถ้าไม่มี categoryId ให้ดึงเกมทั้งหมด
         try {
           setLoading(true);
           setError(null);
+          console.log('useGamesByCategory - fetching all games');
           const gamesData = await getGamesWithCategories();
+          console.log('useGamesByCategory - all games fetched:', gamesData.length, gamesData);
           setGames(gamesData);
         } catch (err) {
           setError('เกิดข้อผิดพลาดในการดึงข้อมูลเกม');
@@ -96,12 +100,15 @@ export const useGamesByCategory = (categoryId: string | null) => {
       try {
         setLoading(true);
         setError(null);
+        console.log('useGamesByCategory - fetching games for category:', categoryId);
         const gamesData = await getGamesByCategory(categoryId);
+        console.log('useGamesByCategory - category games fetched:', gamesData.length, gamesData);
         // Convert to GameWithCategories (without populating categories for performance)
         const gamesWithCategories: GameWithCategories[] = gamesData.map(game => ({
           ...game,
           categories: []
         }));
+        console.log('useGamesByCategory - setting games:', gamesWithCategories.length);
         setGames(gamesWithCategories);
       } catch (err) {
         setError('เกิดข้อผิดพลาดในการดึงข้อมูลเกม');
