@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Hero from "@/components/hero/Hero";
 import GameListWithFilter from "@/components/game/GameListWithFilter";
+import SearchContainer from '@/components/search/SearchContainer';
 
 export default function Home() {
   return (
@@ -8,24 +9,8 @@ export default function Home() {
       {/* Hero Section */}
       <Hero/>
 
-      {/* Products Section */}
-      <section className="py-12 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <GameListWithFilter 
-            title="เกมยอดนิยม" 
-            limit={6} 
-            showCategoryFilter={false}
-          />
-          <div className="text-center mt-8">
-            <Link 
-              href="/products" 
-              className="inline-block bg-[#ff9800] hover:bg-[#e08800] text-white px-8 py-3 rounded-lg font-medium transition-colors"
-            >
-              ดูสินค้าทั้งหมด
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Products Section (client wrapper decides preview or default) */}
+      <SearchContainer />
 
       {/* Why Section */}
       <section className="py-12 bg-[#ff9800] text-white">

@@ -1,8 +1,12 @@
 "use client";
 
 import GameListWithFilter from "@/components/game/GameListWithFilter";
+import { useSearchParams } from 'next/navigation';
 
 export default function Products() {
+  const searchParams = useSearchParams();
+  const q = searchParams ? searchParams.get('q') ?? '' : '';
+
   return (
     <div>
       <div className="min-h-screen bg-[#f2f2f4]">
@@ -16,7 +20,7 @@ export default function Products() {
             </div>
 
             <div className="bg-[#ffffff] rounded-lg p-4 sm:p-6">
-              <GameListWithFilter title="" showCategoryFilter={true} />
+              <GameListWithFilter title="" showCategoryFilter={true} query={q || null} />
             </div>
           </main>
         </div>

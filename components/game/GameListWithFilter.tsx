@@ -3,21 +3,31 @@
 import { useState } from 'react';
 import CategoryFilter from '../category/CategoryFilter';
 import GameCard from '../card/GameCard';
-import { useGamesByCategory } from '@/hooks/useFirestore';
+import { useGamesByCategory, useSearchGames } from '@/hooks/useFirestore';
 
 interface GameListWithFilterProps {
   limit?: number;
   showCategoryFilter?: boolean;
   title?: string;
+  query?: string | null;
 }
 
 const GameListWithFilter = ({ 
   limit, 
   showCategoryFilter = true, 
-  title = "เกมทั้งหมด" 
+  title = "เกมทั้งหมด",
+  query = null,
 }: GameListWithFilterProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const { games, loading, error } = useGamesByCategory(selectedCategoryId);
+
+  // Always call hooks (don't call hooks conditionally)
+  const searchResult = useSearchGames(query, selectedCategoryId);
+  const categoryResult = useGamesByCategory(selectedCategoryId);
+
+  // If query is provided, prefer searchResult; otherwise use categoryResult
+  const games = query && query.trim() !== '' ? searchResult.games : categoryResult.games;
+  const loading = query && query.trim() !== '' ? searchResult.loading : categoryResult.loading;
+  const error = query && query.trim() !== '' ? searchResult.error : categoryResult.error;
 
   return (
     <div className="w-full">

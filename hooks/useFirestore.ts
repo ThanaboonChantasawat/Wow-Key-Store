@@ -123,3 +123,41 @@ export const useGamesByCategory = (categoryId: string | null) => {
 
   return { games, loading, error };
 };
+
+// Hook สำหรับค้นหาเกมด้วยข้อความค้นหา (และ optional category)
+export const useSearchGames = (queryText: string | null, categoryId?: string | null) => {
+  const [games, setGames] = useState<GameWithCategories[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAndFilter = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const allGames = await getGamesWithCategories();
+        let filtered = allGames;
+
+        if (categoryId) {
+          filtered = filtered.filter(g => Array.isArray(g.categoryIds) && g.categoryIds.includes(categoryId));
+        }
+
+        if (queryText && queryText.trim() !== '') {
+          const q = queryText.trim().toLowerCase();
+          filtered = filtered.filter(g => (g.name || '').toLowerCase().includes(q));
+        }
+
+        setGames(filtered);
+      } catch (err) {
+        console.error('useSearchGames error:', err);
+        setError('เกิดข้อผิดพลาดในการค้นหาเกม');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAndFilter();
+  }, [queryText, categoryId]);
+
+  return { games, loading, error };
+};
