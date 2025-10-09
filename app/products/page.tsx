@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import GameCategorySidebar from '@/components/category/GameCategorySidebar';
 import { useGamesByGameId, useSearchGames } from '@/hooks/useFirestore';
 import GameCard from '@/components/card/GameCard';
 
-export default function Products() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const q = searchParams ? searchParams.get('q') ?? '' : '';
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
@@ -106,5 +106,17 @@ export default function Products() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function Products() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f2f2f4] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
   );
 }

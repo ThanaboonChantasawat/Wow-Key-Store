@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Hero from "@/components/hero/Hero";
 import SearchContainer from '@/components/search/SearchContainer';
 

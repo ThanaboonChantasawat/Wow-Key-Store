@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import GameCategorySidebar from '@/components/category/GameCategorySidebar';
-import { useGamesByCategory, useGamesByGameId } from '@/hooks/useFirestore';
+import { useGamesByGameId } from '@/hooks/useFirestore';
 import GameCard from '@/components/card/GameCard';
 import Link from 'next/link';
 
