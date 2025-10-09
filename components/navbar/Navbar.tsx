@@ -11,13 +11,12 @@ import {
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchGames } from "@/hooks/useFirestore";
 import SearchDropdown from './SearchDropdown';
 import {
   useRouter,
   useSearchParams,
-  usePathname as useNextPathname,
 } from "next/navigation";
 import { AuthModal } from "../auth-modal";
 import { useAuthModal } from "../use-auth-modal";
@@ -31,7 +30,7 @@ const navLinks = [
   { href: "/help", label: "ช่วยเหลือ" },
 ];
 
-export function Navbar() {
+function NavbarContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isOpen, defaultTab, openLogin, close } = useAuthModal();
   const { user, logout, isInitialized } = useAuth();
@@ -42,7 +41,6 @@ export function Navbar() {
   const initialQuery = searchParams ? searchParams.get("q") ?? "" : "";
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const desktopInputRef = useRef<HTMLInputElement | null>(null);
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -69,7 +67,7 @@ export function Navbar() {
       try {
         desktopInputRef.current?.blur();
         mobileInputRef.current?.blur();
-      } catch (e) {
+      } catch {
         // ignore
       }
     },
@@ -471,5 +469,20 @@ export function Navbar() {
       {/* Auth Modal */}
       <AuthModal isOpen={isOpen} onClose={close} defaultTab={defaultTab} />
     </>
+  );
+}
+
+export function Navbar() {
+  return (
+    <Suspense fallback={
+      <nav className="bg-[#292d32] text-white py-3 px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="h-8 w-32 bg-gray-600 animate-pulse rounded"></div>
+          <div className="h-8 w-64 bg-gray-600 animate-pulse rounded"></div>
+        </div>
+      </nav>
+    }>
+      <NavbarContent />
+    </Suspense>
   );
 }
