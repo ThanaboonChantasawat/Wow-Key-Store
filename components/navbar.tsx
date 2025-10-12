@@ -158,13 +158,13 @@ export function Navbar() {
               </Link>
             </li>
             <li className="py-4">
-              <a href="#" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
+              <Link href="/profile?tab=myGame" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
                 ไอดีเกมของฉัน
-              </a>
+              </Link>
             </li>
             <li className="py-4">
-              <a href="#" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
-                ช่วยเหลือ
+              <a href="/profile?tab=help" className="text-gray-700 hover:text-[#ff9800] transition-colors duration-200">
+                ติดต่อเรา
               </a>
             </li>
           </ul>
@@ -196,7 +196,7 @@ export function Navbar() {
               </li>
               <li>
                 <a 
-                  href="#" 
+                  href="/profile?tab=myGame"
                   className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -205,11 +205,11 @@ export function Navbar() {
               </li>
               <li>
                 <a 
-                  href="#" 
+                  href="/profile?tab=help" 
                   className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  ช่วยเหลือ
+                  ติดต่อเรา
                 </a>
               </li>
               <li className="pt-2 border-t border-gray-200">

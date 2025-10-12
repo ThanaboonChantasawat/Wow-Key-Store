@@ -1,10 +1,10 @@
 const Footer = () => {
   return (
-    <div>
+    <div className="mt-auto">
       {/* Footer */}
-      <footer className="bg-white py-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <footer className="bg-white py-8 sm:py-10 lg:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             <div>
               <h4 className="text-xl font-bold text-[#ff9800] mb-4">
                 WowKeystore
@@ -49,8 +49,8 @@ const Footer = () => {
         </div>
       </footer>
       {/* Copyright */}
-      <div className="bg-[#ff9800] py-4 text-center text-black">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+      <div className="bg-[#ff9800] py-3 sm:py-4 text-center text-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
           <p>© 2025 Wowkeystore</p>
           <div className="flex space-x-4">
             <a href="#" className="text-black hover:text-white">

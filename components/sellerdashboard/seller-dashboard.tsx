@@ -1,0 +1,32 @@
+"use client"
+
+import { useState } from "react"
+import { SellerSidebar } from "./seller-sidebar"
+import { SellerOverview } from "./seller-overview"
+import { SellerProducts } from "./seller-products"
+import { SellerUpdateOrders } from "./seller-update-orders"
+import { SellerIssues } from "./seller-issues"
+import { SellerEditAccount } from "./seller-edit-account"
+import { SellerStoreSettings } from "./seller-store-settings"
+
+export function SellerDashboard() {
+  const [activeSection, setActiveSection] = useState("overview")
+
+  return (
+    <main className="flex-1">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          <SellerSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+          <div className="flex-1">
+            {activeSection === "overview" && <SellerOverview />}
+            {activeSection === "products" && <SellerProducts />}
+            {activeSection === "orders" && <SellerUpdateOrders />}
+            {activeSection === "issues" && <SellerIssues />}
+            {activeSection === "edit-account" && <SellerEditAccount />}
+            {activeSection === "settings" && <SellerStoreSettings />}
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}

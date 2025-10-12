@@ -101,7 +101,7 @@ const reviews = [
 
 export default function SellerProfile() {
   return (
-    <div className="min-h-screen bg-[#f2f2f4]">
+    <div className="bg-[#f2f2f4]">
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* Shop Profile Section */}
         <Card className="mb-8 bg-white items-center md:items-start">

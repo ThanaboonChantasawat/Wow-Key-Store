@@ -26,7 +26,7 @@ function ProductsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f2f2f4]">
+    <div className="bg-[#f2f2f4]">
       <div className="flex flex-col lg:flex-row gap-6 py-4 sm:py-6 px-4 sm:px-6">
         {/* Mobile Menu Button */}
         <button

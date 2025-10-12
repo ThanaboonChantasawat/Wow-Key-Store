@@ -206,3 +206,51 @@ export const useGamesByGameId = (gameId: string | null) => {
 
   return { games, loading, error };
 };
+// Hook ????????????????????? favorite
+export const useFavoriteGames = (userId: string | null) => {
+  const [games, setGames] = useState<GameWithCategories[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFavoriteGames = async () => {
+      if (!userId) {
+        setGames([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get user's favorite game IDs
+        const { getUserFavorites } = await import('@/lib/favorites-service');
+        const favoriteGameIds = await getUserFavorites(userId);
+        
+        if (favoriteGameIds.length === 0) {
+          setGames([]);
+          setLoading(false);
+          return;
+        }
+
+        // Get all games and filter favorites
+        const allGames = await getGamesWithCategories();
+        const favoriteGames = allGames.filter(game => 
+          favoriteGameIds.includes(game.id)
+        );
+        
+        setGames(favoriteGames);
+      } catch (err) {
+        setError('???????????????????????????????????????');
+        console.error('Error fetching favorite games:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavoriteGames();
+  }, [userId]);
+
+  return { games, loading, error };
+};

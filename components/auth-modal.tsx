@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from 'lucide-react'
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth, googleProvider, facebookProvider } from '@/components/firebase-config'
+import { createUserProfile } from '@/lib/user-service'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -102,6 +103,15 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
         displayName: registerData.name
       })
 
+      // Create user profile in Firestore
+      await createUserProfile(
+        userCredential.user.uid,
+        registerData.name,
+        null, // photoURL will be null initially
+        registerData.email,
+        userCredential.user.emailVerified
+      )
+
       handleClose()
     } catch (err: unknown) {
       const error = err as { code?: string }
@@ -123,7 +133,26 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     setError('')
 
     try {
-      await signInWithPopup(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
+      const user = result.user
+      
+      // Check if user profile exists, if not create it
+      const { getUserProfile, updateLastLogin } = await import('@/lib/user-service')
+      const existingProfile = await getUserProfile(user.uid)
+      
+      if (!existingProfile) {
+        await createUserProfile(
+          user.uid,
+          user.displayName || 'Google User',
+          user.photoURL,
+          user.email || undefined,
+          user.emailVerified
+        )
+      } else {
+        // Update last login
+        await updateLastLogin(user.uid)
+      }
+      
       handleClose()
     } catch {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
@@ -137,7 +166,26 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     setError('')
 
     try {
-      await signInWithPopup(auth, facebookProvider)
+      const result = await signInWithPopup(auth, facebookProvider)
+      const user = result.user
+      
+      // Check if user profile exists, if not create it
+      const { getUserProfile, updateLastLogin } = await import('@/lib/user-service')
+      const existingProfile = await getUserProfile(user.uid)
+      
+      if (!existingProfile) {
+        await createUserProfile(
+          user.uid,
+          user.displayName || 'Facebook User',
+          user.photoURL,
+          user.email || undefined,
+          user.emailVerified
+        )
+      } else {
+        // Update last login
+        await updateLastLogin(user.uid)
+      }
+      
       handleClose()
     } catch {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')

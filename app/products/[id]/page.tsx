@@ -28,12 +28,13 @@ const ProductDetailPage = async({ params }: { params: Promise<{ id: string }> })
   }
   
   return (
-    <div className="min-h-screen bg-[#f2f2f4]">
-      <main className="max-w-10/12 mx-auto px-4 py-6">
+    <div className="bg-[#f2f2f4]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <ProductCard 
           game={game}
         />
-        <ShopInformation/>
+        {/* TODO: Add ShopInformation when products have shop relationships */}
+        {/* <ShopInformation shopId={game.shopId} /> */}
       </main>
     </div>
   );

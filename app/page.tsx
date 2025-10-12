@@ -1,17 +1,19 @@
 import Hero from "@/components/hero/Hero";
-import SearchContainer from '@/components/search/SearchContainer';
+import GameContainer from '@/components/home/GameContainer';
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="bg-[#f2f2f4]">
       {/* Hero Section */}
       <Hero/>
 
-      {/* Products Section (client wrapper decides preview or default) */}
-      <SearchContainer />
+      {/* Popular Games Section */}
+      <GameContainer />
+
+
 
       {/* Why Section */}
-      <section className="py-12 bg-[#ff9800] text-white">
+      <section className="py-12 bg-stone-800 text-white">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h3 className="text-2xl font-bold mb-6">Why WowKeystore?</h3>
           <p className="text-center mb-8">

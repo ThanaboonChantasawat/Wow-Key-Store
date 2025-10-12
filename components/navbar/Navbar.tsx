@@ -13,21 +13,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchGames } from "@/hooks/useFirestore";
-import SearchDropdown from './SearchDropdown';
-import {
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
+import SearchDropdown from "./SearchDropdown";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthModal } from "../auth-modal";
 import { useAuthModal } from "../use-auth-modal";
 import { useAuth } from "../auth-context";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 const navLinks = [
   { href: "/products", label: "สินค้าทั้งหมด" },
   { href: "/seller", label: "ขายสินค้ากับเรา" },
-  { href: "/myGameId", label: "ไอดีเกมของฉัน" },
-  { href: "/help", label: "ช่วยเหลือ" },
+  { href: "/profile?tab=myGame", label: "ไอดีเกมของฉัน" },
+  { href: "/profile?tab=help", label: "ติดต่อเรา" },
 ];
 
 function NavbarContent() {
@@ -89,15 +87,23 @@ function NavbarContent() {
   return (
     <>
       {/* Header */}
-      <header className="bg-[#ff9800] py-4 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <Link href={"/"} className="text-xl md:text-2xl font-bold text-black">
-            WowKeystore
-          </Link>
+      <header className="bg-[#ff9800] px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Top Row - Logo and Actions */}
+          <div className="h-20 md:h-24 flex items-center justify-between">
+            {/* Logo */}
+            <Link href={"/"} className="relative h-36 md:h-56 w-56 md:w-64 flex-shrink-0">
+              <Image
+                src={"/images/logo.png"}
+                alt="wowkeystore logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </Link>
 
-          {/* Desktop Search Bar */}
-          <div className="relative flex-1 max-w-xl mx-4 hidden md:block">
+            {/* Desktop Search Bar */}
+            <div className="relative flex-1 max-w-xl mx-4 hidden md:block">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -174,11 +180,21 @@ function NavbarContent() {
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800]">
+                  <Button
+                    variant="ghost"
+                    className="relative h-10 w-10 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800]"
+                  >
                     <Avatar className="h-8 w-8">
-                      {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || ''} />}
+                      {user.photoURL && (
+                        <AvatarImage
+                          src={user.photoURL}
+                          alt={user.displayName || ""}
+                        />
+                      )}
                       <AvatarFallback className="bg-[#ff9800] text-white">
-                        {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                        {user.displayName?.charAt(0) ||
+                          user.email?.charAt(0) ||
+                          "U"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -203,7 +219,10 @@ function NavbarContent() {
                       <span>โปรไฟล์</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>ออกจากระบบ</span>
                   </DropdownMenuItem>
@@ -237,19 +256,20 @@ function NavbarContent() {
             <button
               onClick={toggleMobileMenu}
               className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
+              aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               ) : (
-                <Menu className="h-4 w-4" />
+                <Menu className="h-5 w-5" />
               )}
             </button>
           </div>
-        </div>
+          </div>
 
-        {/* Mobile Search Bar */}
-        <div className="mt-4 md:hidden">
-          <div className="relative">
+          {/* Mobile Search Bar */}
+          <div className="pb-4 md:hidden">
+            <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -263,15 +283,15 @@ function NavbarContent() {
                   handleSearchSubmit();
                 }
               }}
-              className="block w-full pl-10 pr-3 py-2 border border-transparent rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              className="block w-full pl-10 pr-10 py-2 border border-transparent rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
               placeholder="ค้นหา"
             />
+            {/* Clear button */}
             {searchTerm && searchTerm.trim() !== "" && (
               <button
                 onClick={() => {
                   setSearchTerm("");
                   setDebounced("");
-                  desktopInputRef.current?.focus();
                   mobileInputRef.current?.focus();
                 }}
                 aria-label="ลบข้อความ"
@@ -280,68 +300,8 @@ function NavbarContent() {
                 <X className="h-4 w-4" />
               </button>
             )}
-            {showDropdown && (
-              <div className="mt-2 bg-white shadow-lg rounded-lg z-50">
-                <div className="p-3">
-                  {suggestionLoading ? (
-                    <div className="text-sm text-gray-500">กำลังค้นหา...</div>
-                  ) : suggestionGames.length === 0 ? (
-                    <div className="text-sm text-gray-500">ไม่พบสินค้า</div>
-                  ) : (
-                    <ul className="divide-y">
-                      {suggestionGames.slice(0, 4).map((g) => (
-                        <li key={g.id} className="py-2">
-                          <a
-                            onClick={() => {
-                              router.push(`/products/${g.id}`);
-                              setSearchTerm("");
-                              setDebounced("");
-                              desktopInputRef.current?.blur();
-                              mobileInputRef.current?.blur();
-                            }}
-                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                          >
-                            <img
-                              src={
-                                g.gameImages?.[0]?.images?.[0]?.url ||
-                                "/landscape-placeholder-svgrepo-com.svg"
-                              }
-                              alt={g.name}
-                              className="w-12 h-8 object-cover rounded"
-                            />
-                            <div>
-                              <div className="text-sm font-medium">
-                                {g.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {g.price?.toLocaleString()} ฿
-                              </div>
-                            </div>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div className="border-t p-3 text-right">
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setDebounced("");
-                      desktopInputRef.current?.blur();
-                      mobileInputRef.current?.blur();
-                      router.push(
-                        `/products?q=${encodeURIComponent(debounced)}`
-                      );
-                    }}
-                    className="text-sm text-[#ff9800]"
-                  >
-                    ดูสินค้าทั้งหมด
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
+        </div>
         </div>
       </header>
 
@@ -474,14 +434,16 @@ function NavbarContent() {
 
 export function Navbar() {
   return (
-    <Suspense fallback={
-      <nav className="bg-[#292d32] text-white py-3 px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="h-8 w-32 bg-gray-600 animate-pulse rounded"></div>
-          <div className="h-8 w-64 bg-gray-600 animate-pulse rounded"></div>
-        </div>
-      </nav>
-    }>
+    <Suspense
+      fallback={
+        <nav className="bg-[#292d32] text-white py-3 px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="h-8 w-32 bg-gray-600 animate-pulse rounded"></div>
+            <div className="h-8 w-64 bg-gray-600 animate-pulse rounded"></div>
+          </div>
+        </nav>
+      }
+    >
       <NavbarContent />
     </Suspense>
   );
