@@ -7,8 +7,12 @@ import { Input } from "@/components/ui/input"
 
 interface Order {
   id: string;
+  orderNumber: string;
+  buyer: string;
+  product: string;
+  total: number;
+  date: string;
   status: string;
-  // Add other properties as needed
 }
 
 export function AdminOrders() {
