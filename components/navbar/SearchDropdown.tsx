@@ -4,13 +4,14 @@ import React from 'react';
 import { GameWithCategories } from '@/lib/types';
 
 interface Props {
+  query?: string; // optional, provided by Navbar for context/search term
   suggestionGames: GameWithCategories[];
   suggestionLoading: boolean;
   onSelectProduct: (id: string) => void;
   onViewAll: () => void;
 }
 
-export default function SearchDropdown({ suggestionGames, suggestionLoading, onSelectProduct, onViewAll }: Props) {
+export default function SearchDropdown({ query, suggestionGames, suggestionLoading, onSelectProduct, onViewAll }: Props) {
   return (
     <div className="absolute left-0 right-0 mt-2 bg-white shadow-lg rounded-lg z-50">
       <div className="p-3">

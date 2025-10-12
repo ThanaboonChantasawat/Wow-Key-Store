@@ -34,6 +34,10 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
   }, [games, limit]);
 
   // Check favorites for all games
+  // We intentionally only depend on user.uid and displayGames.length to avoid
+  // re-running the full check when the `displayGames` array identity changes
+  // frequently; the effect reads the current `displayGames` inside the body.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user || displayGames.length === 0) return;
     

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Package, MoreVertical } from "lucide-react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -57,11 +58,14 @@ export function AdminProducts() {
             {products.map((product) => (
               <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
-                  <img 
-                    src={product.image || "/placeholder.svg"} 
-                    alt={product.name}
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
+                  <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+                    <Image
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </td>
                 <td className="px-6 py-4 font-medium text-[#292d32]">{product.name}</td>
                 <td className="px-6 py-4 text-center text-[#292d32]">{product.category}</td>
