@@ -18,7 +18,6 @@ import {
   Phone,
   Shield,
   User,
-  CalendarPlus,
   UserRoundCheck,
   Camera,
   Lock,

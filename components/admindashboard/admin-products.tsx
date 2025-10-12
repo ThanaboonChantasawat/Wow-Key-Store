@@ -1,16 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Package, MoreVertical } from "lucide-react"
+import { Package, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
+interface Product {
+  id: string;
+  // Add other properties as needed
+}
 
 export function AdminProducts() {
   const [currentPage, setCurrentPage] = useState(1)
   const totalPages = 1
 
   // Mock data - ในอนาคตจะดึงจาก Firestore
-  const products: any[] = []
+  const products: Product[] = []
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-200">

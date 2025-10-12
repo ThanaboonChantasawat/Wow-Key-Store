@@ -1,11 +1,9 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
 import { GameWithCategories } from '@/lib/types';
 
 interface Props {
-  query: string;
   suggestionGames: GameWithCategories[];
   suggestionLoading: boolean;
   onSelectProduct: (id: string) => void;

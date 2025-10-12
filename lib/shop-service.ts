@@ -1,14 +1,10 @@
 import { db } from "@/components/firebase-config";
 import { 
-  collection, 
   doc, 
   setDoc, 
   getDoc,
   updateDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs
+  serverTimestamp
 } from "firebase/firestore";
 
 export interface Shop {
@@ -44,7 +40,7 @@ export async function createShop(
     
     // Remove undefined fields from shopData
     const cleanShopData = Object.fromEntries(
-      Object.entries(shopData).filter(([_, value]) => value !== undefined)
+      Object.entries(shopData).filter(([, value]) => value !== undefined)
     );
     
     await setDoc(shopRef, {

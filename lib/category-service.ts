@@ -1,4 +1,3 @@
-import { getFirestore } from "firebase/firestore";
 import { db } from "@/components/firebase-config";
 import { 
   collection, 

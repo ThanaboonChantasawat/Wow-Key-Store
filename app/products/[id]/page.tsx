@@ -1,5 +1,5 @@
 import ProductCard from "@/components/card/ProductCard";
-import ShopInformation from "@/components/product/ShopInformation";
+// import ShopInformation from "@/components/product/ShopInformation";
 import { getGameById, getGames } from "@/lib/firestore-service";
 import { notFound } from "next/navigation";
 

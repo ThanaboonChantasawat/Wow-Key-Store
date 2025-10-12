@@ -1,16 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Store, MoreVertical } from "lucide-react"
+import { Store, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
+interface Shop {
+  id: string;
+  status: string;
+  // Add other properties as needed
+}
 
 export function AdminShops() {
   const [currentPage, setCurrentPage] = useState(1)
   const totalPages = 1
 
   // Mock data - ในอนาคตจะดึงจาก Firestore
-  const shops: any[] = []
+  const shops: Shop[] = []
 
   const getStatusBadge = (status: string) => {
     switch (status) {

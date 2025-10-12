@@ -5,7 +5,7 @@ import { SellerDashboard } from "@/components/sellerdashboard/seller-dashboard"
 import { CreateShopForm } from "@/components/sellerdashboard/create-shop-form"
 import { useAuth } from "@/components/auth-context"
 import { getShopByOwnerId } from "@/lib/shop-service"
-import { Store, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 
 export default function SellerPage() {
   const { user, isInitialized } = useAuth()

@@ -1,14 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Star, Tag } from "lucide-react"
+import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getAllGames, createGame, updateGame, deleteGame, type Game } from "@/lib/game-service"
-import { getAllCategories, createCategory, deleteCategory, type Category } from "@/lib/category-service"
+import { getAllCategories, type Category } from "@/lib/category-service"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import Image from "next/image"
@@ -21,13 +20,6 @@ export function AdminGames() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  // Category management states
-  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
-  const [newCategoryData, setNewCategoryData] = useState({
-    name: "",
-    description: ""
-  })
   
   const [formData, setFormData] = useState({
     name: "",

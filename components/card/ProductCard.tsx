@@ -1,7 +1,7 @@
 'use client'
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Heart, ShoppingCart, Loader2, Check } from "lucide-react";
+import { Heart, ShoppingCart, Loader2 } from "lucide-react";
 import { Game, GameImage } from "@/lib/types";
 import Image from "next/image";
 import { useState, useEffect } from "react";
