@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input"
 
 interface Product {
   id: string;
-  // Add other properties as needed
+  name: string;
+  image: string;
+  category: string;
+  price: number;
+  seller: string;
+  status: string;
 }
 
 export function AdminProducts() {

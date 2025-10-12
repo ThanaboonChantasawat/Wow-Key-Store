@@ -7,8 +7,13 @@ import { Input } from "@/components/ui/input"
 
 interface Shop {
   id: string;
+  name: string;
+  logo: string;
+  owner: string;
+  products: number;
+  sales: number;
+  rating: number;
   status: string;
-  // Add other properties as needed
 }
 
 export function AdminShops() {
@@ -75,8 +80,8 @@ export function AdminShops() {
                 </td>
                 <td className="px-6 py-4 font-medium text-[#292d32]">{shop.name}</td>
                 <td className="px-6 py-4 text-[#292d32]">{shop.owner}</td>
-                <td className="px-6 py-4 text-center text-[#292d32]">{shop.totalProducts}</td>
-                <td className="px-6 py-4 text-center font-bold text-[#ff9800]">฿{shop.totalSales}</td>
+                <td className="px-6 py-4 text-center text-[#292d32]">{shop.products}</td>
+                <td className="px-6 py-4 text-center font-bold text-[#ff9800]">฿{shop.sales}</td>
                 <td className="px-6 py-4 text-center text-[#292d32]">⭐ {shop.rating}</td>
                 <td className="px-6 py-4 text-center">{getStatusBadge(shop.status)}</td>
                 <td className="px-6 py-4">
