@@ -5,6 +5,7 @@ import Footer from "@/components/footer";
 
 import { AuthProvider } from "@/components/auth-context";
 import { Navbar } from "@/components/navbar/Navbar";
+import { EmailPromptToast } from "@/components/email-prompt-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,14 +30,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-[#f2f2f4]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-100`}
       >
         <AuthProvider>
           <Navbar/>
-          <main className="flex-1">
+          <main className="flex-1 min-h-0">
             {children}
           </main>
           <Footer />
+          <EmailPromptToast />
         </AuthProvider>
       </body>
     </html>

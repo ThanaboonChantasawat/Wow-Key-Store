@@ -14,15 +14,21 @@ import {
 
 export interface CartItem {
   userId: string;
-  gameId: string;
+  itemId: string; // Can be gameId or productId
+  itemType: 'game' | 'product'; // Type of item
   quantity: number;
   addedAt: Date;
 }
 
 // Add item to cart
-export async function addToCart(userId: string, gameId: string, quantity: number = 1): Promise<void> {
+export async function addToCart(
+  userId: string, 
+  itemId: string, 
+  quantity: number = 1,
+  itemType: 'game' | 'product' = 'game'
+): Promise<void> {
   try {
-    const cartRef = doc(db, "cart", `${userId}_${gameId}`);
+    const cartRef = doc(db, "cart", `${userId}_${itemId}`);
     
     // Check if item already exists in cart
     const cartDoc = await getDoc(cartRef);
@@ -36,7 +42,9 @@ export async function addToCart(userId: string, gameId: string, quantity: number
       // Add new item to cart
       await setDoc(cartRef, {
         userId,
-        gameId,
+        itemId,
+        itemType,
+        gameId: itemId, // Keep for backward compatibility
         quantity,
         addedAt: new Date()
       });
@@ -48,9 +56,9 @@ export async function addToCart(userId: string, gameId: string, quantity: number
 }
 
 // Remove item from cart
-export async function removeFromCart(userId: string, gameId: string): Promise<void> {
+export async function removeFromCart(userId: string, itemId: string): Promise<void> {
   try {
-    const cartRef = doc(db, "cart", `${userId}_${gameId}`);
+    const cartRef = doc(db, "cart", `${userId}_${itemId}`);
     await deleteDoc(cartRef);
   } catch (error) {
     console.error("Error removing from cart:", error);
@@ -59,14 +67,14 @@ export async function removeFromCart(userId: string, gameId: string): Promise<vo
 }
 
 // Update item quantity in cart
-export async function updateCartQuantity(userId: string, gameId: string, quantity: number): Promise<void> {
+export async function updateCartQuantity(userId: string, itemId: string, quantity: number): Promise<void> {
   try {
     if (quantity <= 0) {
-      await removeFromCart(userId, gameId);
+      await removeFromCart(userId, itemId);
       return;
     }
     
-    const cartRef = doc(db, "cart", `${userId}_${gameId}`);
+    const cartRef = doc(db, "cart", `${userId}_${itemId}`);
     await updateDoc(cartRef, {
       quantity
     });
@@ -82,7 +90,7 @@ export async function getUserCart(userId: string): Promise<string[]> {
     const cartQuery = query(collection(db, "cart"), where("userId", "==", userId));
     const querySnapshot = await getDocs(cartQuery);
     
-    return querySnapshot.docs.map(doc => doc.data().gameId);
+    return querySnapshot.docs.map(doc => doc.data().itemId || doc.data().gameId);
   } catch (error) {
     console.error("Error getting user cart:", error);
     throw error;
@@ -90,14 +98,15 @@ export async function getUserCart(userId: string): Promise<string[]> {
 }
 
 // Get user's cart items with full details
-export async function getUserCartWithDetails(userId: string): Promise<Array<{id: string, gameId: string, quantity: number}>> {
+export async function getUserCartWithDetails(userId: string): Promise<Array<{id: string, itemId: string, itemType: string, quantity: number}>> {
   try {
     const cartQuery = query(collection(db, "cart"), where("userId", "==", userId));
     const querySnapshot = await getDocs(cartQuery);
     
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
-      gameId: doc.data().gameId,
+      itemId: doc.data().itemId || doc.data().gameId,
+      itemType: doc.data().itemType || 'game',
       quantity: doc.data().quantity || 1
     }));
   } catch (error) {
@@ -107,9 +116,9 @@ export async function getUserCartWithDetails(userId: string): Promise<Array<{id:
 }
 
 // Check if item is in cart
-export async function isInCart(userId: string, gameId: string): Promise<boolean> {
+export async function isInCart(userId: string, itemId: string): Promise<boolean> {
   try {
-    const cartRef = doc(db, "cart", `${userId}_${gameId}`);
+    const cartRef = doc(db, "cart", `${userId}_${itemId}`);
     const cartDoc = await getDoc(cartRef);
     return cartDoc.exists();
   } catch (error) {

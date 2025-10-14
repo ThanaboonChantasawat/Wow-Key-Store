@@ -3,9 +3,9 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
-import GameCategorySidebar from '@/components/category/GameCategorySidebar';
-import { useGamesByGameId, useSearchGames } from '@/hooks/useFirestore';
-import GameCard from '@/components/card/GameCard';
+import ProductCategorySidebar from '@/components/category/ProductCategorySidebar';
+import ProductList from '@/components/product/ProductList';
+import { useProducts, useSearchProducts } from '@/hooks/useProducts';
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -14,11 +14,11 @@ function ProductsContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Use search hook if there's a query, otherwise use game filter
-  const searchResult = useSearchGames(q || null, null);
-  const gameFilterResult = useGamesByGameId(selectedGameId);
+  const searchResult = useSearchProducts(q || null);
+  const gameFilterResult = useProducts(selectedGameId);
   
   // Determine which result to use
-  const { games, loading, error } = q ? searchResult : gameFilterResult;
+  const { products, loading, error } = q ? searchResult : gameFilterResult;
 
   const handleGameSelect = (gameId: string | null) => {
     setSelectedGameId(gameId);
@@ -73,7 +73,7 @@ function ProductsContent() {
           </div>
 
           <div className="px-4 lg:px-0">
-            <GameCategorySidebar 
+            <ProductCategorySidebar 
               onGameSelect={handleGameSelect}
               selectedGameId={selectedGameId}
             />
@@ -85,7 +85,14 @@ function ProductsContent() {
           {/* Header */}
           <div className="bg-[#292d32] text-[#ffffff] rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl sm:text-2xl font-bold">สินค้าทั้งหมด</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">
+                {selectedGameId 
+                  ? 'สินค้าตามเกมที่เลือก' 
+                  : q 
+                    ? 'ผลการค้นหา' 
+                    : 'สินค้าทั้งหมด'
+                }
+              </h1>
             </div>
           </div>
 
@@ -93,12 +100,12 @@ function ProductsContent() {
           <div className="bg-[#ffffff] rounded-lg p-4 sm:p-6">
             {q && (
               <div className="mb-4">
-                <p className="text-gray-600">ผลการค้นหา: <span className="font-semibold text-gray-900">{q}</span></p>
+                <p className="text-gray-600">ค้นหา: <span className="font-semibold text-gray-900">{q}</span></p>
               </div>
             )}
             
-            <GameCard 
-              games={games}
+            <ProductList 
+              products={products}
               loading={loading}
               error={error}
             />
@@ -112,7 +119,7 @@ function ProductsContent() {
 export default function Products() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#f2f2f4] flex items-center justify-center">
+      <div className="bg-[#f2f2f4] flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
       </div>
     }>

@@ -70,7 +70,7 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
   }, [user?.uid, displayGames.length]); // ใช้ user.uid และ length แทน displayGames ทั้งหมด
 
   // Handle favorite toggle
-  const handleFavoriteToggle = async (gameId: string, e: React.MouseEvent) => {
+  const handleFavoriteToggle = async (gameId: string, e: React.MouseEvent, game?: GameWithCategories) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -82,11 +82,14 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
     try {
       setFavoriteLoading(prev => ({ ...prev, [gameId]: true }));
       
+      // Check if this is a product by looking for shopId
+      const itemType = (game as any)?.shopId ? 'product' : 'game';
+      
       if (favorites[gameId]) {
         await removeFromFavorites(user.uid, gameId);
         setFavorites(prev => ({ ...prev, [gameId]: false }));
       } else {
-        await addToFavorites(user.uid, gameId);
+        await addToFavorites(user.uid, gameId, itemType);
         setFavorites(prev => ({ ...prev, [gameId]: true }));
       }
     } catch (error) {
@@ -216,7 +219,7 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
 
             {/* Favorite Button */}
             <button
-              onClick={(e) => handleFavoriteToggle(game.id, e)}
+              onClick={(e) => handleFavoriteToggle(game.id, e, game)}
               disabled={favoriteLoading[game.id]}
               className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white/90 hover:bg-white text-red-500 p-1.5 sm:p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 z-10"
             >

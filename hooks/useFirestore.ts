@@ -206,14 +206,14 @@ export const useGamesByGameId = (gameId: string | null) => {
 
   return { games, loading, error };
 };
-// Hook ????????????????????? favorite
+// Hook สำหรับดึงข้อมูล favorite items (products และ games)
 export const useFavoriteGames = (userId: string | null) => {
   const [games, setGames] = useState<GameWithCategories[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchFavoriteGames = async () => {
+    const fetchFavoriteItems = async () => {
       if (!userId) {
         setGames([]);
         setLoading(false);
@@ -224,32 +224,57 @@ export const useFavoriteGames = (userId: string | null) => {
         setLoading(true);
         setError(null);
         
-        // Get user's favorite game IDs
+        // Get user's favorite item IDs
         const { getUserFavorites } = await import('@/lib/favorites-service');
-        const favoriteGameIds = await getUserFavorites(userId);
+        const favoriteItemIds = await getUserFavorites(userId);
         
-        if (favoriteGameIds.length === 0) {
+        if (favoriteItemIds.length === 0) {
           setGames([]);
           setLoading(false);
           return;
         }
 
-        // Get all games and filter favorites
-        const allGames = await getGamesWithCategories();
-        const favoriteGames = allGames.filter(game => 
-          favoriteGameIds.includes(game.id)
+        // Import product service
+        const { getAllProducts } = await import('@/lib/product-service');
+        
+        // Get all products
+        const allProducts = await getAllProducts();
+        
+        // Filter favorite products
+        const favoriteProducts = allProducts.filter(product => 
+          favoriteItemIds.includes(product.id)
         );
+        
+        // Convert products to GameWithCategories format
+        const favoriteGames: GameWithCategories[] = favoriteProducts.map(product => ({
+          id: product.id,
+          gameId: product.gameId,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          gameImages: product.images.length > 0 
+            ? [{
+                images: product.images.map((url, index) => ({
+                  url,
+                  isCover: index === 0,
+                  order: index
+                }))
+              }]
+            : [],
+          categoryIds: [],
+          categories: []
+        }));
         
         setGames(favoriteGames);
       } catch (err) {
-        setError('???????????????????????????????????????');
-        console.error('Error fetching favorite games:', err);
+        setError('เกิดข้อผิดพลาดในการดึงข้อมูล');
+        console.error('Error fetching favorite items:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFavoriteGames();
+    fetchFavoriteItems();
   }, [userId]);
 
   return { games, loading, error };

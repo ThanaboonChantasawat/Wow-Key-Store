@@ -23,9 +23,10 @@ import Image from "next/image";
 
 const navLinks = [
   { href: "/products", label: "สินค้าทั้งหมด" },
+  { href: "/shops", label: "ร้านค้าทั้งหมด" },
   { href: "/seller", label: "ขายสินค้ากับเรา" },
   { href: "/profile?tab=myGame", label: "ไอดีเกมของฉัน" },
-  { href: "/profile?tab=help", label: "ติดต่อเรา" },
+  { href: "/support", label: "ติดต่อเรา" },
 ];
 
 function NavbarContent() {
@@ -312,22 +313,18 @@ function NavbarContent() {
             {navLinks.map((link) => {
               const isActive =
                 link.href === "/"
-                  ? pathname === link.href
+                  ? pathname === "/"
                   : pathname.startsWith(link.href);
+
               return (
                 <Link
+                  key={link.href}
                   href={link.href}
-                  key={link.label}
-                  className={`
-                    text-lg
-                    hover:text-white
-                    hover:bg-orange-400
-                    rounded-md
-                    transition-colors
-                    p-2
-                    duration-400
-                    ${isActive ? "text-white bg-orange-400" : "text-black"}
-                  `}
+                  className={`py-2 text-lg font-medium transition-colors duration-200 ${
+                    isActive
+                      ? "text-[#ff9800] border-b-2 border-[#ff9800]"
+                      : "text-gray-700 hover:text-[#ff9800]"
+                  }`}
                 >
                   {link.label}
                 </Link>

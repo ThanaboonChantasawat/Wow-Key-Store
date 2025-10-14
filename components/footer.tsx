@@ -1,6 +1,6 @@
 const Footer = () => {
   return (
-    <div className="mt-auto">
+    <div>
       {/* Footer */}
       <footer className="bg-white py-8 sm:py-10 lg:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,7 +49,7 @@ const Footer = () => {
         </div>
       </footer>
       {/* Copyright */}
-      <div className="bg-[#ff9800] py-3 sm:py-4 text-center text-black">
+  <div className="bg-[#ff9800] py-3 sm:py-4 text-center text-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
           <p>© 2025 Wowkeystore</p>
           <div className="flex space-x-4">

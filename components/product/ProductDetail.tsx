@@ -111,7 +111,9 @@ const ProductCard = ({ game }: { game: Game }) => {
         await removeFromCart(user.uid, game.id);
         setIsAddedToCart(false);
       } else {
-        await addToCart(user.uid, game.id, 1);
+        // Check if this is a product by looking at the game object structure
+        const itemType = (game as any).shopId ? 'product' : 'game';
+        await addToCart(user.uid, game.id, 1, itemType);
         setIsAddedToCart(true);
       }
     } catch (error) {
@@ -136,7 +138,9 @@ const ProductCard = ({ game }: { game: Game }) => {
         await removeFromFavorites(user.uid, game.id);
         setIsFavorite(false);
       } else {
-        await addToFavorites(user.uid, game.id);
+        // Check if this is a product by looking at the game object structure
+        const itemType = (game as any).shopId ? 'product' : 'game';
+        await addToFavorites(user.uid, game.id, itemType);
         setIsFavorite(true);
       }
     } catch (error) {
@@ -250,7 +254,7 @@ const ProductCard = ({ game }: { game: Game }) => {
                 disabled={cartLoading || checkingCart}
                 className={`px-6 sm:px-8 py-5 sm:py-6 rounded-lg text-base sm:text-lg font-semibold shadow-md transition-all duration-200 flex-1 ${
                   isAddedToCart
-                    ? "bg-gradient-to-r  border-2 border-[#ff9800] text-[#ff9800] hover:bg-red-400 hover:border-red-800"
+                    ? " border-red-400 border-2 text-red-400 hover:bg-red-400  hover:border-red-700"
                     : "border-2 border-[#d9d9d9] text-gray-700 hover:border-[#ff9800] hover:text-[#ff9800] hover:bg-orange-50"
                 }`}
               >
@@ -274,7 +278,7 @@ const ProductCard = ({ game }: { game: Game }) => {
                 disabled={favoriteLoading || checkingFavorite}
                 className={`px-6 sm:px-8 py-5 sm:py-6 rounded-lg text-base sm:text-lg font-semibold shadow-md transition-all duration-200 flex-1 ${
                   isFavorite 
-                    ? "bg-gradient-to-r from-red-50 to-pink-50 border-2 border-[#ff9800] text-[#ff9800] hover:from-red-100 hover:to-pink-100 hover:border-[#e68900]" 
+                    ? " border-red-400 border-2 text-red-400 hover:bg-red-400  hover:border-red-700" 
                     : "border-2 border-[#d9d9d9] text-gray-700 hover:border-[#ff9800] hover:text-[#ff9800] hover:bg-orange-50"
                 }`}
               >

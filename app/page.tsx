@@ -1,5 +1,6 @@
 import Hero from "@/components/hero/Hero";
 import GameContainer from '@/components/home/GameContainer';
+import { TopShops } from '@/components/home/TopShops';
 
 export default function Home() {
   return (
@@ -10,7 +11,8 @@ export default function Home() {
       {/* Popular Games Section */}
       <GameContainer />
 
-
+      {/* Top Shops Section */}
+      <TopShops />
 
       {/* Why Section */}
       <section className="py-12 bg-stone-800 text-white">

@@ -23,7 +23,7 @@ export default function AdminPage() {
 
       try {
         const profile = await getUserProfile(user.uid)
-        setIsAdmin(profile?.role === 'admin')
+        setIsAdmin(profile?.role === 'admin' || profile?.role === 'superadmin')
       } catch (error) {
         console.error("Error checking admin role:", error)
         setIsAdmin(false)
@@ -38,7 +38,7 @@ export default function AdminPage() {
   // Loading state
   if (!isInitialized || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#ff9800] mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">กำลังตรวจสอบสิทธิ์...</p>
@@ -50,7 +50,7 @@ export default function AdminPage() {
   // Not logged in
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
+      <div className="flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-20">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-white" />
@@ -73,7 +73,7 @@ export default function AdminPage() {
   // Not admin
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
+      <div className="flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-20">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <Shield className="w-10 h-10 text-white" />
@@ -95,5 +95,5 @@ export default function AdminPage() {
   }
 
   // Is admin - show dashboard
-  return <AdminDashboard />
+  return <AdminDashboard userId={user.uid} />
 }

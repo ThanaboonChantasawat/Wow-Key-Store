@@ -169,6 +169,25 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       const result = await signInWithPopup(auth, facebookProvider)
       const user = result.user
       
+      // Debug: แสดงข้อมูลที่ได้จาก Facebook
+      console.log('=== Facebook Login Data ===');
+      console.log('User UID:', user.uid);
+      console.log('Display Name:', user.displayName);
+      console.log('Email:', user.email);
+      console.log('Photo URL:', user.photoURL);
+      console.log('Email Verified:', user.emailVerified);
+      console.log('Provider Data:', user.providerData);
+      
+      // เช็คว่ามี email หรือไม่
+      const userEmail = user.email || user.providerData[0]?.email;
+      console.log('Final Email to use:', userEmail);
+      
+      // ปล่อยให้เป็น undefined ถ้าไม่มี email (ให้ผู้ใช้ไปกรอกเองในหน้า Profile)
+      const needsEmailUpdate = !userEmail;
+      
+      console.log('Using email:', userEmail || 'undefined (user needs to add)');
+      console.log('Needs email update:', needsEmailUpdate);
+      
       // Check if user profile exists, if not create it
       const { getUserProfile, updateLastLogin } = await import('@/lib/user-service')
       const existingProfile = await getUserProfile(user.uid)
@@ -178,8 +197,8 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
           user.uid,
           user.displayName || 'Facebook User',
           user.photoURL,
-          user.email || undefined,
-          user.emailVerified
+          userEmail || undefined,
+          user.emailVerified || false
         )
       } else {
         // Update last login
@@ -187,7 +206,19 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       }
       
       handleClose()
-    } catch {
+      
+      // ถ้าไม่มี email ให้แสดง toast แจ้งเตือนให้ไปกรอก
+      if (needsEmailUpdate) {
+        setTimeout(() => {
+          const event = new CustomEvent('show-email-prompt', { 
+            detail: { message: 'กรุณาอัปเดตอีเมลของคุณเพื่อรับข้อมูลข่าวสารและการติดต่อ' }
+          });
+          window.dispatchEvent(event);
+        }, 500);
+      }
+      
+    } catch (error) {
+      console.error('Facebook login error:', error);
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')
     } finally {
       setLoading(false)

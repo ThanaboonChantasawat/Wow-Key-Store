@@ -1,29 +1,50 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Store, Upload, AlertCircle, CheckCircle2 } from "lucide-react"
-import { createShop } from "@/lib/shop-service"
-import { updateUserProfile, getUserProfile } from "@/lib/user-service"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { createShop, type Shop } from "@/lib/shop-service"
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
+import { useAuth } from "@/components/auth-context"
+import { canProceedWithTransaction } from "@/lib/email-verification"
+import { EmailVerificationWarning } from "@/components/email-verification-warning"
 
 interface CreateShopFormProps {
   userId: string
   onShopCreated: () => void
+  existingShop?: Shop | null
 }
 
-export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
+export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateShopFormProps) {
+  const { user } = useAuth()
   const [shopName, setShopName] = useState("")
   const [description, setDescription] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
+  const [facebookUrl, setFacebookUrl] = useState("")
+  const [lineId, setLineId] = useState("")
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Load existing shop data if editing
+  useEffect(() => {
+    if (existingShop) {
+      setShopName(existingShop.shopName)
+      setDescription(existingShop.description)
+      setContactEmail(existingShop.contactEmail || "")
+      setContactPhone(existingShop.contactPhone || "")
+      setFacebookUrl(existingShop.facebookUrl || "")
+      setLineId(existingShop.lineId || "")
+      if (existingShop.logoUrl) {
+        setLogoPreview(existingShop.logoUrl)
+      }
+    }
+  }, [existingShop])
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -54,7 +75,16 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check email verification before creating shop
+    const verification = canProceedWithTransaction(user)
+    if (!verification.canProceed) {
+      setMessage({ type: "error", text: verification.message })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     
+    // Validation
     if (!shopName.trim()) {
       setMessage({ type: "error", text: "กรุณากรอกชื่อร้านค้า" })
       return
@@ -65,6 +95,45 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
       return
     }
 
+    if (!contactEmail.trim()) {
+      setMessage({ type: "error", text: "กรุณากรอกอีเมลติดต่อ" })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(contactEmail.trim())) {
+      setMessage({ type: "error", text: "รูปแบบอีเมลไม่ถูกต้อง" })
+      return
+    }
+
+    if (!contactPhone.trim()) {
+      setMessage({ type: "error", text: "กรุณากรอกเบอร์โทรติดต่อ" })
+      return
+    }
+
+    // Validate phone format (Thai phone number: 10 digits starting with 0)
+    const phoneRegex = /^0[0-9]{9}$/
+    const cleanPhone = contactPhone.trim().replace(/[-\s]/g, '')
+    if (!phoneRegex.test(cleanPhone)) {
+      setMessage({ type: "error", text: "เบอร์โทรต้องเป็นเลข 10 หลัก เริ่มต้นด้วย 0" })
+      return
+    }
+
+    // Validate Facebook URL is required
+    if (!facebookUrl.trim()) {
+      setMessage({ type: "error", text: "กรุณากรอก Facebook URL" })
+      return
+    }
+
+    // Validate Facebook URL format
+    const fbRegex = /^(https?:\/\/)?(www\.)?(facebook|fb)\.com\/.+/i
+    if (!fbRegex.test(facebookUrl.trim())) {
+      setMessage({ type: "error", text: "รูปแบบ Facebook URL ไม่ถูกต้อง" })
+      return
+    }
+
+
     try {
       setLoading(true)
       setMessage(null)
@@ -74,6 +143,19 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
       // Upload logo only if file is selected
       if (logoFile) {
         try {
+          // Delete old logo if exists and user is uploading a new one
+          if (existingShop?.logoUrl) {
+            try {
+              const oldLogoRef = ref(storage, existingShop.logoUrl)
+              await deleteObject(oldLogoRef)
+              console.log("Old logo deleted successfully")
+            } catch (deleteError) {
+              console.warn("Could not delete old logo (may not exist or permission issue):", deleteError)
+              // Continue anyway - don't fail the upload because of this
+            }
+          }
+
+          // Upload new logo
           const storageRef = ref(storage, `shop-logos/${userId}/${Date.now()}_${logoFile.name}`)
           await uploadBytes(storageRef, logoFile)
           logoUrl = await getDownloadURL(storageRef)
@@ -83,6 +165,9 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
           setLoading(false)
           return
         }
+      } else if (existingShop?.logoUrl) {
+        // Keep existing logo if no new file selected
+        logoUrl = existingShop.logoUrl
       }
 
       // Create shop in Firestore
@@ -90,30 +175,30 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
         shopName: string;
         description: string;
         logoUrl?: string;
-        contactEmail?: string;
-        contactPhone?: string;
+        contactEmail: string;
+        contactPhone: string;
+        facebookUrl: string;
       } = {
         shopName: shopName.trim(),
-        description: description.trim()
+        description: description.trim(),
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim(),
+        facebookUrl: facebookUrl.trim()
       };
 
-      // Only add optional fields if they have values
+      // Only add logo if it exists
       if (logoUrl) shopData.logoUrl = logoUrl;
-      if (contactEmail.trim()) shopData.contactEmail = contactEmail.trim();
-      if (contactPhone.trim()) shopData.contactPhone = contactPhone.trim();
 
       await createShop(userId, shopData)
 
-      // Update user profile to seller role (only if not already admin)
-      const currentProfile = await getUserProfile(userId)
-      if (currentProfile?.role !== 'admin') {
-        await updateUserProfile(userId, {
-          role: 'seller',
-          isSeller: true
-        })
-      }
+      // Note: User role will be updated to 'seller' only after admin approves the shop
+      // This prevents users from accessing seller features before approval
 
-      setMessage({ type: "success", text: "สร้างร้านค้าสำเร็จ! กำลังเข้าสู่แดชบอร์ด..." })
+      const successMessage = existingShop 
+        ? "ส่งคำขอแก้ไขร้านค้าสำเร็จ! รอ Admin ตรวจสอบและอนุมัติภายใน 24-48 ชั่วโมง"
+        : "ส่งคำขอสร้างร้านค้าสำเร็จ! รอ Admin ตรวจสอบและอนุมัติภายใน 24-48 ชั่วโมง"
+      
+      setMessage({ type: "success", text: successMessage })
       
       setTimeout(() => {
         onShopCreated()
@@ -127,19 +212,30 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="flex items-center justify-center px-4 py-12">
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-gradient-to-br from-[#ff9800] to-[#f57c00] rounded-full flex items-center justify-center mx-auto mb-4">
             <Store className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-[#292d32] mb-2">สร้างร้านค้าของคุณ</h1>
-          <p className="text-gray-600 text-lg">กรอกข้อมูลร้านค้าเพื่อเริ่มต้นขายสินค้า</p>
+          <h1 className="text-4xl font-bold text-[#292d32] mb-2">
+            {existingShop ? "แก้ไขข้อมูลร้านค้า" : "สร้างร้านค้าของคุณ"}
+          </h1>
+          <p className="text-gray-600 text-lg">
+            {existingShop ? "แก้ไขข้อมูลร้านค้าตามที่ Admin แจ้ง" : "กรอกข้อมูลร้านค้าเพื่อเริ่มต้นขายสินค้า"}
+          </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+        {/* Email Verification Warning */}
+        {!existingShop && (
+          <div className="mb-6">
+            <EmailVerificationWarning action="create-shop" />
+          </div>
+        )}
+
+  {/* Form */}
+  <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
           {/* Message */}
           {message && (
             <div
@@ -158,101 +254,99 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
             </div>
           )}
 
-          {/* Shop Logo */}
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-3">
-              โลโก้ร้านค้า (ไม่บังคับ)
-            </label>
-            <div className="flex items-center gap-4">
-              {logoPreview && (
-                <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Logo preview and upload */}
+            <div className="col-span-1 flex flex-col items-center">
+              <label className="block text-sm font-semibold text-[#292d32] mb-3">โลโก้ร้านค้า</label>
+              <div className="w-36 h-36 rounded-xl overflow-hidden border-2 border-gray-200 mb-3 bg-white flex items-center justify-center">
+                {logoPreview ? (
+                  // keep simple <img> here since preview may be data URL
                   <img src={logoPreview} alt="Shop logo preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-              <label className="cursor-pointer">
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                ) : (
+                  <div className="text-center text-gray-400">
+                    <Store className="w-10 h-10 mx-auto mb-1" />
+                    <div className="text-xs">ไม่มีรูป</div>
+                  </div>
+                )}
+              </div>
+              <label className="w-full">
+                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer">
                   <Upload className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    {logoPreview ? "เปลี่ยนโลโก้" : "เลือกโลโก้"}
-                  </span>
+                  <span className="text-sm font-medium">{logoPreview ? "เปลี่ยนโลโก้" : "อัปโหลดโลโก้"}</span>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoSelect}
-                  className="hidden"
-                  disabled={loading}
-                />
+                <input type="file" accept="image/*" onChange={handleLogoSelect} className="hidden" disabled={loading} />
               </label>
-              {logoPreview && (
-                <p className="text-xs text-gray-500">
-                  รูปจะถูกอัปโหลดเมื่อกดสร้างร้านค้า
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-2 text-center">ขนาดแนะนำ: 500x500px (PNG/ JPG) • ไม่เกิน 5MB</p>
+            </div>
+
+            {/* Right: Form fields */}
+            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-[#292d32] mb-2">ชื่อร้านค้า <span className="text-red-500">*</span></label>
+                <Input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="กรอกชื่อร้านค้า" className="border-2 focus:border-[#ff9800]" disabled={loading} maxLength={50} />
+                <p className="text-xs text-gray-500 mt-1">{shopName.length}/50 ตัวอักษร</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-[#292d32] mb-2">คำอธิบายร้านค้า <span className="text-red-500">*</span></label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="บอกเกี่ยวกับร้านค้าของคุณ เกมที่ขาย และจุดเด่นของร้าน" className="border-2 focus:border-[#ff9800] min-h-[120px]" disabled={loading} maxLength={500} />
+                <p className="text-xs text-gray-500 mt-1">{description.length}/500 ตัวอักษร</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#292d32] mb-2">อีเมลติดต่อ <span className="text-red-500">*</span></label>
+                <Input 
+                  type="email" 
+                  value={contactEmail} 
+                  onChange={(e) => setContactEmail(e.target.value)} 
+                  placeholder="shop@example.com" 
+                  className="border-2 focus:border-[#ff9800]" 
+                  disabled={loading} 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#292d32] mb-2">เบอร์โทรติดต่อ <span className="text-red-500">*</span></label>
+                <Input 
+                  type="tel" 
+                  value={contactPhone} 
+                  onChange={(e) => setContactPhone(e.target.value)} 
+                  placeholder="08X-XXX-XXXX" 
+                  className="border-2 focus:border-[#ff9800]" 
+                  disabled={loading} 
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">ตัวอย่าง: 081-234-5678</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-[#292d32] mb-2">Facebook URL <span className="text-red-500">*</span></label>
+                <Input 
+                  type="url" 
+                  value={facebookUrl} 
+                  onChange={(e) => setFacebookUrl(e.target.value)} 
+                  placeholder="https://facebook.com/yourshop" 
+                  className="border-2 focus:border-[#ff9800]" 
+                  disabled={loading}
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">สำหรับยืนยันตัวตน</p>
+              </div>
             </div>
           </div>
 
-          {/* Shop Name */}
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              ชื่อร้านค้า <span className="text-red-500">*</span>
-            </label>
-            <Input
-              type="text"
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              placeholder="กรอกชื่อร้านค้า"
-              className="border-2 focus:border-[#ff9800]"
-              disabled={loading}
-              maxLength={50}
-            />
-            <p className="text-xs text-gray-500 mt-1">{shopName.length}/50 ตัวอักษร</p>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              คำอธิบายร้านค้า <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="บอกเล่าเกี่ยวกับร้านค้าของคุณ สินค้าที่ขาย และจุดเด่นของร้าน"
-              className="border-2 focus:border-[#ff9800] min-h-[120px]"
-              disabled={loading}
-              maxLength={500}
-            />
-            <p className="text-xs text-gray-500 mt-1">{description.length}/500 ตัวอักษร</p>
-          </div>
-
-          {/* Contact Email */}
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              อีเมลติดต่อ (ไม่บังคับ)
-            </label>
-            <Input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="shop@example.com"
-              className="border-2 focus:border-[#ff9800]"
-              disabled={loading}
-            />
-          </div>
-
-          {/* Contact Phone */}
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              เบอร์โทรติดต่อ (ไม่บังคับ)
-            </label>
-            <Input
-              type="tel"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              placeholder="08X-XXX-XXXX"
-              className="border-2 focus:border-[#ff9800]"
-              disabled={loading}
-            />
+          {/* Info Box */}
+          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">ข้อมูลสำคัญ:</p>
+                <p>• ร้านค้าของคุณจะถูกส่งไปตรวจสอบโดย Admin ก่อนเปิดใช้งาน</p>
+                <p>• จำเป็นต้องกรอกข้อมูลติดต่อและ Facebook URL ครบถ้วนเพื่อการยืนยันตัวตน</p>
+                <p>• Admin จะตรวจสอบและอนุมัติภายใน 24-48 ชั่วโมง</p>
+              </div>
+            </div>
           </div>
 
           {/* Submit Button */}
@@ -265,10 +359,10 @@ export function CreateShopForm({ userId, onShopCreated }: CreateShopFormProps) {
               {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  กำลังสร้างร้านค้า...
+                  {existingShop ? "กำลังบันทึก..." : "กำลังสร้างร้านค้า..."}
                 </div>
               ) : (
-                "สร้างร้านค้า"
+                existingShop ? "บันทึกและส่งตรวจสอบใหม่" : "สร้างร้านค้า"
               )}
             </Button>
           </div>

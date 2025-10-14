@@ -8,6 +8,7 @@ import { UpdateOrderContent } from "@/components/profile/UpdateOrder";
 import { WishlistContent } from "@/components/profile/Wishlist";
 import { HelpContent } from "@/components/profile/Help";
 import { MyGameContent } from "@/components/profile/MyGame";
+import { SellerStatusContent } from "@/components/profile/SellerStatus";
 
 export default function AccountPage() {
   const [activeItem, setActiveItem] = useState("account");
@@ -27,6 +28,8 @@ export default function AccountPage() {
     switch (activeItem) {
       case "account":
         return <AccountContent />;
+      case "seller-status":
+        return <SellerStatusContent />;
       case "myGame":
         return <MyGameContent />;
       case "update-order":
@@ -50,8 +53,8 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="flex-1 container mx-auto px-4 py-8">
+    <div className="flex flex-col">
+      <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
           <SidebarNav activeItem={activeItem} onItemChange={setActiveItem} />
 

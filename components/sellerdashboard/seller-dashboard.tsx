@@ -8,9 +8,15 @@ import { SellerUpdateOrders } from "./seller-update-orders"
 import { SellerIssues } from "./seller-issues"
 import { SellerEditAccount } from "./seller-edit-account"
 import { SellerStoreSettings } from "./seller-store-settings"
+import { useAuth } from "@/components/auth-context"
 
 export function SellerDashboard() {
   const [activeSection, setActiveSection] = useState("overview")
+  const { user } = useAuth()
+
+  if (!user) {
+    return null
+  }
 
   return (
     <main className="flex-1">
@@ -23,7 +29,7 @@ export function SellerDashboard() {
             {activeSection === "orders" && <SellerUpdateOrders />}
             {activeSection === "issues" && <SellerIssues />}
             {activeSection === "edit-account" && <SellerEditAccount />}
-            {activeSection === "settings" && <SellerStoreSettings />}
+            {activeSection === "settings" && <SellerStoreSettings userId={user.uid} />}
           </div>
         </div>
       </div>

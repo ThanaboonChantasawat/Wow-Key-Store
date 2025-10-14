@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Users, Package, ShoppingCart, Store, Shield, Tag, Gamepad2 } from "lucide-react"
+import { BarChart3, Users, Package, ShoppingCart, Store, Shield, Tag, Gamepad2, Mail } from "lucide-react"
 
 interface AdminSidebarProps {
   activeSection: string
@@ -11,9 +11,8 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
   const menuItems = [
     { id: "overview", label: "ภาพรวม", icon: BarChart3 },
     { id: "users", label: "จัดการผู้ใช้", icon: Users },
-    { id: "products", label: "จัดการสินค้า", icon: Package },
-    { id: "orders", label: "จัดการคำสั่งซื้อ", icon: ShoppingCart },
     { id: "shops", label: "จัดการร้านค้า", icon: Store },
+    { id: "reopen-requests", label: "คำขอเปิดร้านใหม่", icon: Mail },
     { id: "categories", label: "จัดการหมวดหมู่", icon: Tag },
     { id: "games", label: "จัดการเกม", icon: Gamepad2 },
   ]

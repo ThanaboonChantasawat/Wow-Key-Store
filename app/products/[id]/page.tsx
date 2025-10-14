@@ -1,43 +1,53 @@
-import ProductCard from "@/components/card/ProductCard";
-// import ShopInformation from "@/components/product/ShopInformation";
-import { getGameById, getGames } from "@/lib/firestore-service";
-import { notFound } from "next/navigation";
+import { notFound } from "next/navigation"
+import ProductDetail from "@/components/product/ProductDetail"
+import { getProductById, getAllProducts } from "@/lib/product-service"
+import { GameWithCategories, GameImageContainer } from "@/lib/types"
 
 // Generate static params for static export
 export async function generateStaticParams() {
   try {
-    const games = await getGames();
-    return games.map((game) => ({
-      id: game.id,
-    }));
+    const products = await getAllProducts()
+    return products.map((p) => ({ id: p.id }))
   } catch (error) {
-    console.error('Error generating static params:', error);
-    return [];
+    console.error("Error generating static params:", error)
+    return []
   }
 }
 
-const ProductDetailPage = async({ params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params;
-  
-  // ดึงข้อมูลเกมตาม id
-  const game = await getGameById(id);
-  
-  // ถ้าไม่มีเกมนี้ให้แสดงหน้า 404
-  if (!game) {
-    notFound();
+export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
+  const product = await getProductById(id)
+  if (!product) {
+    notFound()
   }
-  
+
+  // Convert product.images (string[]) into GameImageContainer[] expected by ProductDetail
+  const gameImages: GameImageContainer[] = product.images && product.images.length > 0
+    ? [{ images: product.images.map((url, idx) => ({ url, isCover: idx === 0 })) }]
+    : []
+
+  // Build GameWithCategories-like object for ProductDetail
+  const gameData: GameWithCategories = {
+    id: product.id,
+    gameId: product.gameId || product.id,
+    name: product.name,
+    description: product.description || "",
+    price: product.price || 0,
+    gameImages,
+    categoryIds: [],
+    categories: [],
+    // attach shopId as extra property for downstream components
+  } as unknown as GameWithCategories
+
+  // @ts-ignore attach shopId dynamically (ProductDetail/GameCard check this)
+  ;(gameData as any).shopId = product.shopId
+
   return (
-    <div className="bg-[#f2f2f4]">
+    <div className="min-h-screen bg-[#f2f2f4]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <ProductCard 
-          game={game}
-        />
-        {/* TODO: Add ShopInformation when products have shop relationships */}
-        {/* <ShopInformation shopId={game.shopId} /> */}
+        <ProductDetail game={gameData} />
       </main>
     </div>
-  );
-};
-
-export default ProductDetailPage;
+  )
+}

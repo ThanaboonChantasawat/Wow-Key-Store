@@ -5,7 +5,17 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
-import { updateProfile, updatePassword } from "firebase/auth";
+import { 
+  updateProfile, 
+  updatePassword, 
+  deleteUser, 
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  reauthenticateWithPopup,
+  sendEmailVerification
+} from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/components/firebase-config";
 import {
@@ -23,20 +33,24 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import {
   getUserProfile,
   updateUserProfile,
   UserProfile,
+  deleteUserAccount,
 } from "@/lib/user-service";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AccountContent() {
-  const { user, isInitialized } = useAuth();
+  const { user, isInitialized, logout } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [photoURL, setPhotoURL] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -48,6 +62,13 @@ export function AccountContent() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showReauthDialog, setShowReauthDialog] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [showReauthPassword, setShowReauthPassword] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load user profile from Firestore
@@ -81,6 +102,7 @@ export function AccountContent() {
   const handleEditClick = () => {
     setIsEditing(true);
     setDisplayName(userProfile?.displayName || user?.displayName || "");
+    setEmail(userProfile?.email || user?.email || "");
     setPhoneNumber(userProfile?.phoneNumber || "");
     setPhotoURL(userProfile?.photoURL || user?.photoURL || "");
     setNewPassword("");
@@ -120,12 +142,58 @@ export function AccountContent() {
     }
   };
 
+  const handleSendVerificationEmail = async () => {
+    if (!user) return;
+
+    try {
+      setSendingVerification(true);
+      setMessage(null);
+
+      await sendEmailVerification(user);
+      
+      setMessage({ 
+        type: "success", 
+        text: "ส่งอีเมลยืนยันสำเร็จ! กรุณาตรวจสอบกล่องจดหมายของคุณ" 
+      });
+    } catch (error) {
+      console.error("Error sending verification email:", error);
+      let errorMessage = "เกิดข้อผิดพลาดในการส่งอีเมลยืนยัน";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("auth/too-many-requests")) {
+          errorMessage = "ส่งอีเมลบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
+        }
+      }
+      
+      setMessage({ type: "error", text: errorMessage });
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
       setMessage(null);
+
+      // Validate email for social login users
+      if (!isEmailPasswordProvider) {
+        if (!email || email.trim() === '') {
+          setMessage({ type: "error", text: "กรุณากรอกอีเมล" });
+          setLoading(false);
+          return;
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          setMessage({ type: "error", text: "รูปแบบอีเมลไม่ถูกต้อง" });
+          setLoading(false);
+          return;
+        }
+      }
 
       // Update Firebase Auth profile (displayName and photoURL)
       if (displayName !== user.displayName || photoURL !== user.photoURL) {
@@ -135,9 +203,15 @@ export function AccountContent() {
         });
       }
 
+      // Check if email changed (for social login users)
+      // Note: We only update Firestore, not Firebase Auth email for social login
+      // because Firebase requires email verification before changing it
+      const emailChanged = !isEmailPasswordProvider && email && email !== (userProfile?.email || user.email);
+
       // Update Firestore profile
       await updateUserProfile(user.uid, {
         displayName: displayName || user.displayName || "",
+        email: email || userProfile?.email || user?.email,
         photoURL: photoURL || user.photoURL,
         phoneNumber: phoneNumber || null,
       });
@@ -160,7 +234,16 @@ export function AccountContent() {
         await updatePassword(user, newPassword);
       }
 
-      setMessage({ type: "success", text: "บันทึกข้อมูลสำเร็จ" });
+      // If email was changed for social login, show message about verification
+      if (emailChanged) {
+        setMessage({ 
+          type: "success", 
+          text: "บันทึกข้อมูลสำเร็จ! อีเมลสำหรับการติดต่อได้ถูกอัปเดตเป็น " + email + " แล้ว" 
+        });
+      } else {
+        setMessage({ type: "success", text: "บันทึกข้อมูลสำเร็จ" });
+      }
+
       setIsEditing(false);
 
       // Reload profile data
@@ -172,17 +255,112 @@ export function AccountContent() {
       console.error("Error updating profile:", error);
       let errorMessage = "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
 
-      if (error instanceof Error && "code" in error) {
-        if (error.code === "auth/requires-recent-login") {
+      if (error instanceof Error) {
+        if (error.message.includes("auth/requires-recent-login")) {
           errorMessage = "กรุณาเข้าสู่ระบบใหม่เพื่อเปลี่ยนรหัสผ่าน";
-        } else if (error.code === "auth/weak-password") {
-          errorMessage = "รหัสผ่านไม่ปลอดภัยเพียงพอ";
         }
       }
 
       setMessage({ type: "error", text: errorMessage });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    if (deleteConfirmText !== "ลบบัญชี") {
+      setMessage({ type: "error", text: "กรุณาพิมพ์ข้อความยืนยันให้ถูกต้อง" });
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      
+      // Delete from Firestore first
+      await deleteUserAccount(user.uid);
+      
+      // Then delete Firebase Auth account
+      await deleteUser(user);
+      
+      // Logout and redirect
+      await logout();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      let errorMessage = "เกิดข้อผิดพลาดในการลบบัญชี";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("auth/requires-recent-login")) {
+          // Need to re-authenticate
+          setShowDeleteDialog(false);
+          setShowReauthDialog(true);
+          setIsDeleting(false);
+          return;
+        }
+      }
+      
+      setMessage({ type: "error", text: errorMessage });
+      setShowDeleteDialog(false);
+      setDeleteConfirmText("");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleReauthenticate = async () => {
+    if (!user) return;
+
+    try {
+      setIsDeleting(true);
+      
+      // Get provider data
+      const providerId = user.providerData[0]?.providerId;
+
+      if (providerId === "password") {
+        // Re-authenticate with email/password
+        if (!reauthPassword) {
+          setMessage({ type: "error", text: "กรุณากรอกรหัสผ่าน" });
+          setIsDeleting(false);
+          return;
+        }
+
+        const credential = EmailAuthProvider.credential(
+          user.email!,
+          reauthPassword
+        );
+        await reauthenticateWithCredential(user, credential);
+      } else if (providerId === "google.com") {
+        // Re-authenticate with Google
+        const provider = new GoogleAuthProvider();
+        await reauthenticateWithPopup(user, provider);
+      } else if (providerId === "facebook.com") {
+        // Re-authenticate with Facebook
+        const provider = new FacebookAuthProvider();
+        await reauthenticateWithPopup(user, provider);
+      }
+
+      // After successful re-authentication, delete account
+      await deleteUserAccount(user.uid);
+      await deleteUser(user);
+      await logout();
+      window.location.href = "/";
+      
+    } catch (error) {
+      console.error("Error re-authenticating:", error);
+      let errorMessage = "เกิดข้อผิดพลาดในการยืนยันตัวตน";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("auth/wrong-password")) {
+          errorMessage = "รหัสผ่านไม่ถูกต้อง";
+        } else if (error.message.includes("auth/popup-closed-by-user")) {
+          errorMessage = "คุณปิดหน้าต่างยืนยันตัวตน";
+        }
+      }
+      
+      setMessage({ type: "error", text: errorMessage });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -261,9 +439,15 @@ export function AccountContent() {
             <h1 className="text-4xl font-bold mb-2 drop-shadow-lg">
               {userProfile?.displayName || user?.displayName || "ผู้ใช้"}
             </h1>
-            <p className="text-white/90 text-lg mb-3 flex items-center gap-2">
+            <p className="text-white/90 text-lg mb-3 flex items-center gap-2 flex-wrap">
               <Mail className="w-5 h-5" />
-              {userProfile?.email || user?.email}
+              <span>{userProfile?.email || user?.email || "ยังไม่ได้กรอกอีเมล"}</span>
+              {user?.email && !user.emailVerified && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-400/90 text-yellow-900 text-xs font-bold rounded-full shadow-sm">
+                  <AlertCircle className="w-3 h-3" />
+                  ยังไม่ยืนยันอีเมล
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-3">
               <span
@@ -314,8 +498,77 @@ export function AccountContent() {
             <span className="font-medium">{message.text}</span>
           </div>
         )}
-
         <div className="space-y-6">
+          {/* Warning for missing email */}
+          {!userProfile?.email && !user?.email && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5 shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-3xl animate-pulse">📧</div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-orange-900 mb-2 text-lg">กรุณากรอกอีเมลของคุณ</h4>
+                  <p className="text-sm text-orange-800 mb-3 leading-relaxed">
+                    เราไม่สามารถดึงอีเมลจาก {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} ได้ 
+                    กรุณากรอกอีเมลจริงของคุณเพื่อรับข้อมูลข่าวสาร การแจ้งเตือนคำสั่งซื้อ และการติดต่อที่สำคัญ
+                  </p>
+                  <div className="flex gap-2">
+                    {!isEditing && (
+                      <Button 
+                        onClick={handleEditClick}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold shadow-md"
+                        size="sm"
+                      >
+                        ✏️ กรอกอีเมลตอนนี้
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Warning for unverified email */}
+          {user?.email && !user.emailVerified && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-3xl animate-pulse">✉️</div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-blue-900 mb-2 text-lg">ยืนยันอีเมลของคุณ</h4>
+                  <p className="text-sm text-blue-800 mb-3 leading-relaxed">
+                    {!isEmailPasswordProvider ? (
+                      <>
+                        คุณ login ด้วย {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} 
+                        {' '}กรุณายืนยันอีเมลที่ใช้ login เพื่อเพิ่มความปลอดภัยและรับการแจ้งเตือนสำคัญ
+                      </>
+                    ) : (
+                      <>
+                        กรุณายืนยันอีเมลเพื่อเพิ่มความปลอดภัยให้กับบัญชีของคุณ 
+                        และเพื่อให้สามารถรับการแจ้งเตือนสำคัญต่างๆ ได้
+                      </>
+                    )}
+                  </p>
+                  <Button 
+                    onClick={handleSendVerificationEmail}
+                    disabled={sendingVerification}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold shadow-md"
+                    size="sm"
+                  >
+                    {sendingVerification ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                        กำลังส่ง...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-3 h-3 mr-2" />
+                        ส่งอีเมลยืนยัน
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Profile Picture */}
           <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border border-orange-100">
             <div className="flex items-center gap-4">
@@ -399,21 +652,81 @@ export function AccountContent() {
               )}
             </div>
 
-            {/* Email Field (Read-only) */}
+            {/* Email Field */}
             <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200">
               <label className="text-[#292d32] font-semibold flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#ff9800]" />
                 อีเมล
               </label>
-              <div className="text-[#292d32] font-medium break-words flex items-center gap-2">
-                {userProfile?.email || user?.email || "-"}
-                {user?.providerData[0]?.providerId === 'google.com' && (
-                  <FaGoogle className="w-4 h-4 text-red-500" title="เข้าสู่ระบบด้วย Google" />
-                )}
-                {user?.providerData[0]?.providerId === 'facebook.com' && (
-                  <FaFacebook className="w-4 h-4 text-blue-600" title="เข้าสู่ระบบด้วย Facebook" />
-                )}
-              </div>
+              {isEditing && !isEmailPasswordProvider ? (
+                <div className="space-y-2">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="กรอกอีเมลของคุณ"
+                    className="max-w-md border-2 focus:border-[#ff9800] transition-colors"
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-gray-500">
+                    💡 คุณ login ด้วย {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} 
+                    {' '}สามารถเพิ่มอีเมลสำหรับการติดต่อได้
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[#292d32] font-medium break-words">
+                      {userProfile?.email || user?.email || "-"}
+                    </span>
+                    {user?.providerData[0]?.providerId === 'google.com' && (
+                      <FaGoogle className="w-4 h-4 text-red-500" title="เข้าสู่ระบบด้วย Google" />
+                    )}
+                    {user?.providerData[0]?.providerId === 'facebook.com' && (
+                      <FaFacebook className="w-4 h-4 text-blue-600" title="เข้าสู่ระบบด้วย Facebook" />
+                    )}
+                    
+                    {/* Email Verification Status */}
+                    {user?.email && (
+                      <>
+                        {user.emailVerified ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full shadow-sm">
+                            <CheckCircle2 className="w-3 h-3" />
+                            ยืนยันแล้ว
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-orange-400 to-red-400 text-white text-xs font-bold rounded-full shadow-sm">
+                            <AlertCircle className="w-3 h-3" />
+                            ยังไม่ยืนยัน
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Send Verification Email Button */}
+                  {user?.email && !user.emailVerified && (
+                    <Button
+                      onClick={handleSendVerificationEmail}
+                      disabled={sendingVerification}
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-sm"
+                    >
+                      {sendingVerification ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                          กำลังส่ง...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-3 h-3 mr-2" />
+                          ส่งอีเมลยืนยัน
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Phone Number Field */}
@@ -618,15 +931,218 @@ export function AccountContent() {
       </div>
 
       {/* Delete Account Button */}
-      <div className="flex justify-center">
+      <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl shadow-lg p-8 border border-red-200">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center">
+            <Trash2 className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#292d32]">
+            ลบบัญชีผู้ใช้
+          </h2>
+        </div>
+        <p className="text-gray-600 mb-6">
+          ⚠️ การลบบัญชีจะทำให้ข้อมูลทั้งหมดของคุณถูกลบอย่างถาวร รวมถึง:
+        </p>
+        <ul className="list-disc list-inside text-gray-600 space-y-2 mb-6 ml-4">
+          <li>ข้อมูลส่วนตัวและโปรไฟล์</li>
+          <li>ร้านค้าและสินค้าทั้งหมด (ถ้ามี)</li>
+          <li>ประวัติการสั่งซื้อ</li>
+          <li>รายการโปรดและตะกร้าสินค้า</li>
+        </ul>
         <Button
+          onClick={() => setShowDeleteDialog(true)}
           variant="destructive"
-          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-12 py-6 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled
+          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center gap-2"
         >
-          🗑️ ลบบัญชีผู้ใช้ (เร็วๆ นี้)
+          <Trash2 className="w-5 h-5" />
+          ลบบัญชีอย่างถาวร
         </Button>
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-red-600 flex items-center gap-2">
+              <AlertCircle className="w-6 h-6" />
+              ยืนยันการลบบัญชี
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800 font-medium mb-2">
+                ⚠️ คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้!
+              </p>
+              <p className="text-red-600 text-sm">
+                ข้อมูลทั้งหมดของคุณจะถูกลบอย่างถาวร
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                พิมพ์ <span className="font-bold text-red-600">ลบบัญชี</span> เพื่อยืนยัน
+              </label>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="พิมพ์ 'ลบบัญชี' ที่นี่"
+                className="text-center font-medium"
+                disabled={isDeleting}
+              />
+            </div>
+
+            {message && message.type === "error" && (
+              <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">{message.text}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setDeleteConfirmText("");
+                }}
+                variant="outline"
+                className="flex-1"
+                disabled={isDeleting}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleDeleteAccount}
+                variant="destructive"
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                disabled={isDeleting || deleteConfirmText !== "ลบบัญชี"}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    กำลังลบ...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    ลบบัญชี
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-authentication Dialog */}
+      <Dialog open={showReauthDialog} onOpenChange={setShowReauthDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#ff9800] flex items-center gap-2">
+              <Lock className="w-6 h-6" />
+              ยืนยันตัวตนเพื่อลบบัญชี
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-orange-800 font-medium mb-2">
+                🔒 จำเป็นต้องยืนยันตัวตนอีกครั้ง
+              </p>
+              <p className="text-orange-600 text-sm">
+                เพื่อความปลอดภัย กรุณายืนยันตัวตนก่อนลบบัญชี
+              </p>
+            </div>
+
+            {user?.providerData[0]?.providerId === "password" ? (
+              // Email/Password Re-authentication
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  กรอกรหัสผ่านของคุณ
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showReauthPassword ? "text" : "password"}
+                    value={reauthPassword}
+                    onChange={(e) => setReauthPassword(e.target.value)}
+                    placeholder="รหัสผ่าน"
+                    className="pr-10"
+                    disabled={isDeleting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowReauthPassword(!showReauthPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showReauthPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : user?.providerData[0]?.providerId === "google.com" ? (
+              // Google Re-authentication
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-4">
+                  คุณเข้าสู่ระบบด้วย Google
+                </p>
+                <p className="text-sm text-gray-500">
+                  กรุณายืนยันตัวตนผ่าน Google อีกครั้ง
+                </p>
+              </div>
+            ) : user?.providerData[0]?.providerId === "facebook.com" ? (
+              // Facebook Re-authentication
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-4">
+                  คุณเข้าสู่ระบบด้วย Facebook
+                </p>
+                <p className="text-sm text-gray-500">
+                  กรุณายืนยันตัวตนผ่าน Facebook อีกครั้ง
+                </p>
+              </div>
+            ) : null}
+
+            {message && message.type === "error" && (
+              <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">{message.text}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowReauthDialog(false);
+                  setReauthPassword("");
+                  setMessage(null);
+                }}
+                variant="outline"
+                className="flex-1"
+                disabled={isDeleting}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleReauthenticate}
+                className="flex-1 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white"
+                disabled={isDeleting || (user?.providerData[0]?.providerId === "password" && !reauthPassword)}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    กำลังดำเนินการ...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    ยืนยันและลบบัญชี
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

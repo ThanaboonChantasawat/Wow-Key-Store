@@ -4,14 +4,16 @@ import { useState } from "react"
 import { AdminSidebar } from "./admin-sidebar"
 import { AdminOverview } from "./admin-overview"
 import { AdminUsers } from "./admin-users"
-import { AdminProducts } from "./admin-products"
-import { AdminOrders } from "./admin-orders"
 import { AdminShops } from "./admin-shops"
 import { AdminCategories } from "./admin-categories"
 import { AdminGames } from "./admin-games"
+import AdminReopenRequests from "./admin-reopen-requests"
 
+interface AdminDashboardProps {
+  userId: string
+}
 
-export function AdminDashboard() {
+export function AdminDashboard({ userId }: AdminDashboardProps) {
   const [activeSection, setActiveSection] = useState("overview")
 
   return (
@@ -22,9 +24,8 @@ export function AdminDashboard() {
           <div className="flex-1">
             {activeSection === "overview" && <AdminOverview />}
             {activeSection === "users" && <AdminUsers />}
-            {activeSection === "products" && <AdminProducts />}
-            {activeSection === "orders" && <AdminOrders />}
-            {activeSection === "shops" && <AdminShops />}
+            {activeSection === "shops" && <AdminShops adminId={userId} />}
+            {activeSection === "reopen-requests" && <AdminReopenRequests />}
             {activeSection === "categories" && <AdminCategories />}
             {activeSection === "games" && <AdminGames />}
           </div>

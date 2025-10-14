@@ -7,8 +7,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import Image from "next/image"
 import { useAuth } from "@/components/auth-context"
 import { getUserCartWithDetails, removeFromCart } from "@/lib/cart-service"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 import { db } from "@/components/firebase-config"
+import { canProceedWithTransaction } from "@/lib/email-verification"
+import { EmailVerificationWarning } from "@/components/email-verification-warning"
 
 interface CartItem {
   id: string
@@ -17,12 +19,19 @@ interface CartItem {
   category: string
   price: number
   image: string
-  seller?: string
+  shopId: string
+  shopName: string
+}
+
+interface GroupedCart {
+  shopId: string
+  shopName: string
+  items: CartItem[]
 }
 
 export function CartContent() {
   const { user } = useAuth()
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [groupedCarts, setGroupedCarts] = useState<GroupedCart[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(false)
@@ -38,31 +47,79 @@ export function CartContent() {
       try {
         const cartDocs = await getUserCartWithDetails(user.uid)
         
-        // Get game details for each cart item
+        // Get product details for each cart item
         const items: CartItem[] = []
+        const shopIds = new Set<string>()
+        
         for (const cartDoc of cartDocs) {
-          const gameId = cartDoc.gameId
+          const itemId = cartDoc.itemId
+          const itemType = cartDoc.itemType || 'product'
           
-          // Query games collection to get game details
-          const gamesRef = collection(db, "games")
-          const gameQuery = query(gamesRef, where("__name__", "==", gameId))
-          const gameSnapshot = await getDocs(gameQuery)
+          // Query products collection
+          const productsRef = collection(db, "products")
+          const itemQuery = query(productsRef, where("__name__", "==", itemId))
+          const itemSnapshot = await getDocs(itemQuery)
           
-          if (!gameSnapshot.empty) {
-            const gameData = gameSnapshot.docs[0].data()
+          if (!itemSnapshot.empty) {
+            const itemData = itemSnapshot.docs[0].data()
+            const shopId = itemData.shopId || "unknown"
+            shopIds.add(shopId)
+            
             items.push({
               id: cartDoc.id,
-              gameId: gameId,
-              name: gameData.name || "ไม่มีชื่อ",
-              category: gameData.categories?.[0] || "ไม่มีหมวดหมู่",
-              price: gameData.price || 0,
-              image: gameData.imageUrl || "/placeholder.svg",
-              seller: gameData.seller || "ไม่ระบุผู้ขาย"
+              gameId: itemId,
+              name: itemData.name || "ไม่มีชื่อ",
+              category: itemData.gameName || "ไม่มีหมวดหมู่",
+              price: itemData.price || 0,
+              image: itemData.images?.[0] || "/placeholder.svg",
+              shopId: shopId,
+              shopName: "" // Will be filled later
             })
           }
         }
         
-        setCartItems(items)
+        // Get shop names
+        const shopNames: { [key: string]: string } = {}
+        for (const shopId of shopIds) {
+          if (shopId === "unknown") {
+            shopNames[shopId] = "ไม่ระบุร้านค้า"
+            continue
+          }
+          
+          try {
+            const shopDocRef = doc(db, "shops", shopId)
+            const shopDoc = await getDoc(shopDocRef)
+            if (shopDoc.exists()) {
+              shopNames[shopId] = shopDoc.data().shopName || "ไม่ระบุชื่อร้าน"
+            } else {
+              shopNames[shopId] = "ไม่พบข้อมูลร้าน"
+            }
+          } catch (error) {
+            console.error(`Error fetching shop ${shopId}:`, error)
+            shopNames[shopId] = "ไม่สามารถโหลดข้อมูลร้าน"
+          }
+        }
+        
+        // Update items with shop names and group by shop
+        const itemsWithShopNames = items.map(item => ({
+          ...item,
+          shopName: shopNames[item.shopId] || "ไม่ระบุร้านค้า"
+        }))
+        
+        // Group items by shop
+        const grouped: { [key: string]: GroupedCart } = {}
+        itemsWithShopNames.forEach(item => {
+          if (!grouped[item.shopId]) {
+            grouped[item.shopId] = {
+              shopId: item.shopId,
+              shopName: item.shopName,
+              items: []
+            }
+          }
+          grouped[item.shopId].items.push(item)
+        })
+        
+        setGroupedCarts(Object.values(grouped))
       } catch (error) {
         console.error("Error loading cart:", error)
       } finally {
@@ -77,21 +134,47 @@ export function CartContent() {
     if (!user) return
 
     try {
-      await removeFromCart(user.uid, cartItemId.split('_')[1]) // Extract gameId from cart item id
-      setCartItems((items) => items.filter((item) => item.id !== cartItemId))
+      await removeFromCart(user.uid, cartItemId.split('_')[1]) // Extract itemId from cart item id
+      
+      // Remove item from grouped carts
+      setGroupedCarts((groups) => 
+        groups.map(group => ({
+          ...group,
+          items: group.items.filter(item => item.id !== cartItemId)
+        })).filter(group => group.items.length > 0) // Remove empty groups
+      )
+      
       setSelectedItems((selected) => selected.filter((itemId) => itemId !== cartItemId))
     } catch (error) {
       console.error("Error removing item:", error)
     }
   }
 
+  const getAllItems = () => {
+    return groupedCarts.flatMap(group => group.items)
+  }
+
   const toggleSelectAll = () => {
     if (selectAll) {
       setSelectedItems([])
     } else {
-      setSelectedItems(cartItems.map((item) => item.id))
+      setSelectedItems(getAllItems().map((item) => item.id))
     }
     setSelectAll(!selectAll)
+  }
+
+  const toggleSelectShop = (shopId: string) => {
+    const shop = groupedCarts.find(g => g.shopId === shopId)
+    if (!shop) return
+    
+    const shopItemIds = shop.items.map(item => item.id)
+    const allSelected = shopItemIds.every(id => selectedItems.includes(id))
+    
+    if (allSelected) {
+      setSelectedItems(prev => prev.filter(id => !shopItemIds.includes(id)))
+    } else {
+      setSelectedItems(prev => [...new Set([...prev, ...shopItemIds])])
+    }
   }
 
   const toggleSelectItem = (id: string) => {
@@ -101,7 +184,8 @@ export function CartContent() {
   }
 
   const calculateTotal = () => {
-    return cartItems
+    const allItems = getAllItems()
+    return allItems
       .filter((item) => selectedItems.includes(item.id))
       .reduce((sum, item) => sum + item.price, 0)
   }
@@ -114,6 +198,13 @@ export function CartContent() {
     
     if (selectedItems.length > 1) {
       alert("สามารถซื้อได้ครั้งละ 1 ไอดีเท่านั้น กรุณาเลือกเพียง 1 รายการ")
+      return
+    }
+
+    // Check email verification before proceeding
+    const verification = canProceedWithTransaction(user)
+    if (!verification.canProceed) {
+      alert(verification.message)
       return
     }
     
@@ -145,7 +236,7 @@ export function CartContent() {
     )
   }
 
-  if (cartItems.length === 0) {
+  if (groupedCarts.length === 0 && !loading) {
     return (
       <div className="container mx-auto px-4 py-16">
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
@@ -167,68 +258,80 @@ export function CartContent() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-[#1e1e1e] mb-8">ตะกร้าสินค้า</h1>
 
+      {/* Email Verification Warning */}
+      <EmailVerificationWarning action="buy" />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cart Items */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="bg-[#ff9800] text-white px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={selectAll}
-                  onCheckedChange={toggleSelectAll}
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#ff9800]"
-                />
-                <span className="font-medium">สินค้า (1 ไอดีต่อการสั่งซื้อ)</span>
-              </div>
-              <span className="font-medium">ราคา</span>
-            </div>
-
-            {/* Shop Section */}
-            <div className="border-b border-[#d9d9d9]">
-              <div className="px-6 py-4 flex items-center gap-3">
-                <Checkbox checked={selectAll} onCheckedChange={toggleSelectAll} className="border-[#999999]" />
-                <Store className="h-5 w-5 text-[#ff9800]" />
-                <span className="font-medium text-[#1e1e1e]">ID Hunter Shop</span>
-              </div>
-
-              {/* Cart Items */}
-              {cartItems.map((item) => (
-                <div key={item.id} className="px-6 py-4 flex items-center gap-4 border-t border-[#d9d9d9]">
-                  <Checkbox
-                    checked={selectedItems.includes(item.id)}
-                    onCheckedChange={() => toggleSelectItem(item.id)}
-                    className="border-[#999999]"
-                  />
-
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
-                    </div>
-
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-[#1e1e1e] mb-1">{item.name}</h3>
-                      <p className="text-sm text-[#999999] mb-2">{item.category}</p>
-                      <p className="text-xs text-[#666666]">ผู้ขาย: {item.seller}</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <p className="text-lg font-bold text-[#ff9800]">฿ {item.price.toLocaleString()}</p>
-                      
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-[#999999] hover:text-[#cf142b] hover:bg-transparent"
-                        onClick={() => handleRemoveItem(item.id)}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </div>
+        <div className="lg:col-span-2 space-y-4">
+          {groupedCarts.map((group) => {
+            const shopItemIds = group.items.map(item => item.id)
+            const allShopItemsSelected = shopItemIds.every(id => selectedItems.includes(id))
+            
+            return (
+              <div key={group.shopId} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* Shop Header */}
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={allShopItemsSelected}
+                      onCheckedChange={() => toggleSelectShop(group.shopId)}
+                      className="border-white data-[state=checked]:bg-white data-[state=checked]:text-orange-600"
+                    />
+                    <Store className="w-5 h-5" />
+                    <span className="font-semibold text-lg">{group.shopName}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                {/* Shop Items */}
+                <div className="divide-y divide-gray-100">
+                  {group.items.map((item) => (
+                    <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        {/* Checkbox */}
+                        <Checkbox
+                          checked={selectedItems.includes(item.id)}
+                          onCheckedChange={() => toggleSelectItem(item.id)}
+                          className="mt-1"
+                        />
+
+                        {/* Product Image */}
+                        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-[#1e1e1e] mb-1 truncate">
+                            {item.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 mb-2">{item.category}</p>
+                          <p className="text-xl font-bold text-[#ff9800]">
+                            ฿{item.price.toLocaleString()}
+                          </p>
+                        </div>
+
+                        {/* Remove Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Order Summary */}
@@ -239,12 +342,12 @@ export function CartContent() {
             <div className="space-y-4 mb-6">
               <p className="text-sm font-medium text-[#999999] mb-3">สรุปรายการสินค้า</p>
 
-              {cartItems
+              {getAllItems()
                 .filter((item) => selectedItems.includes(item.id))
                 .map((item) => (
                   <div key={item.id} className="flex items-center justify-between text-[#1e1e1e]">
-                    <span className="text-sm">{item.name}</span>
-                    <span className="font-medium">฿ {item.price.toLocaleString()}</span>
+                    <span className="text-sm truncate mr-2">{item.name}</span>
+                    <span className="font-medium whitespace-nowrap">฿ {item.price.toLocaleString()}</span>
                   </div>
                 ))}
               

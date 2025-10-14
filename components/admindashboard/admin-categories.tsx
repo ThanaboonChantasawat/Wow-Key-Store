@@ -1,16 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react"
+import { Plus, Pencil, Trash2, Image as ImageIcon, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Card } from "@/components/ui/card"
 import { getAllCategories, createCategory, updateCategory, deleteCategory, type Category } from "@/lib/category-service"
 
 export function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -78,6 +80,7 @@ export function AdminCategories() {
       
       setFormData({ name: "", description: "", slug: "" })
       setEditingId(null)
+      setShowModal(false)
       await loadCategories()
     } catch (error) {
       console.error("Error saving category:", error)
@@ -95,6 +98,21 @@ export function AdminCategories() {
       description: category.description || "",
       slug: category.slug
     })
+    setShowModal(true)
+  }
+
+  const openCreateModal = () => {
+    setEditingId(null)
+    setFormData({ name: "", description: "", slug: "" })
+    setMessage(null)
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setEditingId(null)
+    setFormData({ name: "", description: "", slug: "" })
+    setMessage(null)
   }
 
   const handleDelete = async (categorySlug: string) => {
@@ -114,116 +132,54 @@ export function AdminCategories() {
   }
 
   const handleCancel = () => {
-    setEditingId(null)
-    setFormData({ name: "", description: "", slug: "" })
-    setMessage(null)
+    closeModal()
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-            <ImageIcon className="w-6 h-6 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-[#292d32]">จัดการหมวดหมู่เกม</h2>
+      {/* Header - Orange Gradient */}
+      <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <h2 className="text-4xl font-bold mb-2 drop-shadow-lg flex items-center gap-3">
+            <ImageIcon className="w-10 h-10" />
+            จัดการหมวดหมู่เกม
+          </h2>
+          <p className="text-white/90 text-lg">สร้างและจัดการหมวดหมู่สำหรับเกมในระบบ</p>
         </div>
-        <p className="text-gray-600 ml-16">สร้างและจัดการหมวดหมู่สำหรับเกม</p>
       </div>
 
       {/* Message */}
       {message && (
         <div
-          className={`p-4 rounded-xl ${
+          className={`p-4 rounded-xl flex items-start gap-3 animate-in fade-in duration-200 ${
             message.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-green-50 text-green-800 border-2 border-green-200"
+              : "bg-red-50 text-red-800 border-2 border-red-200"
           }`}
         >
-          {message.text}
+          <span className="font-medium">{message.text}</span>
         </div>
       )}
 
-      {/* Form */}
-      <div className={`rounded-2xl shadow-lg p-8 border-2 ${
-        editingId 
-          ? 'bg-blue-50 border-blue-300' 
-          : 'bg-white border-gray-200'
-      }`}>
-        <div className="flex items-center gap-3 mb-6">
-          {editingId && (
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Pencil className="w-5 h-5 text-white" />
-            </div>
-          )}
-          <div>
-            <h3 className="text-xl font-bold text-[#292d32]">
-              {editingId ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่ใหม่"}
-            </h3>
-            {editingId && (
-              <p className="text-sm text-blue-600 font-medium">
-                กำลังแก้ไข: {formData.name}
-              </p>
-            )}
-          </div>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              ชื่อหมวดหมู่ <span className="text-red-500">*</span>
-            </label>
-            <Input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="เช่น MOBA, RPG, FPS"
-              className="border-2 focus:border-[#ff9800]"
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[#292d32] mb-2">
-              คำอธิบาย (ไม่บังคับ)
-            </label>
-            <Textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="อธิบายแนวเกม, ใส่ชื่อเกมดังๆ, และสิ่งที่คนมองหา (เช่น สกิน, แรงค์)"
-              className="border-2 focus:border-[#ff9800] resize-none"
-              rows={3}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <Button
-              type="submit"
-              className="bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white"
-              disabled={loading}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {editingId ? "บันทึกการแก้ไข" : "เพิ่มหมวดหมู่"}
-            </Button>
-            {editingId && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={loading}
-              >
-                ยกเลิก
-              </Button>
-            )}
-          </div>
-        </form>
+      {/* Add Button */}
+      <div className="flex justify-start">
+        <Button
+          onClick={openCreateModal}
+          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg hover:shadow-xl transition-all"
+          size="lg"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          เพิ่มหมวดหมู่ใหม่
+        </Button>
       </div>
 
       {/* Categories List */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-[#292d32]">
+      <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
+        <div className="p-6 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <ImageIcon className="w-6 h-6 text-[#ff9800]" />
             หมวดหมู่ทั้งหมด ({categories.length})
           </h3>
         </div>
@@ -234,24 +190,25 @@ export function AdminCategories() {
             <p className="text-gray-500 mt-4">กำลังโหลด...</p>
           </div>
         ) : categories.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p>ยังไม่มีหมวดหมู่</p>
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">📁</div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">ยังไม่มีหมวดหมู่</h3>
+            <p className="text-gray-600">เพิ่มหมวดหมู่แรกของคุณเลย!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left font-bold text-[#292d32]">ชื่อหมวดหมู่</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#292d32]">คำอธิบาย</th>
-                  <th className="px-6 py-4 text-center font-bold text-[#292d32]">จัดการ</th>
+                <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
+                  <th className="px-6 py-4 text-left font-bold text-gray-800">ชื่อหมวดหมู่</th>
+                  <th className="px-6 py-4 text-left font-bold text-gray-800">คำอธิบาย</th>
+                  <th className="px-6 py-4 text-center font-bold text-gray-800">จัดการ</th>
                 </tr>
               </thead>
               <tbody>
                 {categories.map((category) => (
                   <tr key={category.slug} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-[#292d32]">{category.name}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">{category.name}</td>
                     <td className="px-6 py-4 text-gray-600 text-sm">
                       {category.description || "-"}
                     </td>
@@ -280,6 +237,136 @@ export function AdminCategories() {
           </div>
         )}
       </div>
+
+      {/* Modal สำหรับเพิ่ม/แก้ไข */}
+      {showModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={closeModal}
+        >
+          <Card 
+            className="max-w-2xl w-full bg-white relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700 z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className={`p-6 border-b-2 ${
+              editingId 
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-300' 
+                : 'bg-gradient-to-r from-green-500 to-green-600 border-green-300'
+            }`}>
+              <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                {editingId ? (
+                  <>
+                    <Pencil className="w-7 h-7" />
+                    <div>
+                      <div>แก้ไขหมวดหมู่</div>
+                      <div className="text-sm text-white/90 font-medium mt-1">
+                        {formData.name}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-7 h-7" />
+                    เพิ่มหมวดหมู่ใหม่
+                  </>
+                )}
+              </h3>
+            </div>
+
+            {/* Modal Message */}
+            {message && (
+              <div className="p-4 border-b border-gray-200">
+                <div
+                  className={`p-3 rounded-lg ${
+                    message.type === "success"
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  <span className="font-medium text-sm">{message.text}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  ชื่อหมวดหมู่ <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="เช่น MOBA, RPG, FPS"
+                  className="border-2 focus:border-[#ff9800]"
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  คำอธิบาย (ไม่บังคับ)
+                </label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="อธิบายแนวเกม, ใส่ชื่อเกมดังๆ, และสิ่งที่คนมองหา (เช่น สกิน, แรงค์)"
+                  className="border-2 focus:border-[#ff9800] resize-none"
+                  rows={4}
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeModal}
+                  disabled={loading}
+                  className="flex-1 border-2"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  type="submit"
+                  className={`flex-1 ${
+                    editingId
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                      : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                  } text-white font-bold shadow-md`}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    'กำลังบันทึก...'
+                  ) : editingId ? (
+                    <>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      บันทึกการแก้ไข
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      เพิ่มหมวดหมู่
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
