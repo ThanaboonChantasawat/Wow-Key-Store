@@ -34,10 +34,6 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
   }, [games, limit]);
 
   // Check favorites for all games
-  // We intentionally only depend on user.uid and displayGames.length to avoid
-  // re-running the full check when the `displayGames` array identity changes
-  // frequently; the effect reads the current `displayGames` inside the body.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user || displayGames.length === 0) return;
     
@@ -67,7 +63,8 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
     return () => {
       isMounted = false;
     };
-  }, [user?.uid, displayGames.length]); // ใช้ user.uid และ length แทน displayGames ทั้งหมด
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, displayGames.length]);
 
   // Handle favorite toggle
   const handleFavoriteToggle = async (gameId: string, e: React.MouseEvent, game?: GameWithCategories) => {
@@ -83,7 +80,7 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
       setFavoriteLoading(prev => ({ ...prev, [gameId]: true }));
       
       // Check if this is a product by looking for shopId
-      const itemType = (game as any)?.shopId ? 'product' : 'game';
+      const itemType = (game as GameWithCategories & { shopId?: string })?.shopId ? 'product' : 'game';
       
       if (favorites[gameId]) {
         await removeFromFavorites(user.uid, gameId);

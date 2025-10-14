@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Users, Package, ShoppingCart, Store, AlertCircle, FileText, Activity } from "lucide-react"
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"
+import {
+  collection,
+  getDocs,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/components/firebase-config"
 import { 
   getRecentAdminActivities, 
@@ -123,9 +127,18 @@ export function AdminOverview() {
     },
   ]
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: Timestamp | Date | null | undefined): string => {
     if (!timestamp) return "ไม่ระบุ"
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+    
+    let date: Date
+    if (timestamp instanceof Timestamp) {
+      date = timestamp.toDate()
+    } else if (timestamp instanceof Date) {
+      date = timestamp
+    } else {
+      return "ไม่ระบุ"
+    }
+    
     return new Intl.DateTimeFormat('th-TH', {
       year: 'numeric',
       month: 'short',

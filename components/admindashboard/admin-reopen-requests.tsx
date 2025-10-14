@@ -36,11 +36,12 @@ export default function AdminReopenRequests() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   
   // Owner profile and shop data
-  const [ownerProfiles, setOwnerProfiles] = useState<Record<string, any>>({});
+  const [ownerProfiles, setOwnerProfiles] = useState<Record<string, { displayName?: string; email?: string | null; photoURL?: string | null }>>({});
   const [shopData, setShopData] = useState<Record<string, Shop>>({});
 
   useEffect(() => {
     loadRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -79,15 +80,17 @@ export default function AdminReopenRequests() {
       setRequests(data);
       
       // โหลดโปรไฟล์ของ owner และข้อมูลร้านค้า
-      const profiles: Record<string, any> = {};
+      const profiles: Record<string, { displayName?: string; email?: string | null; photoURL?: string | null }> = {};
       const shops: Record<string, Shop> = {};
       for (const request of data) {
         // โหลดโปรไฟล์ owner
         if (!profiles[request.ownerId]) {
           try {
             const profile = await getUserProfile(request.ownerId);
-            profiles[request.ownerId] = profile;
-          } catch (error) {
+            if (profile) {
+              profiles[request.ownerId] = profile;
+            }
+          } catch {
             console.warn(`Could not load profile for ${request.ownerId}`);
           }
         }
@@ -99,7 +102,7 @@ export default function AdminReopenRequests() {
             if (shop) {
               shops[request.shopId] = shop;
             }
-          } catch (error) {
+          } catch {
             console.warn(`Could not load shop for ${request.shopId}`);
           }
         }
@@ -108,8 +111,10 @@ export default function AdminReopenRequests() {
         if (request.reviewedBy && !profiles[request.reviewedBy]) {
           try {
             const profile = await getUserProfile(request.reviewedBy);
-            profiles[request.reviewedBy] = profile;
-          } catch (error) {
+            if (profile) {
+              profiles[request.reviewedBy] = profile;
+            }
+          } catch {
             console.warn(`Could not load profile for ${request.reviewedBy}`);
           }
         }

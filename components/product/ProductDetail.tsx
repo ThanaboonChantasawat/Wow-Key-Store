@@ -112,7 +112,7 @@ const ProductCard = ({ game }: { game: Game }) => {
         setIsAddedToCart(false);
       } else {
         // Check if this is a product by looking at the game object structure
-        const itemType = (game as any).shopId ? 'product' : 'game';
+        const itemType = (game as Game & { shopId?: string }).shopId ? 'product' : 'game';
         await addToCart(user.uid, game.id, 1, itemType);
         setIsAddedToCart(true);
       }
@@ -139,7 +139,7 @@ const ProductCard = ({ game }: { game: Game }) => {
         setIsFavorite(false);
       } else {
         // Check if this is a product by looking at the game object structure
-        const itemType = (game as any).shopId ? 'product' : 'game';
+        const itemType = (game as Game & { shopId?: string }).shopId ? 'product' : 'game';
         await addToFavorites(user.uid, game.id, itemType);
         setIsFavorite(true);
       }

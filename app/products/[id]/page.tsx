@@ -28,7 +28,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     : []
 
   // Build GameWithCategories-like object for ProductDetail
-  const gameData: GameWithCategories = {
+  const gameData: GameWithCategories & { shopId?: string } = {
     id: product.id,
     gameId: product.gameId || product.id,
     name: product.name,
@@ -37,11 +37,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     gameImages,
     categoryIds: [],
     categories: [],
-    // attach shopId as extra property for downstream components
-  } as unknown as GameWithCategories
-
-  // @ts-ignore attach shopId dynamically (ProductDetail/GameCard check this)
-  ;(gameData as any).shopId = product.shopId
+    shopId: product.shopId, // Add shopId as a typed property
+  }
 
   return (
     <div className="min-h-screen bg-[#f2f2f4]">

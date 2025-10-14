@@ -288,7 +288,7 @@ export function AccountContent() {
       window.location.href = "/";
     } catch (error) {
       console.error("Error deleting account:", error);
-      let errorMessage = "เกิดข้อผิดพลาดในการลบบัญชี";
+      const errorMessage = "เกิดข้อผิดพลาดในการลบบัญชี";
       
       if (error instanceof Error) {
         if (error.message.includes("auth/requires-recent-login")) {

@@ -8,7 +8,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore"
@@ -142,7 +141,7 @@ export async function updateProduct(
 ): Promise<void> {
   try {
     const productRef = doc(db, "products", productId)
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       ...productData,
       updatedAt: serverTimestamp(),
     }

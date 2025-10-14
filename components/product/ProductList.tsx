@@ -31,7 +31,7 @@ export default function ProductList({ products, loading, error }: ProductListPro
     categoryIds: [],
     categories: [],
     shopId: product.shopId // Add shopId to identify as product
-  } as any))
+  } as GameWithCategories & { shopId: string }))
 
   if (loading) {
     return (

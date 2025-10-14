@@ -96,7 +96,7 @@ const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategor
 
         <div className="space-y-1">
           {categories.map((category) => {
-            const categoryId = (category as any).slug || category.id;
+            const categoryId = (category as { slug?: string; id: string }).slug || category.id;
             const categoryGames = getGamesByCategory(category.id);
             const isExpanded = expandedCategories.has(categoryId);
 
