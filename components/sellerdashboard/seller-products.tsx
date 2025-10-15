@@ -20,10 +20,31 @@ import {
 import { getShopByOwnerId } from "@/lib/shop-service"
 import { updateUserProfile } from "@/lib/user-service"
 import { getAllGames, type Game } from "@/lib/game-service"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import { useAuth } from "@/components/auth-context"
 import Image from "next/image"
+
+// Helper function to delete old image from Firebase Storage
+const deleteImageFromStorage = async (imageUrl: string) => {
+  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) {
+    return;
+  }
+  
+  try {
+    const decodedUrl = decodeURIComponent(imageUrl);
+    const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
+    
+    if (pathMatch && pathMatch[1]) {
+      const filePath = pathMatch[1];
+      const imageRef = ref(storage, filePath);
+      await deleteObject(imageRef);
+      console.log('Old image deleted successfully:', filePath);
+    }
+  } catch (error) {
+    console.error('Error deleting old image:', error);
+  }
+};
 
 export function SellerProducts() {
   const { profile, loading: profileLoading } = useUserProfile()
@@ -81,11 +102,19 @@ export function SellerProducts() {
       if (shop) {
         // Found shop, update user profile with shopId
         setShopId(shop.shopId)
-        await updateUserProfile(user.uid, {
+        
+        // Only update role to seller if current role is buyer
+        // Don't change admin/superadmin roles
+        const updateData: Record<string, unknown> = {
           shopId: shop.shopId,
           isSeller: true,
-          role: "seller",
-        })
+        }
+        
+        if (profile?.role === "buyer") {
+          updateData.role = "seller"
+        }
+        
+        await updateUserProfile(user.uid, updateData)
         console.log("Updated user profile with shopId:", shop.shopId)
       } else {
         setLoading(false)
@@ -241,6 +270,14 @@ export function SellerProducts() {
 
       // Upload new images if any
       if (imageFiles.length > 0) {
+        // Delete old images if editing (optional: only if replacing all images)
+        if (editingId && formData.images.length > 0) {
+          for (const oldUrl of formData.images) {
+            await deleteImageFromStorage(oldUrl);
+          }
+          imageUrls = []; // Clear old URLs since we're replacing them
+        }
+        
         const uploadPromises = imageFiles.map(async (file) => {
           const timestamp = Date.now()
           const storageRef = ref(storage, `product-images/${shopId}/${timestamp}_${file.name}`)

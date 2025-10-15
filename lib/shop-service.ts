@@ -42,6 +42,12 @@ export interface Shop {
   rating: number;
   createdAt: Date;
   updatedAt: Date;
+  // Stripe Connect fields
+  stripeAccountId?: string | null;
+  stripeAccountStatus?: 'active' | 'incomplete' | null;
+  stripeOnboardingCompleted?: boolean;
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
 }
 
 // Create new shop
@@ -132,8 +138,14 @@ export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
         totalRevenue: data.totalRevenue || 0,
         rating: data.rating || 0,
         createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date()
-      };
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        // Stripe fields
+        stripeAccountId: data.stripeAccountId || null,
+        stripeAccountStatus: data.stripeAccountStatus || null,
+        stripeOnboardingCompleted: data.stripeOnboardingCompleted || false,
+        stripeChargesEnabled: data.stripeChargesEnabled || false,
+        stripePayoutsEnabled: data.stripePayoutsEnabled || false,
+      } as any;
     }
     
     return null;
@@ -219,14 +231,32 @@ export async function hasShop(userId: string): Promise<boolean> {
 export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejected' | 'suspended' | 'closed'): Promise<Shop[]> {
   try {
     const shopsRef = collection(db, "shops");
-    let q = query(shopsRef, orderBy("createdAt", "desc"));
+    let snapshot;
     
     if (statusFilter) {
-      q = query(shopsRef, where("status", "==", statusFilter), orderBy("createdAt", "desc"));
+      // Try with composite query first
+      try {
+        const q = query(shopsRef, where("status", "==", statusFilter), orderBy("createdAt", "desc"));
+        snapshot = await getDocs(q);
+      } catch (indexError) {
+        console.warn("Composite index not available, falling back to simple query:", indexError);
+        // Fallback to simple query without orderBy
+        const q = query(shopsRef, where("status", "==", statusFilter));
+        snapshot = await getDocs(q);
+      }
+    } else {
+      // Get all shops without filter
+      try {
+        const q = query(shopsRef, orderBy("createdAt", "desc"));
+        snapshot = await getDocs(q);
+      } catch (indexError) {
+        console.warn("OrderBy index not available, using simple query:", indexError);
+        // Fallback to simple query without orderBy
+        snapshot = await getDocs(shopsRef);
+      }
     }
     
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
+    const shops = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         shopId: data.shopId,
@@ -256,6 +286,10 @@ export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejecte
         updatedAt: data.updatedAt?.toDate() || new Date()
       };
     });
+    
+    // Sort manually by createdAt if orderBy failed
+    return shops.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
   } catch (error) {
     console.error("Error getting shops:", error);
     return [];

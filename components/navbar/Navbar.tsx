@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 
 const navLinks = [
+  { href: "/", label: "หน้าแรก" },
   { href: "/products", label: "สินค้าทั้งหมด" },
   { href: "/shops", label: "ร้านค้าทั้งหมด" },
   { href: "/seller", label: "ขายสินค้ากับเรา" },
@@ -311,22 +312,35 @@ function NavbarContent() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex space-x-8 justify-center m-2">
             {navLinks.map((link) => {
-              const isActive =
-                link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href);
+              let isActive = false;
+              
+              if (link.href === "/") {
+                isActive = pathname === "/";
+              } else if (link.href === "/shops") {
+                // Highlight "ร้านค้าทั้งหมด" when on /shops or /sellerprofile/[id]
+                isActive = pathname.startsWith("/shops") || pathname.startsWith("/sellerprofile");
+              } else if (link.href === "/seller") {
+                // Check exactly for /seller path, not /sellerprofile
+                isActive = pathname === "/seller" || (pathname.startsWith("/seller/") && !pathname.startsWith("/sellerprofile"));
+              } else {
+                isActive = pathname.startsWith(link.href);
+              }
 
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`py-2 text-lg font-medium transition-colors duration-200 ${
-                    isActive
-                      ? "text-[#ff9800] border-b-2 border-[#ff9800]"
-                      : "text-gray-700 hover:text-[#ff9800]"
-                  }`}
+                  className="relative py-3 text-lg font-medium transition-colors duration-200 group"
                 >
-                  {link.label}
+                  <span className={isActive ? "text-[#ff9800]" : "text-gray-700 group-hover:text-[#ff9800]"}>
+                    {link.label}
+                  </span>
+                  {/* Thin underline - 2px height */}
+                  <span 
+                    className={`absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff9800] transition-opacity duration-200 ${
+                      isActive ? "opacity-100" : "opacity-0"
+                    }`}
+                  ></span>
                 </Link>
               );
             })}
@@ -341,8 +355,25 @@ function NavbarContent() {
             <ul className="space-y-2">
               <li>
                 <Link
+                  href="/"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    pathname === "/"
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  หน้าแรก
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/products"
-                  className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    pathname.startsWith("/products")
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   สินค้าทั้งหมด
@@ -350,30 +381,55 @@ function NavbarContent() {
               </li>
               <li>
                 <Link
+                  href="/shops"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    pathname.startsWith("/shops") || pathname.startsWith("/sellerprofile")
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  ร้านค้าทั้งหมด
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/seller"
-                  className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    (pathname === "/seller" || (pathname.startsWith("/seller/") && !pathname.startsWith("/sellerprofile")))
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   ขายสินค้ากับเรา
                 </Link>
               </li>
               <li>
-                <a
-                  href="#"
-                  className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
+                <Link
+                  href="/profile?tab=myGame"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    pathname.startsWith("/profile") && searchParams?.get("tab") === "myGame"
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   ไอดีเกมของฉัน
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
-                  className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
+                <Link
+                  href="/support"
+                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
+                    pathname.startsWith("/support")
+                      ? "text-[#ff9800] bg-orange-50 font-medium"
+                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
+                  }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  ช่วยเหลือ
-                </a>
+                  ติดต่อเรา
+                </Link>
               </li>
               <li className="pt-2 border-t border-gray-200">
                 {!isInitialized ? (
