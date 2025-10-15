@@ -38,6 +38,10 @@ export default function AdminReopenRequests() {
   // Owner profile and shop data
   const [ownerProfiles, setOwnerProfiles] = useState<Record<string, { displayName?: string; email?: string | null; photoURL?: string | null }>>({});
   const [shopData, setShopData] = useState<Record<string, Shop>>({});
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadRequests();
@@ -50,6 +54,9 @@ export default function AdminReopenRequests() {
 
   const filterRequests = () => {
     let filtered = [...requests];
+
+    // Reset to first page when filters change
+    setCurrentPage(1);
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -173,11 +180,11 @@ export default function AdminReopenRequests() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">🕐 รอตรวจสอบ</span>;
+        return <span className="px-2 py-1 sm:px-3 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">🕐 รอตรวจสอบ</span>;
       case 'approved':
-        return <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">✅ อนุมัติ</span>;
+        return <span className="px-2 py-1 sm:px-3 bg-green-100 text-green-800 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">✅ อนุมัติ</span>;
       case 'rejected':
-        return <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">❌ ปฏิเสธ</span>;
+        return <span className="px-2 py-1 sm:px-3 bg-red-100 text-red-800 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">❌ ปฏิเสธ</span>;
       default:
         return null;
     }
@@ -226,63 +233,63 @@ export default function AdminReopenRequests() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header & Stats */}
       <div>
-        <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden mb-6">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+        <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 text-white relative overflow-hidden mb-4 sm:mb-6">
+          <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/10 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/10 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24"></div>
           <div className="relative z-10">
-            <h2 className="text-4xl font-bold mb-2 drop-shadow-lg">📧 คำขอเปิดร้านใหม่</h2>
-            <p className="text-white/90 text-lg">จัดการคำขอเปิดร้านค้าใหม่จากผู้ใช้ที่ถูกระงับ</p>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 drop-shadow-lg">📧 คำขอเปิดร้านใหม่</h2>
+            <p className="text-white/90 text-sm sm:text-base lg:text-lg">จัดการคำขอเปิดร้านค้าใหม่จากผู้ใช้ที่ถูกระงับ</p>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">📊</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-lg sm:text-xl lg:text-2xl">📊</span>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-gray-800">{requests.length}</div>
-                <div className="text-sm text-gray-600 font-medium">คำขอทั้งหมด</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-pulse">
-                <span className="text-2xl">⏳</span>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-yellow-800">{pendingCount}</div>
-                <div className="text-sm text-yellow-700 font-medium">รอตรวจสอบ</div>
+              <div className="min-w-0">
+                <div className="text-2xl sm:text-3xl font-bold text-gray-800">{requests.length}</div>
+                <div className="text-xs sm:text-sm text-gray-600 font-medium truncate">คำขอทั้งหมด</div>
               </div>
             </div>
           </Card>
           
-          <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">✅</span>
+          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-pulse flex-shrink-0">
+                <span className="text-lg sm:text-xl lg:text-2xl">⏳</span>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-green-800">{approvedCount}</div>
-                <div className="text-sm text-green-700 font-medium">อนุมัติแล้ว</div>
+              <div className="min-w-0">
+                <div className="text-2xl sm:text-3xl font-bold text-yellow-800">{pendingCount}</div>
+                <div className="text-xs sm:text-sm text-yellow-700 font-medium truncate">รอตรวจสอบ</div>
               </div>
             </div>
           </Card>
           
-          <Card className="p-6 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">❌</span>
+          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-lg sm:text-xl lg:text-2xl">✅</span>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-red-800">{rejectedCount}</div>
-                <div className="text-sm text-red-700 font-medium">ปฏิเสธแล้ว</div>
+              <div className="min-w-0">
+                <div className="text-2xl sm:text-3xl font-bold text-green-800">{approvedCount}</div>
+                <div className="text-xs sm:text-sm text-green-700 font-medium truncate">อนุมัติแล้ว</div>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-lg sm:text-xl lg:text-2xl">❌</span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl sm:text-3xl font-bold text-red-800">{rejectedCount}</div>
+                <div className="text-xs sm:text-sm text-red-700 font-medium truncate">ปฏิเสธแล้ว</div>
               </div>
             </div>
           </Card>
@@ -290,31 +297,31 @@ export default function AdminReopenRequests() {
       </div>
 
       {/* Filters */}
-      <Card className="p-6 border-2 border-gray-200">
-        <div className="flex items-center gap-3 mb-4">
-          <Filter className="w-5 h-5 text-[#ff9800]" />
-          <h3 className="text-lg font-bold text-gray-800">ตัวกรองและค้นหา</h3>
+      <Card className="p-3 sm:p-4 lg:p-6 border-2 border-gray-200">
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800]" />
+          <h3 className="text-base sm:text-lg font-bold text-gray-800">ตัวกรองและค้นหา</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4">
           {/* Search Box */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             <Input
               type="text"
               placeholder="ค้นหา ชื่อร้าน, เจ้าของร้าน, อีเมล..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-2 focus:border-[#ff9800] h-11"
+              className="pl-9 sm:pl-10 border-2 focus:border-[#ff9800] h-10 sm:h-11 text-sm sm:text-base"
             />
           </div>
 
           {/* Status Filter */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             <Button
               onClick={() => setStatusFilter('all')}
               variant={statusFilter === 'all' ? 'default' : 'outline'}
-              className={`flex-1 font-semibold transition-all ${
+              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
                 statusFilter === 'all' 
                   ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md' 
                   : 'hover:bg-blue-50 border-2'
@@ -325,7 +332,7 @@ export default function AdminReopenRequests() {
             <Button
               onClick={() => setStatusFilter('pending')}
               variant={statusFilter === 'pending' ? 'default' : 'outline'}
-              className={`flex-1 font-semibold transition-all ${
+              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
                 statusFilter === 'pending' 
                   ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-md' 
                   : 'hover:bg-yellow-50 border-2'
@@ -336,7 +343,7 @@ export default function AdminReopenRequests() {
             <Button
               onClick={() => setStatusFilter('approved')}
               variant={statusFilter === 'approved' ? 'default' : 'outline'}
-              className={`flex-1 font-semibold transition-all ${
+              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
                 statusFilter === 'approved' 
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md' 
                   : 'hover:bg-green-50 border-2'
@@ -347,7 +354,7 @@ export default function AdminReopenRequests() {
             <Button
               onClick={() => setStatusFilter('rejected')}
               variant={statusFilter === 'rejected' ? 'default' : 'outline'}
-              className={`flex-1 font-semibold transition-all ${
+              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
                 statusFilter === 'rejected' 
                   ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-md' 
                   : 'hover:bg-red-50 border-2'
@@ -372,45 +379,58 @@ export default function AdminReopenRequests() {
 
       {/* Requests List */}
       {filteredRequests.length === 0 ? (
-        <Card className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
-          <div className="text-6xl mb-4 animate-bounce">📭</div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+        <Card className="p-8 sm:p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
+          <div className="text-4xl sm:text-6xl mb-3 sm:mb-4 animate-bounce">📭</div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
             {requests.length === 0 ? 'ไม่มีคำขอเปิดร้านใหม่' : 'ไม่พบรายการที่ค้นหา'}
           </h3>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-sm sm:text-base lg:text-lg">
             {requests.length === 0 
               ? 'เมื่อมีผู้ใช้ส่งคำขอเปิดร้านใหม่ จะแสดงที่นี่' 
               : 'ลองปรับเปลี่ยนตัวกรองหรือคำค้นหา'}
           </p>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredRequests.map((request) => (
+        <>
+          <div className="space-y-3 sm:space-y-4">
+            {(() => {
+              // Pagination calculations
+              const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+              const startIndex = (currentPage - 1) * itemsPerPage;
+              const endIndex = startIndex + itemsPerPage;
+              const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+              
+              return (
+                <>
+                  {paginatedRequests.map((request) => (
             <Card 
               key={request.id} 
-              className="p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-2 hover:border-[#ff9800] cursor-pointer"
+              className="p-3 sm:p-4 lg:p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-2 hover:border-[#ff9800] cursor-pointer"
               onClick={() => { setSelectedRequest(request); setShowDetailDialog(true); }}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-800">🏪 {request.shopName}</h3>
+              <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                    <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <span>🏪</span>
+                      <span className="truncate">{request.shopName}</span>
+                    </h3>
                     {getStatusBadge(request.status)}
                   </div>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                     <p className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-700">👤 เจ้าของร้าน:</span>
-                      <span className="font-medium text-[#ff9800]">{getOwnerName(request.ownerId)}</span>
+                      <span className="font-semibold text-gray-700 flex-shrink-0">👤 เจ้าของร้าน:</span>
+                      <span className="font-medium text-[#ff9800] truncate">{getOwnerName(request.ownerId)}</span>
                     </p>
                     <p className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-700">📧 อีเมล:</span>
-                      <span>{request.ownerEmail || '-'}</span>
+                      <span className="font-semibold text-gray-700 flex-shrink-0">📧 อีเมล:</span>
+                      <span className="truncate">{request.ownerEmail || '-'}</span>
                     </p>
                     <p className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>📅</span>
-                      <span>{request.createdAt.toDate().toLocaleDateString('th-TH', {
+                      <span className="flex-shrink-0">📅</span>
+                      <span className="truncate">{request.createdAt.toDate().toLocaleDateString('th-TH', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -418,13 +438,13 @@ export default function AdminReopenRequests() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-col sm:items-end">
                   {request.status === 'pending' && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button
                         onClick={(e) => { e.stopPropagation(); openReviewDialog(request, 'approve'); }}
                         disabled={processing === request.id}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-md hover:shadow-lg transition-all"
+                        className="flex-1 sm:flex-none bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-md hover:shadow-lg transition-all text-xs sm:text-sm"
                         size="sm"
                       >
                         ✅ อนุมัติ
@@ -432,7 +452,7 @@ export default function AdminReopenRequests() {
                       <Button
                         onClick={(e) => { e.stopPropagation(); openReviewDialog(request, 'reject'); }}
                         disabled={processing === request.id}
-                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-md hover:shadow-lg transition-all"
+                        className="flex-1 sm:flex-none bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-md hover:shadow-lg transition-all text-xs sm:text-sm"
                         size="sm"
                       >
                         ❌ ปฏิเสธ
@@ -443,7 +463,96 @@ export default function AdminReopenRequests() {
               </div>
             </Card>
           ))}
-        </div>
+          
+          {/* Pagination */}
+          {totalPages > 0 && (
+            <Card className="p-4 border-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page Info */}
+                <div className="text-sm text-gray-600">
+                  หน้า {currentPage} จาก {totalPages} (แสดง {paginatedRequests.length} จาก {filteredRequests.length} คำขอ)
+                </div>
+
+                {/* Pagination Buttons */}
+                {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  {/* Previous Button */}
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.max(1, prev - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                  >
+                    ← ก่อนหน้า
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            onClick={() => {
+                              setCurrentPage(page);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            className={`w-9 h-9 p-0 ${
+                              currentPage === page
+                                ? "bg-[#ff9800] hover:bg-[#e08800] text-white"
+                                : ""
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="px-2 text-gray-400">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                  >
+                    ถัดไป →
+                  </Button>
+                </div>
+                )}
+              </div>
+            </Card>
+          )}
+                </>
+              );
+            })()}
+          </div>
+        </>
       )}
 
       {/* Review Dialog */}

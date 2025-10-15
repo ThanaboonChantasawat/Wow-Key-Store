@@ -226,177 +226,184 @@ export function AdminUsers() {
       </Card>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
+        <div className="p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800] mx-auto"></div>
+          <p className="text-gray-500 mt-4">กำลังโหลด...</p>
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <Card className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
+          <div className="text-6xl mb-4 animate-bounce">👤</div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">ไม่พบผู้ใช้</h3>
+          <p className="text-gray-600 text-lg">ลองค้นหาใหม่อีกครั้ง</p>
+        </Card>
       ) : (
         <>
-          {/* Desktop Table View */}
-          {/* Desktop Table View */}
-          <Card className="hidden lg:block overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">อีเมล</th>
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">ชื่อผู้ใช้</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">บทบาท</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">สมัครเมื่อ</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">สถานะ</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-800">{user.email || "ไม่มีอีเมล"}</td>
-                    <td className="px-6 py-4 text-gray-800">{user.displayName}</td>
-                    <td className="px-6 py-4 text-center">{getRoleBadge(user.role)}</td>
-                    <td className="px-6 py-4 text-center text-gray-800">
-                      {user.createdAt.toLocaleDateString('th-TH')}
-                    </td>
-                    <td className="px-6 py-4 text-center">{getStatusBadge(user.accountStatus)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        {canEditRole(user) && (
-                          <>
-                            <button 
-                              onClick={() => openRoleDialog(user)}
-                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
-                              title="เปลี่ยนบทบาท"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => openStatusDialog(user)}
-                              className="p-2 hover:bg-orange-50 rounded-lg transition-colors text-orange-600"
-                              title="เปลี่ยนสถานะ"
-                            >
-                              <Shield className="h-4 w-4" />
-                            </button>
-                            {currentUser && user.id !== currentUser.uid && (
-                              <button 
-                                onClick={() => openDeleteDialog(user)}
-                                className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
-                                title="ลบบัญชี"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {!canEditRole(user) && (
-                          <span className="text-xs text-gray-400">ไม่สามารถแก้ไข</span>
-                        )}
-                      </div>
-                    </td>
+          {/* Users Table */}
+          <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <User className="w-5 h-5 sm:w-6 sm:h-6 text-[#ff9800]" />
+                ผู้ใช้ทั้งหมด ({users.length})
+              </h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">อีเมล</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">ชื่อผู้ใช้</th>
+                    <th className="hidden md:table-cell px-6 py-4 text-center font-bold text-gray-800 text-sm">บทบาท</th>
+                    <th className="hidden lg:table-cell px-6 py-4 text-center font-bold text-gray-800 text-sm">สมัครเมื่อ</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">สถานะ</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">จัดการ</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                </thead>
+                <tbody>
+                  {paginatedUsers.map((user) => (
+                    <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <span className="font-medium text-gray-800 text-sm sm:text-base block truncate max-w-[150px] sm:max-w-none">
+                          {user.email || "ไม่มีอีเมล"}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <span className="text-gray-800 text-sm sm:text-base">{user.displayName}</span>
+                        <div className="md:hidden mt-1">
+                          {getRoleBadge(user.role)}
+                        </div>
+                      </td>
+                      <td className="hidden md:table-cell px-6 py-4 text-center">
+                        {getRoleBadge(user.role)}
+                      </td>
+                      <td className="hidden lg:table-cell px-6 py-4 text-center text-gray-600 text-sm">
+                        {user.createdAt.toLocaleDateString('th-TH')}
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                        {getStatusBadge(user.accountStatus)}
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <div className="flex items-center justify-center gap-1 sm:gap-2">
+                          {canEditRole(user) && (
+                            <>
+                              <button 
+                                onClick={() => openRoleDialog(user)}
+                                className="p-1.5 sm:p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="เปลี่ยนบทบาท"
+                              >
+                                <Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+                              </button>
+                              <button 
+                                onClick={() => openStatusDialog(user)}
+                                className="p-1.5 sm:p-2 hover:bg-orange-50 rounded-lg transition-colors"
+                                title="เปลี่ยนสถานะ"
+                              >
+                                <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-600" />
+                              </button>
+                              {currentUser && user.id !== currentUser.uid && (
+                                <button 
+                                  onClick={() => openDeleteDialog(user)}
+                                  className="p-1.5 sm:p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="ลบบัญชี"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {!canEditRole(user) && (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Mobile Card View */}
-          <div className="lg:hidden space-y-4">
-            {paginatedUsers.map((user) => (
-              <Card key={user.id} className="p-4 border-2 hover:shadow-xl transition-all hover:border-[#ff9800]">
-                <div className="space-y-3">
-                  {/* User Info */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{user.displayName}</p>
-                      <p className="text-sm text-gray-600 truncate">{user.email || "ไม่มีอีเมล"}</p>
-                    </div>
+            {/* Pagination */}
+            {filteredUsers.length > 0 && (
+              <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {/* Page Info */}
+                  <div className="text-sm text-gray-600">
+                    หน้า {currentPage} จาก {totalPages} (แสดง {paginatedUsers.length} จาก {filteredUsers.length} คน)
                   </div>
 
-                  {/* Badges */}
-                  <div className="flex flex-wrap gap-2">
-                    {getRoleBadge(user.role)}
-                    {getStatusBadge(user.accountStatus)}
-                  </div>
-
-                  {/* Date */}
-                  <div className="text-xs text-gray-500">
-                    📅 สมัครเมื่อ: {user.createdAt.toLocaleDateString('th-TH')}
-                  </div>
-
-                  {/* Action Buttons */}
-                  {canEditRole(user) && (
-                    <div className="flex gap-2 pt-2 border-t border-gray-200">
+                  {/* Pagination Buttons */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
                       <Button
-                        onClick={() => openRoleDialog(user)}
-                        size="sm"
+                        onClick={() => {
+                          setCurrentPage(prev => Math.max(1, prev - 1))
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        disabled={currentPage === 1}
                         variant="outline"
-                        className="flex-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                        size="sm"
+                        className="px-3"
                       >
-                        <Edit2 className="h-4 w-4 mr-1" />
-                        บทบาท
+                        ← ก่อนหน้า
                       </Button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                          if (
+                            page === 1 ||
+                            page === totalPages ||
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          ) {
+                            return (
+                              <Button
+                                key={page}
+                                onClick={() => {
+                                  setCurrentPage(page)
+                                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                                }}
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                className={`w-9 h-9 p-0 ${
+                                  currentPage === page
+                                    ? "bg-[#ff9800] hover:bg-[#e08800] text-white"
+                                    : ""
+                                }`}
+                              >
+                                {page}
+                              </Button>
+                            )
+                          } else if (
+                            page === currentPage - 2 ||
+                            page === currentPage + 2
+                          ) {
+                            return (
+                              <span key={page} className="px-2 text-gray-400">
+                                ...
+                              </span>
+                            )
+                          }
+                          return null
+                        })}
+                      </div>
+
                       <Button
-                        onClick={() => openStatusDialog(user)}
-                        size="sm"
+                        onClick={() => {
+                          setCurrentPage(prev => Math.min(totalPages, prev + 1))
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        disabled={currentPage === totalPages}
                         variant="outline"
-                        className="flex-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+                        size="sm"
+                        className="px-3"
                       >
-                        <Shield className="h-4 w-4 mr-1" />
-                        สถานะ
+                        ถัดไป →
                       </Button>
-                      {currentUser && user.id !== currentUser.uid && (
-                        <Button
-                          onClick={() => openDeleteDialog(user)}
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          ลบ
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                  {!canEditRole(user) && (
-                    <div className="text-center py-2 text-xs text-gray-400 border-t border-gray-200">
-                      ไม่สามารถแก้ไขได้
                     </div>
                   )}
                 </div>
-              </Card>
-            ))}
+              </div>
+            )}
           </div>
-
-          {filteredUsers.length === 0 && (
-            <Card className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
-              <div className="text-6xl mb-4 animate-bounce">👤</div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">ไม่พบผู้ใช้</h3>
-              <p className="text-gray-600 text-lg">ลองค้นหาใหม่อีกครั้ง</p>
-            </Card>
-          )}
-
-          {/* Pagination */}
-          <Card className="p-4 md:p-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-800 text-center sm:text-left">
-                หน้า {currentPage} จาก {totalPages} (แสดง {paginatedUsers.length} จาก {filteredUsers.length} คน)
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="border-2"
-                >
-                  ก่อนหน้า
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="border-2"
-                >
-                  ถัดไป
-                </Button>
-              </div>
-            </div>
-          </Card>
         </>
       )}      {/* Role Change Dialog */}
       {showRoleDialog && selectedUser && (

@@ -19,6 +19,10 @@ export function AdminCategories() {
     slug: ""
   })
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
 
   useEffect(() => {
     loadCategories()
@@ -196,45 +200,147 @@ export function AdminCategories() {
             <p className="text-gray-600">เพิ่มหมวดหมู่แรกของคุณเลย!</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">ชื่อหมวดหมู่</th>
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">คำอธิบาย</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((category) => (
-                  <tr key={category.slug} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-gray-900">{category.name}</td>
-                    <td className="px-6 py-4 text-gray-600 text-sm">
-                      {category.description || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(category)}
-                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                          disabled={loading}
-                        >
-                          <Pencil className="h-4 w-4 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(category.slug)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          disabled={loading}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
+                    <th className="px-6 py-4 text-left font-bold text-gray-800">ชื่อหมวดหมู่</th>
+                    <th className="px-6 py-4 text-left font-bold text-gray-800">คำอธิบาย</th>
+                    <th className="px-6 py-4 text-center font-bold text-gray-800">จัดการ</th>
                   </tr>
-                ))}
-              </tbody>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Pagination calculations
+                    const totalPages = Math.ceil(categories.length / itemsPerPage)
+                    const startIndex = (currentPage - 1) * itemsPerPage
+                    const endIndex = startIndex + itemsPerPage
+                    const paginatedCategories = categories.slice(startIndex, endIndex)
+                    
+                    return paginatedCategories.map((category) => (
+                      <tr key={category.slug} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-gray-900">{category.name}</td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">
+                          {category.description || "-"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(category)}
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                              disabled={loading}
+                            >
+                              <Pencil className="h-4 w-4 text-blue-600" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(category.slug)}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {(() => {
+            const totalPages = Math.ceil(categories.length / itemsPerPage)
+            const startIndex = (currentPage - 1) * itemsPerPage
+            const endIndex = startIndex + itemsPerPage
+            const paginatedCount = Math.min(endIndex, categories.length) - startIndex
+            
+            return categories.length > 0 && (
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {/* Page Info */}
+                  <div className="text-sm text-gray-600">
+                    หน้า {currentPage} จาก {totalPages} (แสดง {paginatedCount} จาก {categories.length} รายการ)
+                  </div>
+
+                  {/* Pagination Buttons */}
+                  {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    {/* Previous Button */}
+                    <Button
+                      onClick={() => {
+                        setCurrentPage(prev => Math.max(1, prev - 1))
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      disabled={currentPage === 1}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                    >
+                      ← ก่อนหน้า
+                    </Button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <Button
+                              key={page}
+                              onClick={() => {
+                                setCurrentPage(page)
+                                window.scrollTo({ top: 0, behavior: 'smooth' })
+                              }}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              className={`w-9 h-9 p-0 ${
+                                currentPage === page
+                                  ? "bg-[#ff9800] hover:bg-[#e08800] text-white"
+                                  : ""
+                              }`}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        } else if (
+                          page === currentPage - 2 ||
+                          page === currentPage + 2
+                        ) {
+                          return (
+                            <span key={page} className="px-2 text-gray-400">
+                              ...
+                            </span>
+                          )
+                        }
+                        return null
+                      })}
+                    </div>
+
+                    {/* Next Button */}
+                    <Button
+                      onClick={() => {
+                        setCurrentPage(prev => Math.min(totalPages, prev + 1))
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      disabled={currentPage === totalPages}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                    >
+                      ถัดไป →
+                    </Button>
+                  </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+        </>
         )}
       </div>
 
@@ -244,25 +350,25 @@ export function AdminCategories() {
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
           onClick={closeModal}
         >
-          <Card 
-            className="max-w-2xl w-full bg-white relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto" 
+          <div 
+            className="max-w-2xl w-full bg-white relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto rounded-xl shadow-xl" 
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700 z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
             {/* Modal Header */}
-            <div className={`p-6 border-b-2 ${
+            <div className={`p-6 rounded-t-xl relative ${
               editingId 
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-300' 
-                : 'bg-gradient-to-r from-green-500 to-green-600 border-green-300'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                : 'bg-gradient-to-r from-green-500 to-green-600'
             }`}>
-              <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+              {/* Close Button */}
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors z-10"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+
+              <h3 className="text-2xl font-bold text-white flex items-center gap-3 pr-10">
                 {editingId ? (
                   <>
                     <Pencil className="w-7 h-7" />
@@ -364,7 +470,7 @@ export function AdminCategories() {
                 </Button>
               </div>
             </form>
-          </Card>
+          </div>
         </div>
       )}
     </div>
