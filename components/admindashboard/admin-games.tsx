@@ -9,9 +9,32 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
 import { getAllGames, createGame, updateGame, deleteGame, type Game } from "@/lib/game-service"
 import { getAllCategories, type Category } from "@/lib/category-service"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import Image from "next/image"
+
+// Helper function to delete old image from Firebase Storage
+const deleteImageFromStorage = async (imageUrl: string) => {
+  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) {
+    return; // Skip if not a Firebase Storage URL
+  }
+  
+  try {
+    // Extract the file path from the URL
+    const decodedUrl = decodeURIComponent(imageUrl);
+    const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
+    
+    if (pathMatch && pathMatch[1]) {
+      const filePath = pathMatch[1];
+      const imageRef = ref(storage, filePath);
+      await deleteObject(imageRef);
+      console.log('Old image deleted successfully:', filePath);
+    }
+  } catch (error) {
+    console.error('Error deleting old image:', error);
+    // Don't throw error, continue with the update
+  }
+};
 
 export function AdminGames() {
   const [games, setGames] = useState<Game[]>([])
@@ -22,6 +45,10 @@ export function AdminGames() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   
   const [formData, setFormData] = useState({
     name: "",
@@ -117,6 +144,11 @@ export function AdminGames() {
       // Upload image if new file selected
       if (imageFile) {
         try {
+          // Delete old image if updating and URL exists
+          if (editingId && formData.imageUrl) {
+            await deleteImageFromStorage(formData.imageUrl);
+          }
+          
           const timestamp = Date.now()
           const storageRef = ref(storage, `game-images/${timestamp}_${imageFile.name}`)
           await uploadBytes(storageRef, imageFile)
@@ -231,7 +263,16 @@ export function AdminGames() {
       .join(", ")
   }
 
+  // Pagination calculations
+  const totalPages = Math.ceil(games.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentGames = games.slice(startIndex, endIndex)
 
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="space-y-6">
@@ -262,10 +303,10 @@ export function AdminGames() {
       )}
 
       {/* Add Game Button */}
-      <Button 
+      <Button
         onClick={openCreateModal}
-        className="bg-gradient-to-r from-green-600 via-green-500 to-emerald-500 hover:from-green-700 hover:via-green-600 hover:to-emerald-600 text-white font-bold shadow-lg"
-        size="lg"
+        className="bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold"
+        disabled={loading}
       >
         <Plus className="w-5 h-5 mr-2" />
         เพิ่มเกมใหม่
@@ -273,11 +314,18 @@ export function AdminGames() {
 
       {/* Games List */}
       <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
-        <div className="p-6 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ImageIcon className="w-6 h-6 text-[#ff9800]" />
-            เกมทั้งหมด ({games.length})
-          </h3>
+        <div className="p-4 sm:p-6 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#ff9800]" />
+              เกมทั้งหมด ({games.length})
+            </h3>
+            {totalPages > 1 && (
+              <div className="text-sm text-gray-600">
+                หน้า {currentPage} / {totalPages}
+              </div>
+            )}
+          </div>
         </div>
 
         {loading && games.length === 0 ? (
@@ -287,28 +335,28 @@ export function AdminGames() {
           </div>
         ) : games.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="text-6xl mb-4">🎮</div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">ยังไม่มีเกม</h3>
-            <p className="text-gray-600">เพิ่มเกมแรกของคุณเลย!</p>
+            <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">ยังไม่มีเกม</h4>
+            <p className="text-sm sm:text-base text-gray-600">เพิ่มเกมแรกของคุณเลย!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">รูปภาพ</th>
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">ชื่อเกม</th>
-                  <th className="px-6 py-4 text-left font-bold text-gray-800">หมวดหมู่</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">สถานะ</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">ยอดนิยม</th>
-                  <th className="px-6 py-4 text-center font-bold text-gray-800">จัดการ</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">รูปภาพ</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">ชื่อเกม</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-left font-bold text-gray-800 text-sm">หมวดหมู่</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm whitespace-nowrap">สถานะ</th>
+                  <th className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm whitespace-nowrap">ยอดนิยม</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">จัดการ</th>
                 </tr>
               </thead>
               <tbody>
-                {games.map((game) => (
+                {currentGames.map((game) => (
                   <tr key={game.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0">
                         <Image
                           src={game.imageUrl}
                           alt={game.name}
@@ -317,12 +365,17 @@ export function AdminGames() {
                         />
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-[#292d32]">{game.name}</td>
-                    <td className="px-6 py-4 text-gray-600 text-sm">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="font-semibold text-[#292d32] text-sm sm:text-base">{game.name}</div>
+                      <div className="lg:hidden text-xs text-gray-600 mt-1">
+                        {getCategoryNames(game.categories) || "-"}
+                      </div>
+                    </td>
+                    <td className="hidden lg:table-cell px-6 py-4 text-gray-600 text-sm">
                       {getCategoryNames(game.categories) || "-"}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                      <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
                         game.status === 'active' 
                           ? 'bg-green-100 text-green-700' 
                           : 'bg-gray-100 text-gray-700'
@@ -330,24 +383,26 @@ export function AdminGames() {
                         {game.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      {game.isPopular && <Star className="w-5 h-5 text-yellow-500 mx-auto fill-yellow-500" />}
+                    <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 text-center">
+                      {game.isPopular && <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mx-auto fill-yellow-500" />}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <button
                           onClick={() => handleEdit(game)}
-                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 hover:bg-blue-50 rounded-lg transition-colors"
                           disabled={loading}
+                          title="แก้ไข"
                         >
-                          <Pencil className="h-4 w-4 text-blue-600" />
+                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(game.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 hover:bg-red-50 rounded-lg transition-colors"
                           disabled={loading}
+                          title="ลบ"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
                         </button>
                       </div>
                     </td>
@@ -355,6 +410,83 @@ export function AdminGames() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && games.length > 0 && (
+          <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Page Info */}
+              <div className="text-sm text-gray-600">
+                หน้า {currentPage} จาก {totalPages} (แสดง {currentGames.length} จาก {games.length} รายการ)
+              </div>
+
+              {/* Pagination Buttons */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                {/* Previous Button */}
+                <Button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                  className="px-3"
+                >
+                  ← ก่อนหน้า
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          className={`w-9 h-9 p-0 ${
+                            currentPage === page
+                              ? "bg-[#ff9800] hover:bg-[#e08800] text-white"
+                              : ""
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      )
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span key={page} className="px-2 text-gray-400">
+                          ...
+                        </span>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <Button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                  className="px-3"
+                >
+                  ถัดไป →
+                </Button>
+              </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -365,26 +497,26 @@ export function AdminGames() {
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={closeModal}
         >
-          <Card 
-            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+          <div 
+            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 bg-white rounded-xl shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
-              type="button"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-
             {/* Header */}
-            <div className={`p-6 rounded-t-xl ${
+            <div className={`p-6 rounded-t-xl relative ${
               editingId 
                 ? 'bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500' 
                 : 'bg-gradient-to-r from-green-600 via-green-500 to-emerald-500'
             }`}>
-              <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+              {/* Close Button */}
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors z-10"
+                type="button"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+
+              <h3 className="text-2xl font-bold text-white flex items-center gap-2 pr-10">
                 {editingId ? (
                   <>
                     <Pencil className="w-6 h-6" />
@@ -583,7 +715,7 @@ export function AdminGames() {
                 </Button>
               </div>
             </form>
-          </Card>
+          </div>
         </div>
       )}
       

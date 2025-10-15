@@ -16,7 +16,7 @@ import {
   reauthenticateWithPopup,
   sendEmailVerification
 } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { storage } from "@/components/firebase-config";
 import {
   Pencil,
@@ -126,6 +126,25 @@ export function AccountContent() {
 
     try {
       setLoading(true);
+      
+      // Delete old profile image if exists
+      if (user.photoURL && user.photoURL.includes('firebasestorage.googleapis.com')) {
+        try {
+          const decodedUrl = decodeURIComponent(user.photoURL);
+          const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
+          
+          if (pathMatch && pathMatch[1]) {
+            const filePath = pathMatch[1];
+            const oldImageRef = ref(storage, filePath);
+            await deleteObject(oldImageRef);
+            console.log('Old profile image deleted successfully');
+          }
+        } catch (deleteError) {
+          console.error('Error deleting old profile image:', deleteError);
+          // Continue with upload even if delete fails
+        }
+      }
+      
       const storageRef = ref(
         storage,
         `profile-images/${user.uid}/${Date.now()}_${file.name}`

@@ -7,9 +7,30 @@ import { Textarea } from "@/components/ui/textarea"
 import { getShopByOwnerId, type Shop } from "@/lib/shop-service"
 import { updateDoc, doc } from "firebase/firestore"
 import { db } from "@/components/firebase-config"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import { Store, Upload, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+
+// Helper function to delete old image from Firebase Storage
+const deleteImageFromStorage = async (imageUrl: string) => {
+  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) {
+    return;
+  }
+  
+  try {
+    const decodedUrl = decodeURIComponent(imageUrl);
+    const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
+    
+    if (pathMatch && pathMatch[1]) {
+      const filePath = pathMatch[1];
+      const imageRef = ref(storage, filePath);
+      await deleteObject(imageRef);
+      console.log('Old logo deleted successfully:', filePath);
+    }
+  } catch (error) {
+    console.error('Error deleting old logo:', error);
+  }
+};
 
 interface SellerStoreSettingsProps {
   userId: string
@@ -91,6 +112,12 @@ export function SellerStoreSettings({ userId }: SellerStoreSettingsProps) {
 
     try {
       setUploading(true)
+      
+      // Delete old logo if exists
+      if (shop.logoUrl) {
+        await deleteImageFromStorage(shop.logoUrl);
+      }
+      
       const storageRef = ref(storage, `shop-logos/${shop.shopId}/${Date.now()}_${logoFile.name}`)
       await uploadBytes(storageRef, logoFile)
       const url = await getDownloadURL(storageRef)

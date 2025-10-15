@@ -39,6 +39,10 @@ export function AdminShops({ adminId }: AdminShopsProps) {
   const [verifierProfile, setVerifierProfile] = useState<UserProfile | null>(null)
   const [suspenderProfile, setSuspenderProfile] = useState<UserProfile | null>(null)
   const [adminProfile, setAdminProfile] = useState<UserProfile | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     loadShops()
@@ -93,6 +97,9 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       filtered = filtered.filter(shop => shop.status === statusFilter)
     }
 
+    // Reset to first page when filters change
+    setCurrentPage(1)
+    
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
@@ -269,35 +276,37 @@ export function AdminShops({ adminId }: AdminShopsProps) {
     switch (status) {
       case 'pending':
         return (
-          <span className="px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold border-2 border-yellow-300 flex items-center gap-1 w-fit">
-            <Clock className="w-4 h-4" />
-            รอตรวจสอบ
+          <span className="px-2 py-1 sm:px-3 sm:py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-xs sm:text-sm font-bold border-2 border-yellow-300 flex items-center gap-1 w-fit whitespace-nowrap">
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">รอตรวจสอบ</span>
+            <span className="sm:hidden">รอ</span>
           </span>
         )
       case 'active':
         return (
-          <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-bold border-2 border-green-300 flex items-center gap-1 w-fit">
-            <CheckCircle2 className="w-4 h-4" />
-            เปิดใช้งาน
+          <span className="px-2 py-1 sm:px-3 sm:py-1.5 bg-green-100 text-green-800 rounded-full text-xs sm:text-sm font-bold border-2 border-green-300 flex items-center gap-1 w-fit whitespace-nowrap">
+            <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">เปิดใช้งาน</span>
+            <span className="sm:hidden">เปิด</span>
           </span>
         )
       case 'rejected':
         return (
-          <span className="px-3 py-1.5 bg-red-100 text-red-800 rounded-full text-sm font-bold border-2 border-red-300 flex items-center gap-1 w-fit">
-            <XCircle className="w-4 h-4" />
+          <span className="px-2 py-1 sm:px-3 sm:py-1.5 bg-red-100 text-red-800 rounded-full text-xs sm:text-sm font-bold border-2 border-red-300 flex items-center gap-1 w-fit whitespace-nowrap">
+            <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
             ปฏิเสธ
           </span>
         )
       case 'suspended':
         return (
-          <span className="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-full text-sm font-bold border-2 border-orange-300 flex items-center gap-1 w-fit">
-            <AlertCircle className="w-4 h-4" />
+          <span className="px-2 py-1 sm:px-3 sm:py-1.5 bg-orange-100 text-orange-800 rounded-full text-xs sm:text-sm font-bold border-2 border-orange-300 flex items-center gap-1 w-fit whitespace-nowrap">
+            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
             ระงับ
           </span>
         )
       case 'closed':
         return (
-          <span className="px-3 py-1.5 bg-gray-100 text-gray-800 rounded-full text-sm font-bold border-2 border-gray-300 flex items-center gap-1 w-fit">
+          <span className="px-2 py-1 sm:px-3 sm:py-1.5 bg-gray-100 text-gray-800 rounded-full text-xs sm:text-sm font-bold border-2 border-gray-300 flex items-center gap-1 w-fit whitespace-nowrap">
             ปิดแล้ว
           </span>
         )
@@ -336,139 +345,139 @@ export function AdminShops({ adminId }: AdminShopsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header - Orange Gradient */}
-      <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+      <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/10 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/10 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24"></div>
         <div className="relative z-10">
-          <h2 className="text-4xl font-bold mb-2 drop-shadow-lg flex items-center gap-3">
-            <Store className="w-10 h-10" />
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2 drop-shadow-lg flex items-center gap-2 sm:gap-3">
+            <Store className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10" />
             จัดการร้านค้า
           </h2>
-          <p className="text-white/90 text-lg">จัดการจัดการร้านค้าค้าและอนุมัติร้านค้าในระบบ</p>
+          <p className="text-white/90 text-sm sm:text-base lg:text-lg">จัดการจัดการร้านค้าค้าและอนุมัติร้านค้าในระบบ</p>
         </div>
       </div>
 
       {/* Message */}
       {message && (
         <div
-          className={`p-4 rounded-xl flex items-start gap-3 animate-in fade-in duration-200 ${
+          className={`p-3 sm:p-4 rounded-lg sm:rounded-xl flex items-start gap-2 sm:gap-3 animate-in fade-in duration-200 ${
             message.type === "success"
               ? "bg-green-50 text-green-800 border-2 border-green-200"
               : "bg-red-50 text-red-800 border-2 border-red-200"
           }`}
         >
           {message.type === "success" ? (
-            <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 flex-shrink-0" />
           ) : (
-            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 flex-shrink-0" />
           )}
-          <span className="font-medium">{message.text}</span>
+          <span className="font-medium text-sm sm:text-base">{message.text}</span>
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total */}
-        <Card className="p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Store className="w-7 h-7 text-white" />
+        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <Store className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-blue-900">{shops.length}</div>
-              <div className="text-sm text-blue-700 font-medium">ร้านค้าทั้งหมด</div>
+            <div className="min-w-0">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900">{shops.length}</div>
+              <div className="text-xs sm:text-sm text-blue-700 font-medium truncate">ร้านค้าทั้งหมด</div>
             </div>
           </div>
         </Card>
 
         {/* Pending */}
-        <Card className="p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl flex items-center justify-center shadow-lg animate-pulse">
-              <Clock className="w-7 h-7 text-white" />
+        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg animate-pulse flex-shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-yellow-900">{pendingCount}</div>
-              <div className="text-sm text-yellow-700 font-medium">รออนุมัติ</div>
+            <div className="min-w-0">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-yellow-900">{pendingCount}</div>
+              <div className="text-xs sm:text-sm text-yellow-700 font-medium truncate">รออนุมัติ</div>
             </div>
           </div>
         </Card>
 
         {/* Active */}
-        <Card className="p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <CheckCircle2 className="w-7 h-7 text-white" />
+        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-green-900">{activeCount}</div>
-              <div className="text-sm text-green-700 font-medium">เปิดแล้ว</div>
+            <div className="min-w-0">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-900">{activeCount}</div>
+              <div className="text-xs sm:text-sm text-green-700 font-medium truncate">เปิดแล้ว</div>
             </div>
           </div>
         </Card>
 
         {/* Rejected/Suspended */}
-        <Card className="p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <XCircle className="w-7 h-7 text-white" />
+        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
             </div>
-            <div>
-              <div className="text-4xl font-bold text-red-900">{rejectedCount + suspendedCount}</div>
-              <div className="text-sm text-red-700 font-medium">ปิด/ระงับ</div>
+            <div className="min-w-0">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-900">{rejectedCount + suspendedCount}</div>
+              <div className="text-xs sm:text-sm text-red-700 font-medium truncate">ปิด/ระงับ</div>
             </div>
           </div>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 border border-gray-200">
+        <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
             <Input
               type="text"
               placeholder="ค้นหาร้านค้า, อีเมล, เบอร์โทร..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-2 focus:border-[#ff9800]"
+              className="pl-9 sm:pl-10 border-2 focus:border-[#ff9800] text-sm sm:text-base"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             <Button
               variant={statusFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('all')}
-              className={statusFilter === 'all' ? 'bg-[#ff9800] hover:bg-[#e08800]' : ''}
+              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'all' ? 'bg-[#ff9800] hover:bg-[#e08800]' : ''}`}
             >
               ทั้งหมด ({shops.length})
             </Button>
             <Button
               variant={statusFilter === 'pending' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('pending')}
-              className={statusFilter === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
             >
               รอตรวจสอบ ({pendingCount})
             </Button>
             <Button
               variant={statusFilter === 'active' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('active')}
-              className={statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}
+              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}`}
             >
               เปิดใช้งาน ({activeCount})
             </Button>
             <Button
               variant={statusFilter === 'rejected' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('rejected')}
-              className={statusFilter === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}
+              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}`}
             >
               ปฏิเสธ ({rejectedCount})
             </Button>
             <Button
               variant={statusFilter === 'suspended' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('suspended')}
-              className={statusFilter === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' : ''}
+              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
             >
               ระงับ ({suspendedCount})
             </Button>
@@ -477,58 +486,70 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       </div>
 
       {/* Shops Cards */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {filteredShops.length === 0 ? (
-          <Card className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
-            <div className="text-6xl mb-4 animate-bounce">🏪</div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">ไม่พบร้านค้า</h3>
-            <p className="text-gray-600 text-lg">ลองปรับเปลี่ยนตัวกรองหรือค้นหาใหม่อีกครั้ง</p>
+          <Card className="p-8 sm:p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
+            <div className="text-4xl sm:text-6xl mb-3 sm:mb-4 animate-bounce">🏪</div>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">ไม่พบร้านค้า</h3>
+            <p className="text-gray-600 text-sm sm:text-base lg:text-lg">ลองปรับเปลี่ยนตัวกรองหรือค้นหาใหม่อีกครั้ง</p>
           </Card>
         ) : (
-          filteredShops.map((shop) => (
+          <>
+            {(() => {
+              // Pagination calculations
+              const totalPages = Math.ceil(filteredShops.length / itemsPerPage)
+              const startIndex = (currentPage - 1) * itemsPerPage
+              const endIndex = startIndex + itemsPerPage
+              const paginatedShops = filteredShops.slice(startIndex, endIndex)
+              
+              return (
+                <>
+                  {paginatedShops.map((shop) => (
             <Card 
               key={shop.shopId}
               onClick={() => openReviewDialog(shop)}
-              className="p-5 hover:shadow-xl transition-all duration-300 border-2 hover:border-[#ff9800] group cursor-pointer"
+              className="p-3 sm:p-4 lg:p-5 hover:shadow-xl transition-all duration-300 border-2 hover:border-[#ff9800] group cursor-pointer"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 {/* Shop Logo */}
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-gray-200 group-hover:border-[#ff9800] transition-all">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-lg sm:rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-gray-200 group-hover:border-[#ff9800] transition-all">
                   {shop.logoUrl ? (
                     <img src={shop.logoUrl} alt={shop.shopName} className="w-full h-full object-cover" />
                   ) : (
-                    <Store className="w-8 h-8 text-gray-400" />
+                    <Store className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gray-400" />
                   )}
                 </div>
 
                 {/* Shop Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 mb-2">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4 mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
-                        <Store className="w-5 h-5 text-[#ff9800]" />
-                        {shop.shopName}
+                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-1 flex items-center gap-1.5 sm:gap-2">
+                        <Store className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800] flex-shrink-0" />
+                        <span className="truncate">{shop.shopName}</span>
                       </h3>
-                      <p className="text-sm text-gray-600 line-clamp-1">{shop.description}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 line-clamp-1 sm:line-clamp-2">{shop.description}</p>
                     </div>
-                    {getStatusBadge(shop.status)}
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(shop.status)}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
                     {/* Owner */}
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium">เจ้าของร้าน:</span>
-                      <span className="text-[#ff9800] font-semibold">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-gray-700 min-w-0">
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                      <span className="font-medium flex-shrink-0">เจ้าของร้าน:</span>
+                      <span className="text-[#ff9800] font-semibold truncate">
                         {shop.ownerProfile?.displayName || shop.ownerProfile?.email || 'ไม่ระบุ'}
                       </span>
                     </div>
 
                     {/* Created Date */}
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span>สร้างเมื่อ:</span>
-                      <span>{shop.createdAt.toLocaleDateString('th-TH', {
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-gray-600 min-w-0">
+                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                      <span className="flex-shrink-0">สร้างเมื่อ:</span>
+                      <span className="truncate">{shop.createdAt.toLocaleDateString('th-TH', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
@@ -537,16 +558,16 @@ export function AdminShops({ adminId }: AdminShopsProps) {
 
                     {/* Email */}
                     {shop.contactEmail && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Mail className="w-4 h-4 text-gray-400" />
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-gray-600 min-w-0">
+                        <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                         <span className="truncate">{shop.contactEmail}</span>
                       </div>
                     )}
 
                     {/* Phone */}
                     {shop.contactPhone && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Phone className="w-4 h-4 text-gray-400" />
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-gray-600">
+                        <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                         <span>{shop.contactPhone}</span>
                       </div>
                     )}
@@ -554,7 +575,103 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                 </div>
               </div>
             </Card>
-          ))
+          ))}
+          </>
+          );
+          })()}
+          
+          {/* Pagination */}
+          {(() => {
+            const totalPages = Math.ceil(filteredShops.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedCount = Math.min(endIndex, filteredShops.length) - startIndex;
+            
+            return filteredShops.length > 0 ? (
+            <Card className="p-4 border-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page Info */}
+                <div className="text-sm text-gray-600">
+                  หน้า {currentPage} จาก {totalPages} (แสดง {paginatedCount} จาก {filteredShops.length} ร้านค้า)
+                </div>
+
+                {/* Pagination Buttons */}
+                {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  {/* Previous Button */}
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.max(1, prev - 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                  >
+                    ← ก่อนหน้า
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            onClick={() => {
+                              setCurrentPage(page)
+                              window.scrollTo({ top: 0, behavior: 'smooth' })
+                            }}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            className={`w-9 h-9 p-0 ${
+                              currentPage === page
+                                ? "bg-[#ff9800] hover:bg-[#e08800] text-white"
+                                : ""
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        )
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="px-2 text-gray-400">
+                            ...
+                          </span>
+                        )
+                      }
+                      return null
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <Button
+                    onClick={() => {
+                      setCurrentPage(prev => Math.min(totalPages, prev + 1))
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                  >
+                    ถัดไป →
+                  </Button>
+                </div>
+                )}
+              </div>
+            </Card>
+          ) : null;
+            })()}
+        </>
         )}
       </div>
 

@@ -20,6 +20,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Wow Key Store",
   description: "Wow Key Store ID Game Shop Website.",
+  icons: {
+    icon: '/favicon.ico',
+
+  },
 };
 
 export default function RootLayout({

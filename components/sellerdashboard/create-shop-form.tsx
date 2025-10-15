@@ -144,13 +144,19 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
       if (logoFile) {
         try {
           // Delete old logo if exists and user is uploading a new one
-          if (existingShop?.logoUrl) {
+          if (existingShop?.logoUrl && existingShop.logoUrl.includes('firebasestorage.googleapis.com')) {
             try {
-              const oldLogoRef = ref(storage, existingShop.logoUrl)
-              await deleteObject(oldLogoRef)
-              console.log("Old logo deleted successfully")
+              const decodedUrl = decodeURIComponent(existingShop.logoUrl);
+              const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
+              
+              if (pathMatch && pathMatch[1]) {
+                const filePath = pathMatch[1];
+                const oldLogoRef = ref(storage, filePath);
+                await deleteObject(oldLogoRef);
+                console.log("Old logo deleted successfully:", filePath);
+              }
             } catch (deleteError) {
-              console.warn("Could not delete old logo (may not exist or permission issue):", deleteError)
+              console.warn("Could not delete old logo:", deleteError)
               // Continue anyway - don't fail the upload because of this
             }
           }
