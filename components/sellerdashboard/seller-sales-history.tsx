@@ -45,43 +45,21 @@ export default function SellerSalesHistory() {
   const { user } = useAuth()
 
   const fetchCharges = async () => {
+    if (!user) return
+    
     try {
       setRefreshing(true)
-      // Add userId as query parameter for authentication
-      const url = user?.uid ? `/api/stripe/charges?userId=${user.uid}` : '/api/stripe/charges'
-      const response = await fetch(url)
-      
-      console.log('Charges response status:', response.status)
-      console.log('Charges response ok:', response.ok)
+      const response = await fetch(`/api/stripe/charges?userId=${user.uid}`)
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Charges data:', data)
         setCharges(data.charges)
       } else {
-        let errorData
-        try {
-          errorData = await response.json()
-        } catch (e) {
-          errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
-        }
-        console.error('Charges error:', errorData)
-        console.error('Response status:', response.status)
-        
-        // Show specific error for 401
-        if (response.status === 401) {
-          toast({
-            title: "กรุณาเข้าสู่ระบบ",
-            description: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-            variant: "destructive",
-          })
-        } else {
-          toast({
-            title: "เกิดข้อผิดพลาด",
-            description: errorData.error || "ไม่สามารถโหลดประวัติการขายได้",
-            variant: "destructive",
-          })
-        }
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: "ไม่สามารถโหลดประวัติการขายได้",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error('Error fetching charges:', error)

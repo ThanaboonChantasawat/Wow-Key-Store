@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { cookies } from 'next/headers'
 import { getShopByOwnerId } from '@/lib/shop-service'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10,29 +9,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
     const limit = parseInt(searchParams.get('limit') || '20')
-    
-    // Try to get user from cookie first
-    const cookieStore = await cookies()
-    const userCookie = cookieStore.get('user')
-    
-    let userId: string | null = null
-    
-    if (userCookie?.value) {
-      const user = JSON.parse(userCookie.value)
-      userId = user.uid
-      console.log('User from cookie:', userId)
-    } else {
-      // Fallback: get from query parameter (for testing)
-      userId = searchParams.get('userId')
-      console.log('User from query:', userId)
-    }
-    
+
     if (!userId) {
-      console.error('No user ID found')
       return NextResponse.json(
-        { error: 'Unauthorized - Please login or provide userId' },
-        { status: 401 }
+        { error: 'User ID is required' },
+        { status: 400 }
       )
     }
 

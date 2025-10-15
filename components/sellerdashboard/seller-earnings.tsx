@@ -14,6 +14,7 @@ import {
   ArrowUpRight
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/components/auth-context"
 
 interface BalanceData {
   available: Array<{ amount: number; currency: string }>
@@ -43,27 +44,33 @@ export default function SellerEarnings() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const fetchData = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
     try {
       setRefreshing(true)
 
       // Fetch balance
-      const balanceRes = await fetch('/api/stripe/balance')
+      const balanceRes = await fetch(`/api/stripe/balance?userId=${user.uid}`)
       if (balanceRes.ok) {
         const balanceData = await balanceRes.json()
         setBalance(balanceData)
       }
 
       // Fetch statistics
-      const statsRes = await fetch('/api/stripe/balance-transactions')
+      const statsRes = await fetch(`/api/stripe/balance-transactions?userId=${user.uid}`)
       if (statsRes.ok) {
         const statsData = await statsRes.json()
         setStatistics(statsData.statistics)
       }
 
       // Fetch next payout
-      const payoutsRes = await fetch('/api/stripe/payouts')
+      const payoutsRes = await fetch(`/api/stripe/payouts?userId=${user.uid}`)
       if (payoutsRes.ok) {
         const payoutsData = await payoutsRes.json()
         if (payoutsData.payouts && payoutsData.payouts.length > 0) {

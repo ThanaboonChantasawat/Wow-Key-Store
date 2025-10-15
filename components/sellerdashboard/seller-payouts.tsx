@@ -15,6 +15,7 @@ import {
   TrendingUp
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/components/auth-context"
 
 interface Payout {
   id: string
@@ -32,11 +33,17 @@ export default function SellerPayouts() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const fetchPayouts = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
     try {
       setRefreshing(true)
-      const response = await fetch('/api/stripe/payouts')
+      const response = await fetch(`/api/stripe/payouts?userId=${user.uid}`)
       
       if (response.ok) {
         const data = await response.json()
