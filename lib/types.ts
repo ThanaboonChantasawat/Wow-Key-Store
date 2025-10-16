@@ -29,3 +29,11 @@ export interface Game {
 export interface GameWithCategories extends Game {
   categories?: Category[];
 }
+
+// Order related types
+export interface GameAccountInfo {
+  email?: string;              // Email ที่ใช้เข้าเกม
+  username?: string;           // Username ที่ใช้เข้าเกม
+  password?: string;           // Password
+  additionalInfo?: string;     // ข้อมูลเพิ่มเติม เช่น Level, Skins, Characters
+}

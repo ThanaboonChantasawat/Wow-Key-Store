@@ -26,7 +26,6 @@ const navLinks = [
   { href: "/products", label: "สินค้าทั้งหมด" },
   { href: "/shops", label: "ร้านค้าทั้งหมด" },
   { href: "/seller", label: "ขายสินค้ากับเรา" },
-  { href: "/profile?tab=myGame", label: "ไอดีเกมของฉัน" },
   { href: "/support", label: "ติดต่อเรา" },
 ];
 
@@ -78,34 +77,44 @@ function NavbarContent() {
     setIsMobileMenuOpen((prev) => !prev);
   }, []);
 
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
   const handleLogout = useCallback(async () => {
     try {
       await logout();
+      closeMobileMenu();
     } catch (error) {
       console.error("Logout error:", error);
     }
-  }, [logout]);
+  }, [logout, closeMobileMenu]);
 
   return (
     <>
       {/* Header */}
-      <header className="bg-[#ff9800] px-4 md:px-6">
-        <div className="max-w-7xl mx-auto">
+      <header className="bg-[#ff9800] print:hidden">
+        <div className="px-4 md:px-6">
           {/* Top Row - Logo and Actions */}
-          <div className="h-20 md:h-24 flex items-center justify-between">
-            {/* Logo */}
-            <Link href={"/"} className="relative h-36 md:h-56 w-56 md:w-64 flex-shrink-0">
-              <Image
-                src={"/images/logo.png"}
-                alt="wowkeystore logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </Link>
+          <div className="h-16 md:h-20 flex items-center justify-between gap-3">
+            {/* Left Side: Logo */}
+            <div className="flex items-center">
+              {/* Logo */}
+              <Link href={"/"} className="relative h-28 md:h-44 w-44 md:w-56 flex-shrink-0">
+                <Image
+                  src={"/images/logo.png"}
+                  alt="wowkeystore logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </Link>
+            </div>
 
-            {/* Desktop Search Bar */}
-            <div className="relative flex-1 max-w-xl mx-4 hidden md:block">
+            {/* Right Side: Search + Actions */}
+            <div className="flex items-center gap-2 md:gap-4 flex-1 justify-end">
+              {/* Desktop Search Bar */}
+              <div className="relative flex-1 max-w-xl mx-4 hidden md:block">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -160,6 +169,34 @@ function NavbarContent() {
                 }}
               />
             )}
+          </div>
+
+          {/* Mobile Action Icons */}
+          <div className="flex md:hidden items-center gap-2">
+            <Link
+              href="/cart"
+              className="p-2 rounded-lg bg-white/20 hover:bg-white hover:text-[#ff9800] transition-all duration-200"
+              aria-label="ตะกร้าสินค้า"
+            >
+              <ShoppingBag className="h-5 w-5" />
+            </Link>
+            <Link
+              href="/notifications"
+              className="p-2 rounded-lg bg-white/20 hover:bg-white hover:text-[#ff9800] transition-all duration-200"
+              aria-label="การแจ้งเตือน"
+            >
+              <Bell className="h-5 w-5" />
+            </Link>
+            
+            {/* Mobile Menu Toggle Button */}
+            <button
+              onClick={toggleMobileMenu}
+              className="p-2 rounded-lg bg-white/20 hover:bg-white hover:text-[#ff9800] transition-all duration-200 active:scale-95"
+              aria-label={isMobileMenuOpen ? "ปิดเมนู" : "เปิดเมนู"}
+              aria-expanded={isMobileMenuOpen}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
           </div>
 
           {/* Desktop Action Buttons */}
@@ -239,34 +276,7 @@ function NavbarContent() {
               </Button>
             )}
           </div>
-
-          {/* Mobile Action Buttons */}
-          <div className="flex md:hidden items-center space-x-2">
-            <Link
-              href="/cart"
-              className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
-            >
-              <ShoppingBag className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/notifications"
-              className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
-            >
-              <Bell className="h-4 w-4" />
-            </Link>
-            {/* Mobile Menu Button */}
-            <button
-              onClick={toggleMobileMenu}
-              className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </button>
-          </div>
+            </div>
           </div>
 
           {/* Mobile Search Bar */}
@@ -308,7 +318,7 @@ function NavbarContent() {
       </header>
 
       {/* Desktop Navigation */}
-      <nav className="bg-white border-b border-gray-200 hidden md:block">
+      <nav className="bg-white border-b border-gray-200 hidden md:block print:hidden">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex space-x-8 justify-center m-2">
             {navLinks.map((link) => {
@@ -348,139 +358,146 @@ function NavbarContent() {
         </div>
       </nav>
 
-      {/* Mobile Navigation Menu */}
-      {isMobileMenuOpen && (
-        <nav className="bg-white border-b border-gray-200 md:hidden">
-          <div className="px-4 py-2">
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  href="/"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    pathname === "/"
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  หน้าแรก
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/products"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    pathname.startsWith("/products")
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  สินค้าทั้งหมด
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/shops"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    pathname.startsWith("/shops") || pathname.startsWith("/sellerprofile")
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ร้านค้าทั้งหมด
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/seller"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    (pathname === "/seller" || (pathname.startsWith("/seller/") && !pathname.startsWith("/sellerprofile")))
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ขายสินค้ากับเรา
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/profile?tab=myGame"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    pathname.startsWith("/profile") && searchParams?.get("tab") === "myGame"
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ไอดีเกมของฉัน
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/support"
-                  className={`block py-3 px-4 rounded-md transition-colors duration-200 ${
-                    pathname.startsWith("/support")
-                      ? "text-[#ff9800] bg-orange-50 font-medium"
-                      : "text-gray-700 hover:text-[#ff9800] hover:bg-gray-50"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ติดต่อเรา
-                </Link>
-              </li>
-              <li className="pt-2 border-t border-gray-200">
-                {!isInitialized ? (
-                  <div className="px-4 py-3">
-                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                  </div>
-                ) : user ? (
-                  <div className="space-y-2">
-                    <div className="px-4 py-2">
-                      <p className="font-medium text-gray-900">
-                        {user.displayName || "ผู้ใช้"}
-                      </p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                    </div>
-                    <Link
-                      href="/profile"
-                      className="block py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      โปรไฟล์
-                    </Link>
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left py-3 px-4 text-gray-700 hover:text-[#ff9800] hover:bg-gray-50 rounded-md transition-colors duration-200"
-                    >
-                      ออกจากระบบ
-                    </button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      openLogin();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full bg-[#292d32] hover:bg-[#3c3c3c] text-white rounded-md py-3"
-                  >
-                    เข้าสู่ระบบ
-                  </Button>
-                )}
-              </li>
-            </ul>
-          </div>
-        </nav>
-      )}
-
       {/* Auth Modal */}
       <AuthModal isOpen={isOpen} onClose={close} defaultTab={defaultTab} />
+
+      {/* Mobile Drawer Menu - Custom Implementation */}
+      {isMobileMenuOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/80 z-50 md:hidden"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
+          />
+
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 z-50 w-[280px] sm:w-[320px] bg-white shadow-xl md:hidden animate-in slide-in-from-left duration-300">
+            <div className="flex flex-col h-full">
+              {/* Header - Orange Background */}
+              <div className="bg-[#ff9800] px-6 py-6 relative">
+                <h2 className="text-white text-2xl font-bold">เมนู</h2>
+                <button
+                  onClick={closeMobileMenu}
+                  className="absolute right-4 top-4 text-white hover:bg-white/10 p-1.5 rounded-md transition-colors"
+                  aria-label="ปิดเมนู"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                {/* User Profile Section */}
+                {isInitialized && user ? (
+                  <div className="bg-white mx-4 my-4 p-4 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar className="h-14 w-14 ring-2 ring-orange-100">
+                        {user.photoURL && (
+                          <AvatarImage
+                            src={user.photoURL}
+                            alt={user.displayName || ""}
+                          />
+                        )}
+                        <AvatarFallback className="bg-[#ff9800] text-white text-lg font-semibold">
+                          {user.displayName?.charAt(0) ||
+                            user.email?.charAt(0) ||
+                            "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        {user.displayName && (
+                          <p className="font-semibold text-[#292d32] text-base truncate">
+                            {user.displayName}
+                          </p>
+                        )}
+                        {user.email && (
+                          <p className="text-sm text-gray-500 truncate">
+                            {user.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        href="/profile"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-[#292d32] hover:bg-gray-50 transition-colors"
+                      >
+                        <User className="h-5 w-5 text-[#ff9800]" />
+                        <span className="font-medium">โปรไฟล์</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-3 py-2 rounded-md text-[#292d32] hover:bg-gray-50 transition-colors text-left w-full"
+                      >
+                        <LogOut className="h-5 w-5 text-red-500" />
+                        <span className="font-medium">ออกจากระบบ</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mx-4 my-4">
+                    <Button
+                      onClick={() => {
+                        closeMobileMenu();
+                        openLogin();
+                      }}
+                      className="w-full bg-[#ff9800] hover:bg-[#f57c00] text-white font-semibold py-3"
+                    >
+                      เข้าสู่ระบบ
+                    </Button>
+                  </div>
+                )}
+
+                {/* Navigation Links */}
+                <nav className="px-4 py-2">
+                  {navLinks.map((link) => {
+                    let isActive = false;
+
+                    if (link.href === "/") {
+                      isActive = pathname === "/";
+                    } else if (link.href === "/shops") {
+                      isActive =
+                        pathname.startsWith("/shops") ||
+                        pathname.startsWith("/sellerprofile");
+                    } else if (link.href === "/seller") {
+                      isActive =
+                        pathname === "/seller" ||
+                        (pathname.startsWith("/seller/") &&
+                          !pathname.startsWith("/sellerprofile"));
+                    } else {
+                      isActive = pathname.startsWith(link.href);
+                    }
+
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={closeMobileMenu}
+                        className={`block px-4 py-3 rounded-lg mb-1 transition-colors ${
+                          isActive
+                            ? "bg-[#FFF3E0] text-[#ff9800] font-semibold"
+                            : "text-[#292d32] hover:bg-gray-50"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-100">
+                <p className="text-xs text-center text-gray-500">
+                  © 2025 WowKeyStore. All rights reserved.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -489,7 +506,7 @@ export function Navbar() {
   return (
     <Suspense
       fallback={
-        <nav className="bg-[#292d32] text-white py-3 px-6">
+        <nav className="bg-[#292d32] text-white py-3 px-6 print:hidden">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="h-8 w-32 bg-gray-600 animate-pulse rounded"></div>
             <div className="h-8 w-64 bg-gray-600 animate-pulse rounded"></div>

@@ -9,6 +9,7 @@ import { WishlistContent } from "@/components/profile/Wishlist";
 import { HelpContent } from "@/components/profile/Help";
 import { MyGameContent } from "@/components/profile/MyGame";
 import { SellerStatusContent } from "@/components/profile/SellerStatus";
+import { MyOrdersContent } from "@/components/profile/MyOrders";
 
 export default function AccountPage() {
   const [activeItem, setActiveItem] = useState("account");
@@ -28,6 +29,8 @@ export default function AccountPage() {
     switch (activeItem) {
       case "account":
         return <AccountContent />;
+      case "my-orders":
+        return <MyOrdersContent />;
       case "seller-status":
         return <SellerStatusContent />;
       case "myGame":

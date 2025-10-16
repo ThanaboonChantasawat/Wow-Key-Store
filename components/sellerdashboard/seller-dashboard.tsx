@@ -25,7 +25,7 @@ export function SellerDashboard() {
   return (
     <main className="flex-1">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-6">
           <SellerSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
           <div className="flex-1">
             {activeSection === "overview" && <SellerOverview />}

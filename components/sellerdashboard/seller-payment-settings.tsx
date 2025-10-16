@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { getShopByOwnerId } from "@/lib/shop-service"
 import { useAuth } from "@/components/auth-context"
+import { LoadingScreen } from "@/components/ui/loading"
 
 interface StripeAccountStatus {
   accountId: string | null;
@@ -242,14 +243,7 @@ export function SellerPaymentSettings() {
   }
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-12 text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#ff9800]" />
-          <p className="text-gray-600">กำลังโหลด...</p>
-        </CardContent>
-      </Card>
-    )
+    return <LoadingScreen text="กำลังโหลดข้อมูลบัญชีรับเงิน..." />
   }
 
   return (

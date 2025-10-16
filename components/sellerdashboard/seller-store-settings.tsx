@@ -10,6 +10,7 @@ import { db } from "@/components/firebase-config"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import { Store, Upload, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { LoadingScreen } from "@/components/ui/loading"
 
 // Helper function to delete old image from Firebase Storage
 const deleteImageFromStorage = async (imageUrl: string) => {
@@ -226,14 +227,7 @@ export function SellerStoreSettings({ userId }: SellerStoreSettingsProps) {
   }
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-12">
-        <div className="flex flex-col items-center justify-center">
-          <Loader2 className="w-12 h-12 text-[#ff9800] animate-spin mb-4" />
-          <p className="text-gray-600">กำลังโหลดข้อมูลร้านค้า...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen text="กำลังโหลดข้อมูลร้านค้า..." />
   }
 
   if (!shop) {

@@ -195,11 +195,6 @@ export function CartContent() {
       alert("กรุณาเลือกสินค้าที่ต้องการซื้อ")
       return
     }
-    
-    if (selectedItems.length > 1) {
-      alert("สามารถซื้อได้ครั้งละ 1 ไอดีเท่านั้น กรุณาเลือกเพียง 1 รายการ")
-      return
-    }
 
     // Check email verification before proceeding
     const verification = canProceedWithTransaction(user)
@@ -208,9 +203,15 @@ export function CartContent() {
       return
     }
     
-    // TODO: Navigate to checkout page
-    console.log("Checkout items:", selectedItems)
-    alert("ระบบชำระเงินกำลังพัฒนา")
+    // Get selected items with full details
+    const allItems = getAllItems()
+    const selectedProducts = allItems.filter(item => selectedItems.includes(item.id))
+    
+    // Store selected items in sessionStorage for checkout page
+    sessionStorage.setItem('checkoutItems', JSON.stringify(selectedProducts))
+    
+    // Navigate to checkout page
+    window.location.href = '/cart/checkout'
   }
 
   if (!user) {
@@ -351,13 +352,7 @@ export function CartContent() {
                   </div>
                 ))}
               
-              {selectedItems.length > 1 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-                  <p className="text-xs text-yellow-800">
-                    ⚠️ สามารถซื้อได้ครั้งละ 1 ไอดีเท่านั้น
-                  </p>
-                </div>
-              )}
+
             </div>
 
             <div className="border-t border-[#d9d9d9] pt-4 mb-6">
@@ -374,13 +369,11 @@ export function CartContent() {
             <Button 
               className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-medium py-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleCheckout}
-              disabled={selectedItems.length === 0 || selectedItems.length > 1}
+              disabled={selectedItems.length === 0}
             >
               {selectedItems.length === 0
                 ? "กรุณาเลือกสินค้า"
-                : selectedItems.length > 1
-                ? "เลือกได้เพียง 1 รายการ"
-                : "ยืนยันรายการสั่งซื้อ"}
+                : `ชำระเงิน (${selectedItems.length} รายการ)`}
             </Button>
           </div>
         </div>

@@ -22,7 +22,12 @@ export const metadata: Metadata = {
   description: "Wow Key Store ID Game Shop Website.",
   icons: {
     icon: '/favicon.ico',
-
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: 'cover', // สำหรับ iPhone notch
   },
 };
 
@@ -33,6 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-100`}
       >

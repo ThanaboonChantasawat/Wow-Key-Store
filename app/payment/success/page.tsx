@@ -11,24 +11,74 @@ export default function PaymentSuccessPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [paymentInfo, setPaymentInfo] = useState<any>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [processed, setProcessed] = useState(false) // ป้องกัน double processing
 
   useEffect(() => {
+    // Prevent double processing
+    if (processed) return
+
+    // Get userId from cookies
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(';').shift()
+    }
+
+    const userCookie = getCookie('user')
+    if (userCookie) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userCookie))
+        setUserId(user.uid)
+      } catch (e) {
+        console.error('Error parsing user cookie:', e)
+      }
+    }
+
     const paymentIntentId = searchParams.get('payment_intent')
+    const type = searchParams.get('type')
     
-    if (paymentIntentId) {
-      verifyPayment(paymentIntentId)
+    if (paymentIntentId && !processed) {
+      setProcessed(true) // Mark as processed immediately
+      verifyPayment(paymentIntentId, type || 'single')
     } else {
       setLoading(false)
     }
-  }, [searchParams])
+  }, [searchParams, processed])
 
-  const verifyPayment = async (paymentIntentId: string) => {
+  const verifyPayment = async (paymentIntentId: string, type: string) => {
     try {
       const response = await fetch(`/api/stripe/payment-intent?paymentIntentId=${paymentIntentId}`)
       const data = await response.json()
       
       if (data.success) {
         setPaymentInfo(data.paymentIntent)
+        
+        // If cart checkout, process payment to create orders and transfers
+        if (type === 'cart') {
+          // Process payment and create orders
+          await fetch('/api/cart/process-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentIntentId }),
+          })
+          
+          // Clear cart items
+          const checkoutItems = sessionStorage.getItem('checkoutItems')
+          if (checkoutItems && userId) {
+            const items = JSON.parse(checkoutItems)
+            const itemIds = items.map((item: any) => item.gameId)
+            
+            await fetch('/api/cart/clear', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, itemIds }),
+            })
+          }
+          
+          // Clear sessionStorage
+          sessionStorage.removeItem('checkoutItems')
+        }
       }
     } catch (error) {
       console.error('Error verifying payment:', error)
@@ -82,21 +132,32 @@ export default function PaymentSuccessPage() {
                 </h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">หมายเลขคำสั่งซื้อ</span>
-                    <span className="font-mono text-gray-900">
-                      {paymentInfo.metadata?.orderId || paymentInfo.id}
+                    <span className="text-gray-600">หมายเลขการชำระเงิน</span>
+                    <span className="font-mono text-gray-900 text-xs">
+                      {paymentInfo.id}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">สินค้า</span>
-                    <span className="font-medium text-gray-900">
-                      {paymentInfo.metadata?.productName || 'ไม่ระบุ'}
-                    </span>
-                  </div>
+                  {paymentInfo.metadata?.type === 'cart_checkout' ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">จำนวนคำสั่งซื้อ</span>
+                        <span className="font-medium text-gray-900">
+                          {paymentInfo.metadata?.orderCount || '0'} รายการ
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">สินค้า</span>
+                      <span className="font-medium text-gray-900">
+                        {paymentInfo.metadata?.productName || 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">ยอดชำระ</span>
                     <span className="font-bold text-green-600 text-lg">
-                      ฿{(paymentInfo.amount / 100).toFixed(2)}
+                      ฿{(paymentInfo.amount / 100).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">

@@ -69,6 +69,10 @@ export async function GET(request: NextRequest) {
         refunded: charge.refunded,
         amount_refunded: charge.amount_refunded,
         payment_method_details: charge.payment_method_details,
+        payment_intent: charge.payment_intent, // เพิ่ม payment_intent เพื่อหา order
+        metadata: charge.metadata, // เพิ่ม metadata
+        billing_details: charge.billing_details, // เพิ่มข้อมูลผู้ซื้อ
+        outcome: charge.outcome, // เพิ่มผลลัพธ์การชำระเงิน
       })),
       has_more: charges.has_more,
     })
