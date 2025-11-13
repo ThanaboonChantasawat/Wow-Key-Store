@@ -7,7 +7,8 @@ import {
   getShopReviewStats,
   getProductReviewStats,
   updateReview,
-  deleteReview
+  deleteReview,
+  getUserOrderReviews
 } from '@/lib/review-service'
 import { verifyIdToken } from '@/lib/auth-helpers'
 import { createNotification } from '@/lib/notification-service'
@@ -42,10 +43,27 @@ function censorBadWords(text: string): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const orderId = searchParams.get('orderId')
+    const forUser = searchParams.get('forUser') === 'true'
     const shopId = searchParams.get('shopId')
     const productId = searchParams.get('productId')
     const limit = parseInt(searchParams.get('limit') || '50')
     const statsOnly = searchParams.get('statsOnly') === 'true'
+
+    // Special mode: get current user's reviews for a specific order
+    if (orderId && forUser) {
+      const token = await verifyIdToken(request)
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+
+      const userId = token.uid
+      const reviews = await getUserOrderReviews(userId, orderId)
+      return NextResponse.json(reviews)
+    }
     
     if (shopId) {
       if (statsOnly) {
@@ -111,9 +129,9 @@ export async function POST(request: NextRequest) {
     } = body
     
     // Validate required fields
-    if (!type || !orderId || !rating || !text) {
+    if (!type || !orderId || !rating) {
       return NextResponse.json(
-        { error: 'Missing required fields: type, orderId, rating, text' },
+        { error: 'Missing required fields: type, orderId, rating' },
         { status: 400 }
       )
     }
@@ -122,6 +140,21 @@ export async function POST(request: NextRequest) {
     if (rating < 1 || rating > 5) {
       return NextResponse.json(
         { error: 'Rating must be between 1 and 5' },
+        { status: 400 }
+      )
+    }
+    
+    // Validate type-specific fields
+    if (type === 'shop' && (!shopId || !shopName)) {
+      return NextResponse.json(
+        { error: 'shopId and shopName are required for shop reviews' },
+        { status: 400 }
+      )
+    }
+    
+    if (type === 'product' && (!productId || !productName || !shopId || !shopName)) {
+      return NextResponse.json(
+        { error: 'productId, productName, shopId, and shopName are required for product reviews' },
         { status: 400 }
       )
     }

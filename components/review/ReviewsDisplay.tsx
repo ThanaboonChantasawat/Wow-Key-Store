@@ -28,19 +28,30 @@ export function ReviewsDisplay({ shopId, productId, type }: ReviewsDisplayProps)
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const endpoint = type === 'shop' 
-          ? `/api/reviews/shop/${shopId}`
-          : `/api/reviews/product/${productId}`
-        
-        const response = await fetch(endpoint)
+        const params = new URLSearchParams()
+        if (type === 'shop' && shopId) params.append('shopId', shopId)
+        if (type === 'product' && productId) params.append('productId', productId)
+
+        const response = await fetch(`/api/reviews?${params.toString()}`)
         if (response.ok) {
           const data = await response.json()
-          setReviews(data.reviews || [])
-          
-          // Calculate average rating
-          if (data.reviews && data.reviews.length > 0) {
-            const total = data.reviews.reduce((sum: number, r: Review) => sum + r.rating, 0)
-            setAvgRating(total / data.reviews.length)
+          const list = data.reviews || []
+
+          setReviews(
+            list.map((r: any) => ({
+              id: r.id,
+              rating: r.rating,
+              comment: r.text || r.comment || '',
+              userName: r.userName,
+              userId: r.userId,
+              createdAt: r.createdAt || null,
+              updatedAt: r.updatedAt || null,
+            }))
+          )
+
+          if (list.length > 0) {
+            const total = list.reduce((sum: number, r: any) => sum + (r.rating || 0), 0)
+            setAvgRating(total / list.length)
           }
         }
       } catch (error) {

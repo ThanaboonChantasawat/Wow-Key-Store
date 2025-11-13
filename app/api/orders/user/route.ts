@@ -83,7 +83,48 @@ export async function GET(request: NextRequest) {
       filteredDocs.map(async (orderDoc) => {
         const data = orderDoc.data()
         console.log('[Orders API] Processing order:', orderDoc.id, 'type:', data.type)
-        
+
+        // Normalize timestamps soแต่ละคำสั่งซื้อมีเวลาเป็นของตัวเอง ไม่ใช้ new Date() เดียวกันหมด
+        let createdAtIso: string
+        let updatedAtIso: string
+        let gameCodeDeliveredAtIso: string | null = null
+
+        // createdAt
+        if (data.createdAt?.toDate) {
+          createdAtIso = data.createdAt.toDate().toISOString()
+        } else if (typeof data.createdAt === 'string') {
+          const d = new Date(data.createdAt)
+          createdAtIso = isNaN(d.getTime())
+            ? orderDoc.createTime?.toDate().toISOString() ?? new Date().toISOString()
+            : d.toISOString()
+        } else {
+          createdAtIso = orderDoc.createTime?.toDate().toISOString() ?? new Date().toISOString()
+        }
+
+        // updatedAt
+        if (data.updatedAt?.toDate) {
+          updatedAtIso = data.updatedAt.toDate().toISOString()
+        } else if (typeof data.updatedAt === 'string') {
+          const d = new Date(data.updatedAt)
+          updatedAtIso = isNaN(d.getTime())
+            ? (orderDoc.updateTime?.toDate().toISOString() ?? createdAtIso)
+            : d.toISOString()
+        } else if (orderDoc.updateTime) {
+          updatedAtIso = orderDoc.updateTime.toDate().toISOString()
+        } else {
+          updatedAtIso = createdAtIso
+        }
+
+        // gameCodeDeliveredAt
+        if (data.gameCodeDeliveredAt?.toDate) {
+          gameCodeDeliveredAtIso = data.gameCodeDeliveredAt.toDate().toISOString()
+        } else if (typeof data.gameCodeDeliveredAt === 'string') {
+          const d = new Date(data.gameCodeDeliveredAt)
+          gameCodeDeliveredAtIso = isNaN(d.getTime()) ? null : d.toISOString()
+        } else {
+          gameCodeDeliveredAtIso = null
+        }
+
         let itemsWithGameNames = []
         
         // Handle cart orders (with shops array)
@@ -158,9 +199,9 @@ export async function GET(request: NextRequest) {
           status: data.status || (data.paymentStatus === 'completed' ? 'pending' : 'pending'),
           paymentStatus: data.paymentStatus || 'pending',
           items: itemsWithGameNames,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          gameCodeDeliveredAt: data.gameCodeDeliveredAt?.toDate?.()?.toISOString() || null,
+          createdAt: createdAtIso,
+          updatedAt: updatedAtIso,
+          gameCodeDeliveredAt: gameCodeDeliveredAtIso,
         }
       })
     )

@@ -101,46 +101,6 @@ export function HomeSliderClient({ images: initialImages }: HomeSliderClientProp
           </div>
         ))}
       </div>
-
-      {/* Navigation Arrows */}
-      {validImages.length > 1 && (
-        <>
-          <button
-            onClick={goToPrevious}
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 bg-black/50 hover:bg-black/70 text-white p-2 md:p-3 rounded-full transition-all duration-200"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
-          </button>
-          <button
-            onClick={goToNext}
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 bg-black/50 hover:bg-black/70 text-white p-2 md:p-3 rounded-full transition-all duration-200"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
-          </button>
-        </>
-      )}
-
-      {/* Dots Navigation */}
-      {validImages.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-          <div className="flex gap-2">
-            {validImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? 'bg-[#ff9800] w-6 md:w-8'
-                    : 'bg-white/50 hover:bg-white/75'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

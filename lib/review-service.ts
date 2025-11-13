@@ -16,6 +16,8 @@ async function verifyPurchase(
   productId?: string
 ): Promise<boolean> {
   try {
+    console.log('🔍 Verifying purchase:', { userId, orderId, shopId, productId })
+    
     const orderDoc = await adminDb.collection('orders').doc(orderId).get()
     
     if (!orderDoc.exists) {
@@ -24,31 +26,64 @@ async function verifyPurchase(
     }
     
     const orderData = orderDoc.data()
+    console.log('📦 Order data:', {
+      userId: orderData?.userId,
+      status: orderData?.status,
+      buyerConfirmed: orderData?.buyerConfirmed,
+      shopId: orderData?.shopId,
+      items: orderData?.items?.map((item: any) => ({
+        productId: item.productId,
+        productName: item.productName
+      }))
+    })
     
     // Verify order belongs to user
     if (orderData?.userId !== userId) {
-      console.log('❌ Order does not belong to user')
+      console.log('❌ Order does not belong to user. Expected:', userId, 'Got:', orderData?.userId)
       return false
     }
     
     // Verify order is completed and buyer confirmed
     if (orderData?.status !== 'completed' || !orderData?.buyerConfirmed) {
-      console.log('❌ Order not completed or not confirmed by buyer')
+      console.log('❌ Order not completed or not confirmed by buyer. Status:', orderData?.status, 'buyerConfirmed:', orderData?.buyerConfirmed)
       return false
     }
     
     // Verify shop if provided
-    if (shopId && orderData?.shopId !== shopId) {
-      console.log('❌ Order is not from this shop')
-      return false
+    if (shopId) {
+      // For single-shop orders created by cart checkout, shopId is stored at root level
+      if (orderData?.shopId && orderData.shopId !== shopId) {
+        console.log('❌ Order is not from this shop (root). Expected:', shopId, 'Got:', orderData.shopId)
+        return false
+      }
+
+      // Also verify inside shops array if present
+      if (Array.isArray((orderData as any).shops)) {
+        const shops = (orderData as any).shops
+        const hasShop = shops.some((s: any) => s.shopId === shopId)
+        if (!hasShop) {
+          console.log('❌ Order shops[] does not contain this shop. Looking for:', shopId)
+          console.log('   Available shops:', shops.map((s: any) => s.shopId))
+          return false
+        }
+      }
     }
     
-    // Verify product if provided
-    if (productId && orderData?.productId !== productId) {
-      console.log('❌ Order does not contain this product')
-      return false
+    // Verify product if provided - check in shops[].items[]
+    if (productId) {
+      const shops = (orderData as any).shops || []
+      const allItems = shops.flatMap((shop: any) => shop.items || [])
+      console.log('🔎 Checking product in order shops.items:', { productId, shopsCount: shops.length, itemsCount: allItems.length })
+      const hasProduct = allItems.some((item: any) => item.productId === productId)
+      if (!hasProduct) {
+        console.log('❌ Order does not contain this product in shops.items. Looking for:', productId)
+        console.log('   Available products:', allItems.map((i: any) => i.productId))
+        return false
+      }
+      console.log('✅ Product found in order shops.items')
     }
     
+    console.log('✅ Purchase verification passed')
     return true
   } catch (error) {
     console.error('Error verifying purchase:', error)
@@ -255,6 +290,55 @@ export async function getProductReviews(
   } catch (error) {
     console.error('❌ Error getting product reviews:', error)
     return []
+  }
+}
+
+/**
+ * Get current user's reviews for a specific order
+ * Used by profile MyOrders to know if this order/shop/product was already reviewed
+ */
+export async function getUserOrderReviews(
+  userId: string,
+  orderId: string
+): Promise<{ shopReview: ShopReview | null; productReview: ProductReview | null }> {
+  try {
+    const [shopSnap, productSnap] = await Promise.all([
+      adminDb
+        .collection(SHOP_REVIEWS_COLLECTION)
+        .where('userId', '==', userId)
+        .where('orderId', '==', orderId)
+        .limit(1)
+        .get(),
+      adminDb
+        .collection(PRODUCT_REVIEWS_COLLECTION)
+        .where('userId', '==', userId)
+        .where('orderId', '==', orderId)
+        .limit(1)
+        .get(),
+    ])
+
+    const shopReview = !shopSnap.empty
+      ? ({
+          id: shopSnap.docs[0].id,
+          ...shopSnap.docs[0].data(),
+          createdAt: shopSnap.docs[0].data().createdAt?.toDate() || new Date(),
+          updatedAt: shopSnap.docs[0].data().updatedAt?.toDate() || new Date(),
+        } as ShopReview)
+      : null
+
+    const productReview = !productSnap.empty
+      ? ({
+          id: productSnap.docs[0].id,
+          ...productSnap.docs[0].data(),
+          createdAt: productSnap.docs[0].data().createdAt?.toDate() || new Date(),
+          updatedAt: productSnap.docs[0].data().updatedAt?.toDate() || new Date(),
+        } as ProductReview)
+      : null
+
+    return { shopReview, productReview }
+  } catch (error) {
+    console.error('❌ Error getting user order reviews:', error)
+    return { shopReview: null, productReview: null }
   }
 }
 

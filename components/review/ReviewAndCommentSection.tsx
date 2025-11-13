@@ -7,13 +7,27 @@ import { ReviewList } from "@/components/review/review-list"
 import { CommentList } from "@/components/comment/comment-list"
 import { useAuth } from "@/components/auth-context"
 
-interface SellerReviewsSectionProps {
-  shopId: string
-  shopName: string
+interface ReviewAndCommentSectionProps {
+  type: "shop" | "product"
+  shopId?: string
+  shopName?: string
+  productId?: string
+  productName?: string
 }
 
-export function SellerReviewsSection({ shopId, shopName }: SellerReviewsSectionProps) {
+export function ReviewAndCommentSection({
+  type,
+  shopId,
+  shopName,
+  productId,
+  productName,
+}: ReviewAndCommentSectionProps) {
   const { user } = useAuth()
+
+  const targetLabel =
+    type === "shop"
+      ? shopName || "ร้านค้า"
+      : productName || "สินค้า"
 
   return (
     <Card className="bg-white">
@@ -22,7 +36,7 @@ export function SellerReviewsSection({ shopId, shopName }: SellerReviewsSectionP
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="reviews" className="flex items-center gap-2">
               <Star className="w-4 h-4" />
-              รีวิวร้านค้า
+              รีวิว{type === "shop" ? "ร้านค้า" : "สินค้า"}
             </TabsTrigger>
             <TabsTrigger value="comments" className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4" />
@@ -32,17 +46,20 @@ export function SellerReviewsSection({ shopId, shopName }: SellerReviewsSectionP
 
           <TabsContent value="reviews">
             <ReviewList
-              type="shop"
-              shopId={shopId}
+              type={type}
+              shopId={type === "shop" ? shopId : undefined}
+              productId={type === "product" ? productId : undefined}
               currentUserId={user?.uid}
             />
           </TabsContent>
 
           <TabsContent value="comments">
             <CommentList
-              type="shop"
-              shopId={shopId}
-              shopName={shopName}
+              type={type}
+              shopId={shopId || ''}
+              productId={productId}
+              shopName={shopName || ''}
+              productName={productName}
               currentUserId={user?.uid}
             />
           </TabsContent>

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SellerReviewsSection } from "@/components/sellerprofile/seller-reviews-section";
-import { ReviewsDisplay } from "@/components/review/ReviewsDisplay";
+import { ReviewAndCommentSection } from "@/components/review/ReviewAndCommentSection";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, notFound } from "next/navigation";
@@ -323,12 +323,6 @@ export default function SellerProfile() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[#3c3c3c]">รายได้รวม</span>
-                  <span className="text-[#000000] font-semibold">
-                    ฿{shop.totalRevenue.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
                   <span className="text-[#3c3c3c]">สถานะร้าน</span>
                   <span className={`font-semibold ${
                     shop.status === 'active' ? 'text-green-600' :
@@ -346,15 +340,12 @@ export default function SellerProfile() {
           </Card>
         </div>
 
-        {/* Reviews Section */}
-        <Card className="bg-white">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-bold text-[#000000] mb-6">
-              รีวิวร้านค้า
-            </h3>
-            <ReviewsDisplay shopId={shop.shopId} type="shop" />
-          </CardContent>
-        </Card>
+        {/* Reviews and Comments Section */}
+        <ReviewAndCommentSection
+          type="shop"
+          shopId={shop.shopId}
+          shopName={shop.shopName}
+        />
       </main>
     </div>
   );

@@ -29,8 +29,10 @@ import {
   Filter,
   ChevronsLeft,
   ChevronsRight,
-  RefreshCw
+  RefreshCw,
+  Star
 } from "lucide-react"
+import { ReviewFormComponent } from "@/components/review/ReviewFormComponent"
 
 type StatusFilter = 'all' | 'processing' | 'completed' | 'cancelled'
 
@@ -79,6 +81,10 @@ export function MyOrdersContent() {
   const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<Order | null>(null)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null)
+  const [selectedOrderReviews, setSelectedOrderReviews] = useState<{
+    shopReview: { id: string; rating: number; comment: string } | null
+    productReview: { id: string; rating: number; comment: string } | null
+  } | null>(null)
   
   // New states for filtering & pagination
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -503,14 +509,50 @@ export function MyOrdersContent() {
     }
   }
 
-  const openOrderDetail = (order: Order) => {
+  const openOrderDetail = async (order: Order) => {
     setSelectedOrderDetail(order)
     setShowOrderDetailModal(true)
+
+    // โหลดข้อมูลรีวิวของคำสั่งซื้อนี้สำหรับผู้ใช้ปัจจุบัน
+    if (user) {
+      try {
+        const token = await user.getIdToken()
+        const res = await fetch(`/api/reviews?orderId=${order.id}&forUser=true`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setSelectedOrderReviews({
+            shopReview: data.shopReview
+              ? {
+                  id: data.shopReview.id,
+                  rating: data.shopReview.rating,
+                  comment: data.shopReview.text || data.shopReview.comment || '',
+                }
+              : null,
+            productReview: data.productReview
+              ? {
+                  id: data.productReview.id,
+                  rating: data.productReview.rating,
+                  comment: data.productReview.text || data.productReview.comment || '',
+                }
+              : null,
+          })
+        } else {
+          setSelectedOrderReviews(null)
+        }
+      } catch (e) {
+        setSelectedOrderReviews(null)
+      }
+    }
   }
 
   const closeOrderDetail = () => {
     setShowOrderDetailModal(false)
     setSelectedOrderDetail(null)
+    setSelectedOrderReviews(null)
   }
 
   const confirmReceipt = async (order: Order) => {
@@ -871,7 +913,7 @@ export function MyOrdersContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             <Input
               type="text"
-              placeholder="ค้นหา (Order ID, ร้าน, สินค้า)..."
+              placeholder="ค้นหา (รหัสคำสั่งซื้อ, ร้าน, สินค้า)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 sm:pl-10 pr-10 text-sm sm:text-base"
@@ -1518,7 +1560,7 @@ export function MyOrdersContent() {
                           {selectedOrderDetail.email && (
                             <div className="bg-white border-2 border-green-200 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded">EMAIL</span>
+                                <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-1 rounded">อีเมล</span>
                               </div>
                               <code className="text-base font-mono font-bold text-gray-900 break-all block">
                                 {selectedOrderDetail.email}
@@ -1541,7 +1583,7 @@ export function MyOrdersContent() {
                           {selectedOrderDetail.username && (
                             <div className="bg-white border-2 border-blue-200 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-1 rounded">USERNAME</span>
+                                <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-1 rounded">ชื่อผู้ใช้</span>
                               </div>
                               <code className="text-base font-mono font-bold text-gray-900 break-all block">
                                 {selectedOrderDetail.username}
@@ -1564,7 +1606,7 @@ export function MyOrdersContent() {
                           {selectedOrderDetail.password && (
                             <div className="bg-white border-2 border-orange-300 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-orange-800 bg-orange-100 px-2 py-1 rounded">PASSWORD</span>
+                                <span className="text-xs font-bold text-orange-800 bg-orange-100 px-2 py-1 rounded">รหัสผ่าน</span>
                                 <span className="text-xs font-semibold text-orange-600">⚠️ เปลี่ยนทันที!</span>
                               </div>
                               <code className="text-base font-mono font-bold text-gray-900 break-all block mb-2">
@@ -1653,6 +1695,35 @@ export function MyOrdersContent() {
                           )}
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Review Section in Order Detail */}
+                  {selectedOrderDetail.buyerConfirmed && selectedOrderDetail.status !== 'cancelled' && (
+                    <div className="bg-white rounded-xl p-4 border border-yellow-200 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base">รีวิวคำสั่งซื้อนี้</h4>
+                            <p className="text-xs text-gray-600">ให้คะแนนร้านค้าและสินค้า หลังจากได้รับสินค้าแล้ว</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ฟอร์มรีวิวเดียว: รวมรีวิวร้านค้า และรีวิวสินค้า (ถ้ามี productId และสินค้าเดียว) */}
+                      <ReviewFormComponent
+                        orderId={selectedOrderDetail.id}
+                        shopId={selectedOrderDetail.shopId}
+                        shopName={selectedOrderDetail.shopName || getShopName(selectedOrderDetail)}
+                        productId={selectedOrderDetail.items.length === 1 ? selectedOrderDetail.items[0].productId : undefined}
+                        productName={selectedOrderDetail.items.length === 1 ? selectedOrderDetail.items[0].name : undefined}
+                        existingShopReview={selectedOrderReviews?.shopReview || undefined}
+                        existingProductReview={selectedOrderReviews?.productReview || undefined}
+                        onSuccess={() => {
+                          // สามารถเพิ่ม toast หรือ refresh ได้ภายหลัง
+                        }}
+                      />
                     </div>
                   )}
 

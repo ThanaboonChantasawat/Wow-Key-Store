@@ -4,6 +4,17 @@ import { useEffect, useState } from 'react'
 import { ReviewCard } from './review-card'
 import { StarRating } from './star-rating'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/components/auth-context'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { ShopReview, ProductReview, ReviewStats } from '@/lib/review-types'
 
 interface ReviewListProps {
@@ -24,7 +35,10 @@ export function ReviewList({
   const [reviews, setReviews] = useState<(ShopReview | ProductReview)[]>([])
   const [stats, setStats] = useState<ReviewStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null)
   const { toast } = useToast()
+  const { user } = useAuth()
   
   const fetchReviews = async () => {
     try {
@@ -57,17 +71,34 @@ export function ReviewList({
   }, [type, shopId, productId, limit])
   
   const handleDelete = async (reviewId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบรีวิวนี้?')) {
+    setReviewToDelete(reviewId)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!reviewToDelete) return
+    
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'กรุณาเข้าสู่ระบบ',
+        description: 'คุณต้องเข้าสู่ระบบก่อนลบรีวิว'
+      })
+      setDeleteDialogOpen(false)
+      setReviewToDelete(null)
       return
     }
-    
+
     try {
+      const token = await user.getIdToken()
+      
       const res = await fetch('/api/reviews', {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ reviewId, type })
+        body: JSON.stringify({ reviewId: reviewToDelete, type })
       })
       
       if (res.ok) {
@@ -75,7 +106,6 @@ export function ReviewList({
           title: '✅ ลบรีวิวสำเร็จ',
           description: 'รีวิวของคุณถูกลบแล้ว'
         })
-        // Refresh reviews
         fetchReviews()
       } else {
         throw new Error('Failed to delete review')
@@ -86,6 +116,9 @@ export function ReviewList({
         title: 'เกิดข้อผิดพลาด',
         description: error.message || 'ไม่สามารถลบรีวิวได้'
       })
+    } finally {
+      setDeleteDialogOpen(false)
+      setReviewToDelete(null)
     }
   }
   
@@ -153,6 +186,29 @@ export function ReviewList({
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบรีวิว</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณแน่ใจหรือไม่ที่จะลบรีวิวนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setReviewToDelete(null)}>
+              ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              ลบรีวิว
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

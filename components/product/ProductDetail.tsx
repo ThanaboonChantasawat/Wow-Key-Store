@@ -1,11 +1,9 @@
 'use client'
 import { Card, CardContent } from "../ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
-import { Heart, ShoppingCart, Loader2, Star, MessageCircle, Eye, TrendingUp } from "lucide-react";
+import { Heart, ShoppingCart, Loader2, Star, Eye, TrendingUp } from "lucide-react";
 import { Game, GameImage } from "@/lib/types";
-import { ReviewsDisplay } from "@/components/review/ReviewsDisplay";
-import { CommentList } from "@/components/comment/comment-list";
+import { ReviewAndCommentSection } from "@/components/review/ReviewAndCommentSection";
 import { ShopCard } from "@/components/product/shop-card";
 import { SimilarProducts } from "@/components/product/similar-products";
 import Image from "next/image";
@@ -392,37 +390,14 @@ const ProductCard = ({ game }: { game: Game }) => {
     )}
 
     {/* Reviews and Comments Section */}
-    <Card className="mt-6">
-      <CardContent className="p-6">
-        <Tabs defaultValue="reviews" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="reviews" className="flex items-center gap-2">
-              <Star className="w-4 h-4" />
-              รีวิวสินค้า
-            </TabsTrigger>
-            <TabsTrigger value="comments" className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              คำถาม & ความคิดเห็น
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="reviews">
-            <ReviewsDisplay productId={game.id} type="product" />
-          </TabsContent>
-          
-          <TabsContent value="comments">
-            <CommentList
-              type="product"
-              shopId={(game as any).shopId || ''}
-              shopName="ร้านค้า"
-              productId={game.id}
-              productName={game.name}
-              currentUserId={user?.uid}
-            />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <div className="mt-6">
+      <ReviewAndCommentSection
+        type="product"
+        productId={game.id}
+        productName={game.name}
+        shopId={(game as any).shopId || ""}
+      />
+    </div>
 
     {/* Image Modal */}
     {isImageModalOpen && (

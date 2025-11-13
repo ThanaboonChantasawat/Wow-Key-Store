@@ -764,7 +764,17 @@ export function ViolationHistoryContent() {
                                 {parsed.reportReason && (
                                   <div className="bg-red-50 p-3 rounded-lg">
                                     <span className="font-semibold text-gray-600 text-xs block mb-1">⚠️ เหตุผลที่รายงาน</span>
-                                    <span className="text-gray-900">{parsed.reportReason}</span>
+                                    <span className="text-gray-900">
+                                      {parsed.reportReason === 'offensive'
+                                        ? '😤 พูดจาหยาบคาย'
+                                        : parsed.reportReason === 'spam'
+                                          ? '📢 สแปม'
+                                          : parsed.reportReason === 'inappropriate'
+                                            ? '⚠️ เนื้อหาไม่เหมาะสม'
+                                            : parsed.reportReason === 'scam'
+                                              ? '🎭 หลอกลวง'
+                                              : parsed.reportReason}
+                                    </span>
                                   </div>
                                 )}
                                 {parsed.reportId && (
