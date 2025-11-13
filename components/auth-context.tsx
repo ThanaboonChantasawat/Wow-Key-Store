@@ -28,13 +28,13 @@ export const useAuth = () => {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => auth.currentUser)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(() => !!auth.currentUser)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Update lastSeen every minute for logged in users
   useEffect(() => {
-    if (!user) return
+    if (!user || !db) return
 
     const updateLastSeen = async () => {
       try {
@@ -62,15 +62,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true
     
-    // ตรวจสอบ current user ทันที (ถ้ายังไม่ initialized)
-    if (!isInitialized) {
+    // ตรวจสอบ current user ทันที (ถ้าอยู่บน client และยังไม่ initialized)
+    if (typeof window !== 'undefined' && !isInitialized && auth) {
       const currentUser = auth.currentUser
       if (currentUser && isMounted) {
         setUser(currentUser)
         setIsInitialized(true)
       }
     }
-    
+
+    if (!auth) {
+      // ไม่มี auth ในสภาพแวดล้อมนี้ (เช่นขณะ prerender) ให้ข้ามไป
+      return () => {}
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return
       
