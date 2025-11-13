@@ -116,14 +116,19 @@ function ProductsContentInner() {
   );
 }
 
-export default function Products() {
+export default function ProductsPage() {
   return (
-    <Suspense fallback={
-      <div className="bg-[#f2f2f4] flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
-      </div>
-    }>
-      <ProductsContent />
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-[#ff9800] mx-auto mb-4" />
+            <p className="text-gray-600">กำลังโหลด...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProductsContentInner />
     </Suspense>
   );
 }
