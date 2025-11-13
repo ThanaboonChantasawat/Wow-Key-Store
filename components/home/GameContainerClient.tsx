@@ -11,7 +11,16 @@ interface GameContainerClientProps {
 }
 
 export function GameContainerClient({ games }: GameContainerClientProps) {
-  if (games.length === 0) {
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+
+  const handleImageError = (gameId: string) => {
+    console.error('Failed to load game image:', gameId)
+    setImageErrors(prev => new Set(prev).add(gameId))
+  }
+
+  const validGames = games.filter(game => game && game.id && game.imageUrl && !imageErrors.has(game.id))
+
+  if (validGames.length === 0) {
     return null
   }
 
@@ -40,7 +49,7 @@ export function GameContainerClient({ games }: GameContainerClientProps) {
 
         {/* Games Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 2xl:gap-8">
-          {games.map((game) => (
+          {validGames.map((game) => (
             <Link
               key={game.id}
               href={`/products/${game.id}`}
@@ -49,10 +58,11 @@ export function GameContainerClient({ games }: GameContainerClientProps) {
               <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
                 <Image
                   src={game.imageUrl || "/landscape-placeholder-svgrepo-com.svg"}
-                  alt={game.name}
+                  alt={game.name || 'Game'}
                   fill
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  onError={() => handleImageError(game.id)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 

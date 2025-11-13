@@ -14,10 +14,16 @@ export function TopShopsClient({ shops: initialShops }: TopShopsClientProps) {
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
 
   const handleImageError = (shopId: string) => {
+    console.error('Failed to load shop image:', shopId)
     setImageErrors(prev => new Set(prev).add(shopId))
   }
 
-  if (initialShops.length === 0) {
+  // Filter valid shops
+  const validShops = initialShops.filter(shop => 
+    shop && shop.shopId && shop.shopName && shop.ownerId
+  )
+
+  if (validShops.length === 0) {
     return null
   }
 
@@ -40,7 +46,7 @@ export function TopShopsClient({ shops: initialShops }: TopShopsClientProps) {
 
         {/* Shops Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 2xl:gap-8 mb-8">
-          {initialShops.map((shop, index) => (
+          {validShops.map((shop, index) => (
             <Link
               key={shop.shopId}
               href={`/sellerprofile/${shop.ownerId}`}
