@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserStatus } from "@/lib/user-service";
+import { updateAccountStatus } from "@/lib/user-service";
 
 export async function POST(
 	request: NextRequest,
@@ -16,7 +16,16 @@ export async function POST(
 			);
 		}
 
-		await updateUserStatus(id, status);
+		// Map incoming status to allowed values in updateAccountStatus
+		const allowedStatuses = ["active", "suspended", "banned"] as const;
+		if (!allowedStatuses.includes(status)) {
+			return NextResponse.json(
+				{ error: "Invalid status value" },
+				{ status: 400 }
+			);
+		}
+
+		await updateAccountStatus(id, status);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

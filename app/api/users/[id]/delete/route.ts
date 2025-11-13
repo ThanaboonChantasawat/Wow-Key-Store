@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteUserAndData } from "@/lib/user-service";
+import { deleteUserAccount } from "@/lib/user-service";
 
 export async function POST(
 	request: NextRequest,
@@ -15,7 +15,7 @@ export async function POST(
 			);
 		}
 
-		await deleteUserAndData(id);
+		await deleteUserAccount(id);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
