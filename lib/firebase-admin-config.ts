@@ -1,11 +1,29 @@
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
-import serviceAccount from '../serviceAccountKey.json';
 
 if (!getApps().length) {
   try {
+    // Use environment variables for production (Vercel)
+    // Fall back to local serviceAccountKey.json for development
+    let credential;
+    
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      // Production: use environment variable
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      credential = admin.credential.cert(serviceAccount as admin.ServiceAccount);
+    } else {
+      // Development: use local JSON file
+      try {
+        const serviceAccount = require('../serviceAccountKey.json');
+        credential = admin.credential.cert(serviceAccount as admin.ServiceAccount);
+      } catch (err) {
+        console.error('❌ serviceAccountKey.json not found. Please add FIREBASE_SERVICE_ACCOUNT_KEY environment variable.');
+        throw new Error('Firebase service account credentials not configured');
+      }
+    }
+    
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+      credential,
       databaseURL: "https://wowkeystore-cbeff.firebaseio.com",
       storageBucket: "wowkeystore-cbeff.firebasestorage.app"
     });
