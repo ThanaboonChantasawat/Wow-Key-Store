@@ -18,12 +18,21 @@ export async function GET(req: Request) {
 
     const snapshot = await q.get()
     
-    const games = snapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate().toISOString(),
-      updatedAt: doc.data().updatedAt?.toDate().toISOString()
-    }))
+    const games = snapshot.docs.map((doc: any) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        name: data.name || '',
+        description: data.description || '',
+        imageUrl: data.imageUrl || '',
+        categories: Array.isArray(data.categories) ? data.categories : [],
+        categoryIds: Array.isArray(data.categoryIds) ? data.categoryIds : [],
+        isPopular: Boolean(data.isPopular),
+        status: data.status || 'active',
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
+      }
+    })
 
     // Sort by name
     games.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))

@@ -3,7 +3,18 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCategories } from '@/hooks/useFirestore';
-import { getAllGames, type Game as GameListGame } from '@/lib/game-service';
+
+interface Game {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl: string;
+  categories: string[];
+  isPopular: boolean;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface ProductCategorySidebarProps {
   onGameSelect?: (gameId: string | null) => void;
@@ -13,17 +24,21 @@ interface ProductCategorySidebarProps {
 const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategorySidebarProps) => {
   const { categories, loading: categoriesLoading } = useCategories();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [games, setGames] = useState<GameListGame[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
 
-  // Fetch all games from gamesList collection
+  // Fetch all games via API
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const gamesData = await getAllGames();
-        setGames(gamesData);
+        const response = await fetch('/api/games');
+        if (!response.ok) throw new Error('Failed to fetch games');
+        const data = await response.json();
+        // API returns array directly
+        setGames(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching games:', error);
+        setGames([]);
       } finally {
         setGamesLoading(false);
       }
