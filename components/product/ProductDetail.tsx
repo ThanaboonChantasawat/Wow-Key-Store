@@ -293,13 +293,6 @@ const ProductCard = ({ game }: { game: Game }) => {
                       <Eye className="w-3 h-3" />
                       <span className="font-bold text-blue-800">{stats.views}</span> เข้าชม
                     </span>
-                    {stats.reviewCount > 0 && (
-                      <span className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full font-medium">
-                        <Star className="w-3 h-3 fill-yellow-500" />
-                        <span className="font-bold text-yellow-800">{stats.rating.toFixed(1)}</span>
-                        <span className="text-yellow-600">({stats.reviewCount})</span>
-                      </span>
-                    )}
                   </>
                 )}
                 {statsLoading && (
