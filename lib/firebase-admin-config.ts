@@ -11,15 +11,18 @@ if (!getApps().length) {
       // Production: use environment variable
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
       credential = admin.credential.cert(serviceAccount as admin.ServiceAccount);
+    } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      // Alternative: use individual environment variables
+      credential = admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      });
     } else {
-      // Development: use local JSON file
-      try {
-        const serviceAccount = require('../serviceAccountKey.json');
-        credential = admin.credential.cert(serviceAccount as admin.ServiceAccount);
-      } catch (err) {
-        console.error('❌ serviceAccountKey.json not found. Please add FIREBASE_SERVICE_ACCOUNT_KEY environment variable.');
-        throw new Error('Firebase service account credentials not configured');
-      }
+      // Development: Fallback to Application Default Credentials
+      // Make sure to run: export GOOGLE_APPLICATION_CREDENTIALS="path/to/serviceAccountKey.json"
+      console.warn('⚠️ Using default credentials. Set FIREBASE_SERVICE_ACCOUNT_KEY environment variable for production.');
+      credential = admin.credential.applicationDefault();
     }
     
     admin.initializeApp({
@@ -31,6 +34,7 @@ if (!getApps().length) {
     console.log('📦 Storage bucket:', admin.storage().bucket().name);
   } catch (error) {
     console.error('❌ Firebase admin initialization error', error);
+    throw error;
   }
 }
 
