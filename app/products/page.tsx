@@ -2,12 +2,12 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Loader2 } from 'lucide-react';
 import ProductCategorySidebar from '@/components/category/ProductCategorySidebar';
 import ProductList from '@/components/product/ProductList';
 import { useProducts, useSearchProducts } from '@/hooks/useProducts';
 
-function ProductsContent() {
+function ProductsContentInner() {
   const searchParams = useSearchParams();
   const q = searchParams ? searchParams.get('q') ?? '' : '';
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);

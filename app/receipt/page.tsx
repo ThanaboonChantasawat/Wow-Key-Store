@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -59,7 +59,7 @@ interface Order {
   isFromStripeMetadata?: boolean // เพิ่ม flag บอกว่ามาจาก Stripe
 }
 
-export default function ReceiptPage() {
+function ReceiptPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -434,5 +434,22 @@ export default function ReceiptPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ReceiptPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-[#ff9800] mx-auto mb-4" />
+            <p className="text-gray-600">กำลังโหลด...</p>
+          </div>
+        </div>
+      }
+    >
+      <ReceiptPageContent />
+    </Suspense>
   )
 }
