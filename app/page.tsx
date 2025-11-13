@@ -1,52 +1,6 @@
-import { Suspense } from 'react';
+'use client'
 
-// Server Components - Fetch data
-async function getSliderImages() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/slider?activeOnly=true`, {
-      cache: 'no-store',
-      next: { revalidate: 60 }
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.images || [];
-  } catch (error) {
-    console.error('Error fetching slider:', error);
-    return [];
-  }
-}
-
-async function getPopularGames() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/games/popular`, {
-      cache: 'no-store',
-      next: { revalidate: 60 }
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.games || [];
-  } catch (error) {
-    console.error('Error fetching games:', error);
-    return [];
-  }
-}
-
-async function getTopShops() {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shops/top-sales?limit=5`, {
-      cache: 'no-store',
-      next: { revalidate: 60 }
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching shops:', error);
-    return [];
-  }
-}
-
-// Client Components
+import { useEffect, useState, Suspense } from 'react';
 import { HomeSliderClient } from '@/components/home/home-slider-client';
 import { GameContainerClient } from '@/components/home/GameContainerClient';
 import { TopShopsClient } from '@/components/home/TopShopsClient';
@@ -59,39 +13,73 @@ function HomeSliderSkeleton() {
   )
 }
 
-export default async function Home() {
-  // Fetch all data in parallel
-  const [sliderImages, popularGames, topShops] = await Promise.all([
-    getSliderImages(),
-    getPopularGames(),
-    getTopShops()
-  ]);
+function HomeContent() {
+  const [sliderImages, setSliderImages] = useState<any[]>([])
+  const [popularGames, setPopularGames] = useState<any[]>([])
+  const [topShops, setTopShops] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [sliderRes, gamesRes, shopsRes] = await Promise.all([
+          fetch('/api/slider?activeOnly=true'),
+          fetch('/api/games/popular'),
+          fetch('/api/shops/top-sales?limit=5')
+        ])
+
+        const [sliderData, gamesData, shopsData] = await Promise.all([
+          sliderRes.ok ? sliderRes.json() : { images: [] },
+          gamesRes.ok ? gamesRes.json() : { games: [] },
+          shopsRes.ok ? shopsRes.json() : []
+        ])
+
+        setSliderImages(sliderData.images || [])
+        setPopularGames(gamesData.games || [])
+        setTopShops(Array.isArray(shopsData) ? shopsData : [])
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <main className="bg-[#f2f2f4]">
+        <section className="hidden lg:block max-w-[1920px] mx-auto px-6 py-8">
+          <HomeSliderSkeleton />
+        </section>
+        <section className="lg:hidden">
+          <HomeSliderSkeleton />
+        </section>
+        <div className="min-h-[400px] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="bg-[#f2f2f4]">
       {/* Slider Section - Only on larger screens */}
       <section className="hidden lg:block max-w-[1920px] mx-auto px-6 py-8">
-        <Suspense fallback={<HomeSliderSkeleton />}>
-          <HomeSliderClient images={sliderImages} />
-        </Suspense>
+        <HomeSliderClient images={sliderImages} />
       </section>
 
       {/* Mobile Slider - Full width */}
       <section className="lg:hidden">
-        <Suspense fallback={<HomeSliderSkeleton />}>
-          <HomeSliderClient images={sliderImages} />
-        </Suspense>
+        <HomeSliderClient images={sliderImages} />
       </section>
 
       {/* Popular Games Section */}
-      <Suspense fallback={<div className="min-h-[400px]" />}>
-        <GameContainerClient games={popularGames} />
-      </Suspense>
+      <GameContainerClient games={popularGames} />
 
       {/* Top Shops Section */}
-      <Suspense fallback={<div className="min-h-[400px]" />}>
-        <TopShopsClient shops={topShops} />
-      </Suspense>
+      <TopShopsClient shops={topShops} />
 
       {/* Why Section */}
       <section className="py-8 sm:py-12 lg:py-16 bg-stone-800 text-white">
@@ -108,5 +96,9 @@ export default async function Home() {
         </div>
       </section>
     </main>
-  );
+  )
+}
+
+export default function Home() {
+  return <HomeContent />
 }
