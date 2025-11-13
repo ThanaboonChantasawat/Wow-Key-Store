@@ -1,39 +1,139 @@
-import { Star, ShoppingCart, User, MessageCircle } from "lucide-react";
+'use client'
+
+import { useState, useEffect } from "react";
+import { Star, ShoppingCart, User, MessageCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SellerReviewsSection } from "@/components/sellerprofile/seller-reviews-section";
+import { ReviewsDisplay } from "@/components/review/ReviewsDisplay";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
-import { getShopByOwnerId } from "@/lib/shop-service";
-import { getUserProfile } from "@/lib/user-service";
-import { getProductsByShop } from "@/lib/product-service";
+import { useParams, notFound } from "next/navigation";
 
-interface SellerProfilePageProps {
-  params: Promise<{ id: string }>;
+interface Shop {
+  shopId: string;
+  ownerId: string;
+  shopName: string;
+  description?: string;
+  logoUrl?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  lineId?: string;
+  status: string;
+  verificationStatus: string;
+  totalProducts: number;
+  totalSales: number;
+  totalRevenue: number;
+  rating: number;
 }
 
-export default async function SellerProfile({ params }: SellerProfilePageProps) {
-  const { id: ownerId } = await params;
+interface UserProfile {
+  lastLoginAt?: string;
+}
 
-  // Fetch shop data
-  const shop = await getShopByOwnerId(ownerId);
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  categoryId: string;
+  gameId: string;
+  gameName: string;
+  stock: number;
+  sold: number;
+  status: string;
+  shopId: string;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export default function SellerProfile() {
+  const params = useParams();
+  const ownerId = params?.id as string;
   
-  if (!shop) {
-    notFound();
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFoundError, setNotFoundError] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch shop data
+        const shopRes = await fetch(`/api/shops/owner/${ownerId}`);
+        if (!shopRes.ok) {
+          setNotFoundError(true);
+          setLoading(false);
+          return;
+        }
+        const shopData = await shopRes.json();
+        setShop(shopData);
+
+        // Fetch user profile
+        try {
+          const userRes = await fetch(`/api/users/${ownerId}`);
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            setUserProfile(userData);
+          }
+        } catch (err) {
+          console.log("Could not fetch user profile");
+        }
+
+        // Fetch products
+        const productsRes = await fetch(`/api/products/shop/${shopData.shopId}`);
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          setProducts(productsData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setNotFoundError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (ownerId) {
+      fetchData();
+    }
+  }, [ownerId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f2f4]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-[#ff9800] mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดข้อมูลร้านค้า...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Fetch user profile for additional info
-  const userProfile = await getUserProfile(ownerId);
-
-  // Fetch products
-  const products = await getProductsByShop(shop.shopId);
+  if (notFoundError || !shop) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f2f4]">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">ไม่พบร้านค้า</h1>
+          <p className="text-gray-600 mb-4">ร้านค้าที่คุณค้นหาไม่มีอยู่ในระบบ</p>
+          <Link href="/shops">
+            <Button className="bg-[#ff9800] hover:bg-[#e08800]">
+              กลับไปหน้าร้านค้าทั้งหมด
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate shop stats
   const activeProducts = products.filter(p => p.status === 'active');
-  const totalViews = products.reduce((sum, p) => sum + ((p as any).views || 0), 0);
+  const totalViews = products.reduce((sum, p) => sum + (p.viewCount || 0), 0);
 
   // Format last active time
   const getLastActiveTime = () => {
@@ -50,7 +150,7 @@ export default async function SellerProfile({ params }: SellerProfilePageProps) 
     if (diffMins < 60) return `${diffMins} นาทีที่ผ่านมา`;
     if (diffHours < 24) return `${diffHours} ชั่วโมงที่ผ่านมา`;
     if (diffDays < 30) return `${diffDays} วันที่ผ่านมา`;
-    return lastLogin.toLocaleDateString('th-TH');
+    return lastLogin.toLocaleString('th-TH');
   };
   return (
     <div className="bg-[#f2f2f4]">
@@ -213,7 +313,7 @@ export default async function SellerProfile({ params }: SellerProfilePageProps) 
                 <div className="flex items-center justify-between">
                   <span className="text-[#3c3c3c]">รายการสินค้า</span>
                   <span className="text-[#000000] font-semibold">
-                    {shop.totalProducts} รายการ
+                    {activeProducts.length} รายการ
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -246,8 +346,15 @@ export default async function SellerProfile({ params }: SellerProfilePageProps) 
           </Card>
         </div>
 
-        {/* Reviews and Comments Section */}
-        <SellerReviewsSection shopId={shop.shopId} shopName={shop.shopName} />
+        {/* Reviews Section */}
+        <Card className="bg-white">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-bold text-[#000000] mb-6">
+              รีวิวร้านค้า
+            </h3>
+            <ReviewsDisplay shopId={shop.shopId} type="shop" />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

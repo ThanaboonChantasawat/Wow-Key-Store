@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
 import { Heart, ShoppingCart, Loader2, Star, MessageCircle, Eye, TrendingUp } from "lucide-react";
 import { Game, GameImage } from "@/lib/types";
-import { ReviewList } from "@/components/review/review-list";
+import { ReviewsDisplay } from "@/components/review/ReviewsDisplay";
 import { CommentList } from "@/components/comment/comment-list";
 import { ShopCard } from "@/components/product/shop-card";
 import { SimilarProducts } from "@/components/product/similar-products";
@@ -407,11 +407,7 @@ const ProductCard = ({ game }: { game: Game }) => {
           </TabsList>
           
           <TabsContent value="reviews">
-            <ReviewList
-              type="product"
-              productId={game.id}
-              currentUserId={user?.uid}
-            />
+            <ReviewsDisplay productId={game.id} type="product" />
           </TabsContent>
           
           <TabsContent value="comments">

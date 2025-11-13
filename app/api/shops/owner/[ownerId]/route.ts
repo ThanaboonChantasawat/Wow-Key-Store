@@ -24,7 +24,28 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(shop);
+    // Serialize to JSON-safe format
+    const serializedShop = {
+      shopId: shop.shopId || '',
+      ownerId: shop.ownerId || '',
+      shopName: shop.shopName || '',
+      description: shop.description || '',
+      logoUrl: shop.logoUrl || null,
+      contactEmail: shop.contactEmail || null,
+      contactPhone: shop.contactPhone || null,
+      facebookUrl: shop.facebookUrl || null,
+      lineId: shop.lineId || null,
+      status: shop.status || 'pending',
+      verificationStatus: shop.verificationStatus || 'pending',
+      totalProducts: shop.totalProducts || 0,
+      totalSales: shop.totalSales || 0,
+      totalRevenue: shop.totalRevenue || 0,
+      rating: shop.rating || 0,
+      createdAt: shop.createdAt ? shop.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: shop.updatedAt ? shop.updatedAt.toISOString() : new Date().toISOString(),
+    };
+
+    return NextResponse.json(serializedShop);
   } catch (error) {
     console.error("Error fetching shop:", error);
     return NextResponse.json(

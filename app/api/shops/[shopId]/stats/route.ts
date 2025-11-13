@@ -25,36 +25,10 @@ export async function GET(
 
     const shopData = shopDoc.data()!
 
-    // Get total products from both collections
-    const gamesSnapshot = await adminDb
-      .collection('games')
-      .where('shopId', '==', shopId)
-      .where('status', '==', 'active')
-      .get()
-
-    const productsSnapshot = await adminDb
-      .collection('products')
-      .where('shopId', '==', shopId)
-      .where('status', '==', 'active')
-      .get()
-
-    const totalProducts = gamesSnapshot.size + productsSnapshot.size
-
-    // Get total sales from orders
-    const ordersSnapshot = await adminDb
-      .collection('orders')
-      .where('shopId', '==', shopId)
-      .where('status', 'in', ['completed', 'shipped', 'delivered'])
-      .get()
-
-    let totalSales = 0
-    let totalRevenue = 0
-
-    ordersSnapshot.docs.forEach((doc) => {
-      const order = doc.data()
-      totalSales += order.items?.length || 0
-      totalRevenue += order.totalAmount || 0
-    })
+    // Use totalProducts and totalSales from shop document (already calculated)
+    const totalProducts = shopData.totalProducts || 0
+    const totalSales = shopData.totalSales || 0
+    const totalRevenue = shopData.totalRevenue || 0
 
     // Get average rating from shop reviews
     const reviewsSnapshot = await adminDb

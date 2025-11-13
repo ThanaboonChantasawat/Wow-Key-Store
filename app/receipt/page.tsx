@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ReviewForm } from "@/components/review/review-form"
+import { ReviewFormComponent } from "@/components/review/ReviewFormComponent"
 import { useAuth } from "@/components/auth-context"
 import { 
   Receipt, 
@@ -384,8 +384,8 @@ function ReceiptPageContent() {
           </CardContent>
         </Card>
 
-        {/* Review Section - Only show if buyer confirmed delivery */}
-        {user && order.userId === user.uid && order.buyerConfirmed && order.status === 'completed' && !showReviewForm && (
+        {/* Review Section - Only show if order completed */}
+        {user && order.userId === user.uid && order.status === 'completed' && !showReviewForm && (
           <Card className="mt-6 print:hidden">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -409,21 +409,52 @@ function ReceiptPageContent() {
         )}
 
         {/* Review Form */}
-        {showReviewForm && order.shopId && order.shopName && (
+        {showReviewForm && (
           <div className="mt-6 print:hidden">
-            <ReviewForm
-              type={order.productId ? "product" : "shop"}
-              shopId={order.shopId}
-              shopName={order.shopName}
-              productId={order.productId}
-              productName={order.productName}
-              orderId={order.id}
-              onSuccess={() => {
-                setShowReviewForm(false)
-                router.refresh()
-              }}
-              onCancel={() => setShowReviewForm(false)}
-            />
+            {order.type === 'cart_checkout' ? (
+              // Cart checkout - show reviews for each shop
+              <div className="space-y-6">
+                {order.shops?.map((shop, index) => (
+                  <ReviewFormComponent
+                    key={index}
+                    orderId={order.id}
+                    shopId={shop.shopId}
+                    shopName={shop.shopName}
+                    onSuccess={() => {
+                      // Optionally refresh or show success message
+                    }}
+                  />
+                ))}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReviewForm(false)}
+                  className="w-full"
+                >
+                  ปิด
+                </Button>
+              </div>
+            ) : (
+              // Direct order - single review
+              <div className="space-y-4">
+                <ReviewFormComponent
+                  orderId={order.id}
+                  shopId={order.shopId!}
+                  shopName={order.shopName!}
+                  productId={order.productId}
+                  productName={order.productName}
+                  onSuccess={() => {
+                    setShowReviewForm(false)
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReviewForm(false)}
+                  className="w-full"
+                >
+                  ปิด
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

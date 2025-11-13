@@ -97,14 +97,14 @@ export function TopShopsClient({ shops: initialShops }: TopShopsClientProps) {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                    <DollarSign className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                    <div className="text-2xl font-bold text-blue-900">{shop.totalSales}</div>
-                    <div className="text-xs text-blue-600 font-medium">ยอดขาย</div>
+                    <Store className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                    <div className="text-2xl font-bold text-blue-900">{shop.totalProducts}</div>
+                    <div className="text-xs text-blue-600 font-medium">สินค้า</div>
                   </div>
-                  <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                    <Star className="w-5 h-5 text-purple-600 mx-auto mb-1" />
-                    <div className="text-2xl font-bold text-purple-900">{shop.totalSales}</div>
-                    <div className="text-xs text-purple-600 font-medium">รีวิว</div>
+                  <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
+                    <DollarSign className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                    <div className="text-2xl font-bold text-green-900">{shop.totalSales}</div>
+                    <div className="text-xs text-green-600 font-medium">ยอดขาย</div>
                   </div>
                 </div>
 

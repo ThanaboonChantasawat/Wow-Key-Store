@@ -556,3 +556,54 @@ export async function getTopShopsByRevenue(limit: number = 10): Promise<Shop[]> 
   }
 }
 
+// Update shop product count
+export async function updateShopProductCount(shopId: string): Promise<void> {
+  try {
+    const productsSnapshot = await adminDb
+      .collection("products")
+      .where("shopId", "==", shopId)
+      .where("status", "==", "active")
+      .get();
+    
+    const totalProducts = productsSnapshot.size;
+    
+    await adminDb.collection("shops").doc(shopId).update({
+      totalProducts,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error updating shop product count:", error);
+    throw error;
+  }
+}
+
+// Update shop sales stats
+export async function updateShopSalesStats(shopId: string): Promise<void> {
+  try {
+    const ordersSnapshot = await adminDb
+      .collection("orders")
+      .where("shopId", "==", shopId)
+      .where("status", "==", "completed")
+      .get();
+    
+    let totalSales = 0;
+    let totalRevenue = 0;
+    
+    ordersSnapshot.forEach(doc => {
+      const data = doc.data();
+      totalSales += 1;
+      totalRevenue += data.totalAmount || 0;
+    });
+    
+    await adminDb.collection("shops").doc(shopId).update({
+      totalSales,
+      totalRevenue,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error updating shop sales stats:", error);
+    throw error;
+  }
+}
+
+
