@@ -18,7 +18,18 @@ export async function GET(req: Request) {
       const data = doc.data()
       return {
         id: doc.id,
-        ...data,
+        name: data.name || '',
+        description: data.description || '',
+        price: data.price || 0,
+        images: Array.isArray(data.images) ? data.images : [],
+        gameId: data.gameId || '',
+        gameName: data.gameName || '',
+        shopId: data.shopId || '',
+        shopName: data.shopName || '',
+        status: data.status || 'active',
+        stock: data.stock || 0,
+        sold: data.sold || 0,
+        viewCount: data.viewCount || 0,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
       }
