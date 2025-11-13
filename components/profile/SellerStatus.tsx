@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-context";
-import { getShopByOwnerId, type Shop } from "@/lib/shop-service";
+import { getShopByOwnerId, type Shop } from "@/lib/shop-client";
 import { 
   Store, 
   Clock, 
@@ -58,8 +58,8 @@ export function SellerStatusContent() {
     );
   }
 
-  // Not logged in
-  if (!user) {
+  // Not logged in - แสดงเฉพาะเมื่อ initialized แล้วและไม่มี user
+  if (isInitialized && !user) {
     return (
       <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -183,7 +183,7 @@ export function SellerStatusContent() {
                 <div>
                   <p className="text-sm text-purple-600 font-medium">วันที่สร้าง</p>
                   <p className="text-lg font-bold text-purple-900">
-                    {shop.createdAt.toLocaleDateString("th-TH")}
+                    {new Date(shop.createdAt).toLocaleDateString("th-TH")}
                   </p>
                 </div>
               </div>
@@ -213,8 +213,8 @@ export function SellerStatusContent() {
                   <div className="flex items-center gap-2 text-orange-600">
                     <Calendar className="w-4 h-4" />
                     <p className="text-sm font-medium">
-                      ระงับเมื่อ: {shop.suspendedAt.toLocaleDateString("th-TH")}{" "}
-                      {shop.suspendedAt.toLocaleTimeString("th-TH")}
+                      ระงับเมื่อ: {new Date(shop.suspendedAt).toLocaleDateString("th-TH")}{" "}
+                      {new Date(shop.suspendedAt).toLocaleTimeString("th-TH")}
                     </p>
                   </div>
                 )}
@@ -270,8 +270,8 @@ export function SellerStatusContent() {
                   <div className="flex items-center gap-2 text-red-600">
                     <Calendar className="w-4 h-4" />
                     <p className="text-sm font-medium">
-                      ปฏิเสธเมื่อ: {shop.verifiedAt.toLocaleDateString("th-TH")}{" "}
-                      {shop.verifiedAt.toLocaleTimeString("th-TH")}
+                      ปฏิเสธเมื่อ: {new Date(shop.verifiedAt).toLocaleDateString("th-TH")}{" "}
+                      {new Date(shop.verifiedAt).toLocaleTimeString("th-TH")}
                     </p>
                   </div>
                 )}

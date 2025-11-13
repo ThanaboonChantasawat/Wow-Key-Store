@@ -293,16 +293,8 @@ export default function PaymentCheckout({
         <div className="mt-6 p-4 bg-gray-50 rounded-lg border text-sm">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-600">ราคาสินค้า</span>
-              <span className="font-medium">฿{(amount / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>ค่าธรรมเนียมแพลตฟอร์ม (10%)</span>
-              <span>฿{(platformFee / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>ผู้ขายจะได้รับ</span>
-              <span>฿{((amount - platformFee) / 100).toFixed(2)}</span>
+              <span className="text-gray-600">ยอดรวมทั้งหมด</span>
+              <span className="font-medium text-lg">฿{(amount / 100).toFixed(2)}</span>
             </div>
           </div>
         </div>

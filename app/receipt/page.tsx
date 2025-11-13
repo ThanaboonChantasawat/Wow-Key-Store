@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { ReviewForm } from "@/components/review/review-form"
+import { useAuth } from "@/components/auth-context"
 import { 
   Receipt, 
   Loader2, 
@@ -14,7 +16,8 @@ import {
   Store,
   Calendar,
   CreditCard,
-  Package
+  Package,
+  Star
 } from "lucide-react"
 
 interface OrderItem {
@@ -23,19 +26,34 @@ interface OrderItem {
   price: number
 }
 
+interface ShopOrder {
+  shopId: string
+  shopName: string
+  amount: number
+  platformFee: number
+  sellerAmount: number
+  items: OrderItem[]
+}
+
 interface Order {
   id: string
   userId: string
-  shopId: string
-  shopName: string
-  items: OrderItem[]
+  type?: string // 'cart_checkout' or undefined for direct orders
+  shopId?: string // for direct orders
+  shopName?: string // for direct orders
+  productId?: string // for direct orders
+  productName?: string // for direct orders
+  shops?: ShopOrder[] // for cart checkout orders
+  items?: OrderItem[] // for direct orders
   totalAmount: number
   platformFee: number
-  sellerAmount: number
-  paymentIntentId: string
+  sellerAmount?: number
+  paymentIntentId?: string
   transferId?: string
   paymentStatus: string
   status: string
+  buyerConfirmed?: boolean
+  gameCodeDeliveredAt?: string
   createdAt: string
   updatedAt: string
   isFromStripeMetadata?: boolean // เพิ่ม flag บอกว่ามาจาก Stripe
@@ -44,12 +62,15 @@ interface Order {
 export default function ReceiptPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth()
   const orderId = searchParams.get('orderId')
   const chargeId = searchParams.get('chargeId')
+  const from = searchParams.get('from') // 'seller' or 'buyer'
   
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showReviewForm, setShowReviewForm] = useState(false)
 
   useEffect(() => {
     if (orderId) {
@@ -166,7 +187,13 @@ export default function ReceiptPage() {
         <div className="mb-6 flex gap-3 print:hidden">
           <Button
             variant="outline"
-            onClick={() => router.push('/profile?tab=my-orders')}
+            onClick={() => {
+              if (from === 'seller') {
+                router.push('/seller')
+              } else {
+                router.push('/profile?tab=my-orders')
+              }
+            }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             กลับ
@@ -233,8 +260,25 @@ export default function ReceiptPage() {
                 <Store className="w-4 h-4 text-gray-500 print:w-3 print:h-3" />
                 <p className="text-sm font-semibold print:text-xs">ข้อมูลร้านค้า</p>
               </div>
-              <p className="text-lg font-bold text-gray-900 print:text-base">{order.shopName}</p>
-              <p className="text-sm text-gray-500 print:text-xs">รหัสร้าน: {order.shopId}</p>
+              {order.type === 'cart_checkout' ? (
+                <div>
+                  <p className="text-lg font-bold text-gray-900 print:text-base">
+                    {order.shops?.length || 0} ร้านค้า
+                  </p>
+                  <div className="mt-2 space-y-1">
+                    {order.shops?.map((shop, index) => (
+                      <p key={index} className="text-sm text-gray-600 print:text-xs">
+                        • {shop.shopName}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900 print:text-base">{order.shopName || 'ไม่ระบุ'}</p>
+                  {order.shopId && <p className="text-sm text-gray-500 print:text-xs">รหัสร้าน: {order.shopId}</p>}
+                </>
+              )}
             </div>
 
             <Separator className="my-6 print:my-3" />
@@ -247,17 +291,40 @@ export default function ReceiptPage() {
               </div>
               
               <div className="space-y-3 print:space-y-2">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-start print:text-sm">
-                    <div className="flex-1">
-                      <p className="font-medium print:text-sm">{item.name}</p>
-                      <p className="text-xs text-gray-500">รหัส: {item.productId}</p>
+                {order.type === 'cart_checkout' ? (
+                  // Cart checkout order - group by shop
+                  order.shops?.map((shop, shopIndex) => (
+                    <div key={shopIndex} className="space-y-2">
+                      <p className="text-sm font-semibold text-gray-700 print:text-xs mt-3">
+                        {shop.shopName}
+                      </p>
+                      {shop.items.map((item, itemIndex) => (
+                        <div key={`${shopIndex}-${itemIndex}`} className="flex justify-between items-start print:text-sm pl-4">
+                          <div className="flex-1">
+                            <p className="font-medium print:text-sm">{item.name}</p>
+                            <p className="text-xs text-gray-500">รหัส: {item.productId}</p>
+                          </div>
+                          <p className="font-semibold ml-4 print:text-sm">
+                            ฿{item.price.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                    <p className="font-semibold ml-4 print:text-sm">
-                      ฿{item.price.toLocaleString()}
-                    </p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  // Direct order
+                  order.items?.map((item, index) => (
+                    <div key={index} className="flex justify-between items-start print:text-sm">
+                      <div className="flex-1">
+                        <p className="font-medium print:text-sm">{item.name}</p>
+                        <p className="text-xs text-gray-500">รหัส: {item.productId}</p>
+                      </div>
+                      <p className="font-semibold ml-4 print:text-sm">
+                        ฿{item.price.toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -265,15 +332,6 @@ export default function ReceiptPage() {
 
             {/* Totals */}
             <div className="space-y-3 print:space-y-2">
-              <div className="flex justify-between text-sm print:text-xs">
-                <span className="text-gray-600">ยอดรวมสินค้า</span>
-                <span className="font-medium">฿{order.totalAmount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm print:text-xs">
-                <span className="text-gray-600">ค่าธรรมเนียมแพลตฟอร์ม (10%)</span>
-                <span className="font-medium">฿{order.platformFee.toLocaleString()}</span>
-              </div>
-              <Separator className="print:my-2" />
               <div className="flex justify-between text-lg font-bold print:text-base">
                 <span>ยอดชำระทั้งหมด</span>
                 <span className="text-[#ff9800]">฿{order.totalAmount.toLocaleString()}</span>
@@ -325,6 +383,49 @@ export default function ReceiptPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Review Section - Only show if buyer confirmed delivery */}
+        {user && order.userId === user.uid && order.buyerConfirmed && order.status === 'completed' && !showReviewForm && (
+          <Card className="mt-6 print:hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+                  <div>
+                    <h3 className="font-semibold text-lg">รีวิวการซื้อของคุณ</h3>
+                    <p className="text-sm text-gray-600">แบ่งปันประสบการณ์ของคุณกับผู้อื่น</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowReviewForm(true)}
+                  className="bg-[#ff9800] hover:bg-[#e08800]"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  เขียนรีวิว
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Review Form */}
+        {showReviewForm && order.shopId && order.shopName && (
+          <div className="mt-6 print:hidden">
+            <ReviewForm
+              type={order.productId ? "product" : "shop"}
+              shopId={order.shopId}
+              shopName={order.shopName}
+              productId={order.productId}
+              productName={order.productName}
+              orderId={order.id}
+              onSuccess={() => {
+                setShowReviewForm(false)
+                router.refresh()
+              }}
+              onCancel={() => setShowReviewForm(false)}
+            />
+          </div>
+        )}
 
         {/* Print Footer */}
         <div className="hidden print:block mt-8 text-center text-xs text-gray-400">

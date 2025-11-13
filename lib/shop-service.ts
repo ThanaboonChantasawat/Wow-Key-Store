@@ -1,54 +1,12 @@
-import { db } from "@/components/firebase-config";
+import { adminDb } from "@/lib/firebase-admin-config";
 import { storage } from "@/components/firebase-config";
-import { 
-  doc, 
-  setDoc, 
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  deleteField
-} from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import { updateUserProfile, getUserProfile } from "./user-service";
+import { createNotification } from "./notification-service";
+import admin from 'firebase-admin';
+import type { Shop } from "./shop-types";
 
-export interface Shop {
-  shopId: string;
-  ownerId: string;
-  shopName: string;
-  description: string;
-  logoUrl?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  facebookUrl?: string;
-  lineId?: string;
-  idCardNumber?: string;
-  businessRegistration?: string;
-  status: 'pending' | 'active' | 'rejected' | 'suspended' | 'closed';
-  verificationStatus: 'pending' | 'verified' | 'rejected';
-  rejectionReason?: string;
-  suspensionReason?: string;
-  suspendedBy?: string;
-  suspendedAt?: Date;
-  verifiedBy?: string;
-  verifiedAt?: Date;
-  totalProducts: number;
-  totalSales: number;
-  totalRevenue: number;
-  rating: number;
-  createdAt: Date;
-  updatedAt: Date;
-  // Stripe Connect fields
-  stripeAccountId?: string | null;
-  stripeAccountStatus?: 'active' | 'incomplete' | null;
-  stripeOnboardingCompleted?: boolean;
-  stripeChargesEnabled?: boolean;
-  stripePayoutsEnabled?: boolean;
-}
+export type { Shop };
 
 // Create new shop
 export async function createShop(
@@ -67,14 +25,14 @@ export async function createShop(
 ): Promise<string> {
   try {
     const shopId = `shop_${ownerId}`;
-    const shopRef = doc(db, "shops", shopId);
+    const shopRef = adminDb.collection("shops").doc(shopId);
     
     // Remove undefined fields from shopData
     const cleanShopData = Object.fromEntries(
       Object.entries(shopData).filter(([, value]) => value !== undefined)
     );
     
-    await setDoc(shopRef, {
+    await shopRef.set({
       shopId,
       ownerId,
       ...cleanShopData,
@@ -84,18 +42,29 @@ export async function createShop(
       totalSales: 0,
       totalRevenue: 0,
       rating: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     // Update user profile with shopId
-    const userRef = doc(db, "users", ownerId);
-    await updateDoc(userRef, {
+    // Don't change role if user is already superadmin
+    const userRef = adminDb.collection("users").doc(ownerId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.data();
+    const currentRole = userData?.role;
+    
+    const updateData: any = {
       shopId: shopId,
       isSeller: true,
-      role: 'seller',
-      updatedAt: serverTimestamp()
-    });
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Only update role to 'seller' if not already superadmin
+    if (currentRole !== 'superadmin') {
+      updateData.role = 'seller';
+    }
+    
+    await userRef.update(updateData);
     
     return shopId;
   } catch (error) {
@@ -108,11 +77,13 @@ export async function createShop(
 export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
   try {
     const shopId = `shop_${ownerId}`;
-    const shopRef = doc(db, "shops", shopId);
-    const shopDoc = await getDoc(shopRef);
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    const shopDoc = await shopRef.get();
     
-    if (shopDoc.exists()) {
+    if (shopDoc.exists) {
       const data = shopDoc.data();
+      if (!data) return null;
+      
       return {
         shopId: data.shopId,
         ownerId: data.ownerId,
@@ -158,11 +129,13 @@ export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
 // Get shop by shop ID
 export async function getShopById(shopId: string): Promise<Shop | null> {
   try {
-    const shopRef = doc(db, "shops", shopId);
-    const shopDoc = await getDoc(shopRef);
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    const shopDoc = await shopRef.get();
     
-    if (shopDoc.exists()) {
+    if (shopDoc.exists) {
       const data = shopDoc.data();
+      if (!data) return null;
+      
       return {
         shopId: data.shopId,
         ownerId: data.ownerId,
@@ -205,10 +178,10 @@ export async function updateShop(
   shopData: Partial<Omit<Shop, 'shopId' | 'ownerId' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   try {
-    const shopRef = doc(db, "shops", shopId);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    await shopRef.update({
       ...shopData,
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
     console.error("Error updating shop:", error);
@@ -230,33 +203,15 @@ export async function hasShop(userId: string): Promise<boolean> {
 // Get all shops with optional filter
 export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejected' | 'suspended' | 'closed'): Promise<Shop[]> {
   try {
-    const shopsRef = collection(db, "shops");
-    let snapshot;
+    let query = adminDb.collection("shops");
     
     if (statusFilter) {
-      // Try with composite query first
-      try {
-        const q = query(shopsRef, where("status", "==", statusFilter), orderBy("createdAt", "desc"));
-        snapshot = await getDocs(q);
-      } catch (indexError) {
-        console.warn("Composite index not available, falling back to simple query:", indexError);
-        // Fallback to simple query without orderBy
-        const q = query(shopsRef, where("status", "==", statusFilter));
-        snapshot = await getDocs(q);
-      }
-    } else {
-      // Get all shops without filter
-      try {
-        const q = query(shopsRef, orderBy("createdAt", "desc"));
-        snapshot = await getDocs(q);
-      } catch (indexError) {
-        console.warn("OrderBy index not available, using simple query:", indexError);
-        // Fallback to simple query without orderBy
-        snapshot = await getDocs(shopsRef);
-      }
+      query = query.where("status", "==", statusFilter) as any;
     }
     
-    const shops = snapshot.docs.map(doc => {
+    const snapshot = await query.get();
+    
+    const shops = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         shopId: data.shopId,
@@ -287,8 +242,8 @@ export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejecte
       };
     });
     
-    // Sort manually by createdAt if orderBy failed
-    return shops.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    // Sort manually by createdAt
+    return shops.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
     
   } catch (error) {
     console.error("Error getting shops:", error);
@@ -299,23 +254,23 @@ export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejecte
 // Approve shop
 export async function approveShop(shopId: string, adminId: string): Promise<void> {
   try {
-    const shopRef = doc(db, "shops", shopId);
+    const shopRef = adminDb.collection("shops").doc(shopId);
     
     // Get shop data to find owner
-    const shopSnap = await getDoc(shopRef);
+    const shopSnap = await shopRef.get();
     const shopData = shopSnap.data();
     
     if (shopData) {
       const ownerId = shopData.ownerId;
       
       // Update shop status
-      await updateDoc(shopRef, {
+      await shopRef.update({
         status: 'active',
         verificationStatus: 'verified',
         verifiedBy: adminId,
-        verifiedAt: serverTimestamp(),
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         rejectionReason: null,
-        updatedAt: serverTimestamp()
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
       } as Record<string, unknown>);
       
       // Update user role to seller (only if not admin or superadmin)
@@ -332,6 +287,20 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
         console.warn("Could not update user role:", userUpdateError);
         // Continue with shop approval even if user update fails
       }
+
+      // 🔔 Send approval notification
+      try {
+        await createNotification(
+          ownerId,
+          'shop_approved',
+          '🎉 ร้านค้าของคุณได้รับการอนุมัติแล้ว!',
+          `ร้านค้า "${shopData.shopName}" ของคุณได้รับการอนุมัติแล้ว คุณสามารถเริ่มขายสินค้าได้ทันที`,
+          '/seller'
+        );
+      } catch (notifError) {
+        console.error("Error sending approval notification:", notifError);
+        // Don't fail shop approval if notification fails
+      }
     }
   } catch (error) {
     console.error("Error approving shop:", error);
@@ -343,11 +312,13 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
 export async function rejectShop(shopId: string, adminId: string, reason: string): Promise<void> {
   try {
     // Get shop data to check for logo and owner
-    const shopRef = doc(db, "shops", shopId);
-    const shopDoc = await getDoc(shopRef);
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    const shopDoc = await shopRef.get();
     
-    if (shopDoc.exists()) {
+    if (shopDoc.exists) {
       const shopData = shopDoc.data();
+      if (!shopData) return;
+      
       const ownerId = shopData.ownerId;
       
       // Delete logo from storage if exists to save storage space
@@ -376,15 +347,33 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
       }
     }
     
-    await updateDoc(shopRef, {
+    await shopRef.update({
       status: 'rejected',
       verificationStatus: 'rejected',
       verifiedBy: adminId,
-      verifiedAt: serverTimestamp(),
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       rejectionReason: reason,
       logoUrl: null, // Clear logo URL from database
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     } as Record<string, unknown>);
+
+    // 🔔 Send rejection notification
+    if (shopDoc.exists) {
+      const shopData = shopDoc.data();
+      if (shopData) {
+        try {
+          await createNotification(
+            shopData.ownerId,
+            'shop_rejected',
+            '❌ ร้านค้าของคุณไม่ได้รับการอนุมัติ',
+            `ร้านค้า "${shopData.shopName}" ของคุณไม่ได้รับการอนุมัติ เนื่องจาก: ${reason}`,
+            '/seller'
+          );
+        } catch (notifError) {
+          console.error("Error sending rejection notification:", notifError);
+        }
+      }
+    }
   } catch (error) {
     console.error("Error rejecting shop:", error);
     throw error;
@@ -394,14 +383,34 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
 // Suspend shop
 export async function suspendShop(shopId: string, adminId: string, reason: string): Promise<void> {
   try {
-    const shopRef = doc(db, "shops", shopId);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    
+    // Get shop data for notification
+    const shopDoc = await shopRef.get();
+    const shopData = shopDoc.data();
+    
+    await shopRef.update({
       status: 'suspended',
       suspendedBy: adminId,
-      suspendedAt: serverTimestamp(),
+      suspendedAt: admin.firestore.FieldValue.serverTimestamp(),
       suspensionReason: reason,
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     } as Record<string, unknown>);
+
+    // 🔔 Send suspension notification
+    if (shopData) {
+      try {
+        await createNotification(
+          shopData.ownerId,
+          'shop_suspended',
+          '⚠️ ร้านค้าของคุณถูกระงับการใช้งาน',
+          `ร้านค้า "${shopData.shopName}" ของคุณถูกระงับการใช้งาน เนื่องจาก: ${reason}`,
+          '/seller'
+        );
+      } catch (notifError) {
+        console.error("Error sending suspension notification:", notifError);
+      }
+    }
   } catch (error) {
     console.error("Error suspending shop:", error);
     throw error;
@@ -411,13 +420,13 @@ export async function suspendShop(shopId: string, adminId: string, reason: strin
 // Unsuspend shop (reactivate)
 export async function unsuspendShop(shopId: string): Promise<void> {
   try {
-    const shopRef = doc(db, "shops", shopId);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    await shopRef.update({
       status: 'active',
-      suspendedBy: deleteField(),
-      suspendedAt: deleteField(),
-      suspensionReason: deleteField(),
-      updatedAt: serverTimestamp()
+      suspendedBy: admin.firestore.FieldValue.delete(),
+      suspendedAt: admin.firestore.FieldValue.delete(),
+      suspensionReason: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
     console.error("Error unsuspending shop:", error);
@@ -432,15 +441,17 @@ export async function updateShopStats(
   revenueIncrement: number
 ): Promise<void> {
   try {
-    const shopRef = doc(db, "shops", shopId);
-    const shopDoc = await getDoc(shopRef);
+    const shopRef = adminDb.collection("shops").doc(shopId);
+    const shopDoc = await shopRef.get();
     
-    if (shopDoc.exists()) {
+    if (shopDoc.exists) {
       const currentData = shopDoc.data();
-      await updateDoc(shopRef, {
+      if (!currentData) return;
+      
+      await shopRef.update({
         totalSales: (currentData.totalSales || 0) + salesIncrement,
         totalRevenue: (currentData.totalRevenue || 0) + revenueIncrement,
-        updatedAt: serverTimestamp()
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
       } as Record<string, unknown>);
     }
   } catch (error) {
@@ -452,14 +463,10 @@ export async function updateShopStats(
 // Get top shops by sales
 export async function getTopShopsBySales(limit: number = 10): Promise<Shop[]> {
   try {
-    const shopsRef = collection(db, "shops");
-    // Fetch all shops and filter/sort in JavaScript to avoid composite index requirement
-    const q = query(shopsRef);
-    
-    const querySnapshot = await getDocs(q);
+    const snapshot = await adminDb.collection("shops").get();
     const shops: Shop[] = [];
     
-    querySnapshot.forEach((doc) => {
+    snapshot.forEach((doc: any) => {
       const data = doc.data();
       // Only include active shops
       if (data.status === "active") {
@@ -504,14 +511,10 @@ export async function getTopShopsBySales(limit: number = 10): Promise<Shop[]> {
 // Get top shops by revenue
 export async function getTopShopsByRevenue(limit: number = 10): Promise<Shop[]> {
   try {
-    const shopsRef = collection(db, "shops");
-    // Fetch all shops and filter/sort in JavaScript to avoid composite index requirement
-    const q = query(shopsRef);
-    
-    const querySnapshot = await getDocs(q);
+    const snapshot = await adminDb.collection("shops").get();
     const shops: Shop[] = [];
     
-    querySnapshot.forEach((doc) => {
+    snapshot.forEach((doc: any) => {
       const data = doc.data();
       // Only include active shops
       if (data.status === "active") {

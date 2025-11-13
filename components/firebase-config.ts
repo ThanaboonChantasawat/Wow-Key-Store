@@ -1,17 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, FacebookAuthProvider } 
-from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCoEqY9Ax40ucR7P1LDXrphXuQ7yyRaW74",
-  authDomain: "wowkeystore.firebaseapp.com",
-  projectId: "wowkeystore",
-  storageBucket: "wowkeystore.firebasestorage.app",
-  messagingSenderId: "537411532355",
-  appId: "1:537411532355:web:c20cc97469cb040325c6f6",
-  measurementId: "G-D0XMP82TRP"
+  apiKey: "AIzaSyBrpxxwekSACHVZ6iQlbRL0X0L5immyrSE",
+  authDomain: "wowkeystore-cbeff.firebaseapp.com",
+  projectId: "wowkeystore-cbeff",
+  storageBucket: "wowkeystore-cbeff.firebasestorage.app",
+  messagingSenderId: "305244438219",
+  appId: "1:305244438219:web:3dd7aaa98b142bf56f254e",
+  measurementId: "G-GG87SPY74S"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -19,8 +18,3 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
-export const facebookProvider = new FacebookAuthProvider();
-
-// เพิ่ม scope สำหรับขอ email จาก Facebook
-facebookProvider.addScope('email');
-facebookProvider.addScope('public_profile');

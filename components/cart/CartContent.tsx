@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Trash2, Store, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -11,6 +12,7 @@ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firesto
 import { db } from "@/components/firebase-config"
 import { canProceedWithTransaction } from "@/lib/email-verification"
 import { EmailVerificationWarning } from "@/components/email-verification-warning"
+import { useToast } from "@/hooks/use-toast"
 
 interface CartItem {
   id: string
@@ -31,104 +33,166 @@ interface GroupedCart {
 
 export function CartContent() {
   const { user } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
   const [groupedCarts, setGroupedCarts] = useState<GroupedCart[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(false)
 
   // Load cart items from Firestore
-  useEffect(() => {
-    const loadCart = async () => {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        const cartDocs = await getUserCartWithDetails(user.uid)
-        
-        // Get product details for each cart item
-        const items: CartItem[] = []
-        const shopIds = new Set<string>()
-        
-        for (const cartDoc of cartDocs) {
-          const itemId = cartDoc.itemId
-          const itemType = cartDoc.itemType || 'product'
-          
-          // Query products collection
-          const productsRef = collection(db, "products")
-          const itemQuery = query(productsRef, where("__name__", "==", itemId))
-          const itemSnapshot = await getDocs(itemQuery)
-          
-          if (!itemSnapshot.empty) {
-            const itemData = itemSnapshot.docs[0].data()
-            const shopId = itemData.shopId || "unknown"
-            shopIds.add(shopId)
-            
-            items.push({
-              id: cartDoc.id,
-              gameId: itemId,
-              name: itemData.name || "ไม่มีชื่อ",
-              category: itemData.gameName || "ไม่มีหมวดหมู่",
-              price: itemData.price || 0,
-              image: itemData.images?.[0] || "/placeholder.svg",
-              shopId: shopId,
-              shopName: "" // Will be filled later
-            })
-          }
-        }
-        
-        // Get shop names
-        const shopNames: { [key: string]: string } = {}
-        for (const shopId of shopIds) {
-          if (shopId === "unknown") {
-            shopNames[shopId] = "ไม่ระบุร้านค้า"
-            continue
-          }
-          
-          try {
-            const shopDocRef = doc(db, "shops", shopId)
-            const shopDoc = await getDoc(shopDocRef)
-            if (shopDoc.exists()) {
-              shopNames[shopId] = shopDoc.data().shopName || "ไม่ระบุชื่อร้าน"
-            } else {
-              shopNames[shopId] = "ไม่พบข้อมูลร้าน"
-            }
-          } catch (error) {
-            console.error(`Error fetching shop ${shopId}:`, error)
-            shopNames[shopId] = "ไม่สามารถโหลดข้อมูลร้าน"
-          }
-        }
-        
-        // Update items with shop names and group by shop
-        const itemsWithShopNames = items.map(item => ({
-          ...item,
-          shopName: shopNames[item.shopId] || "ไม่ระบุร้านค้า"
-        }))
-        
-        // Group items by shop
-        const grouped: { [key: string]: GroupedCart } = {}
-        itemsWithShopNames.forEach(item => {
-          if (!grouped[item.shopId]) {
-            grouped[item.shopId] = {
-              shopId: item.shopId,
-              shopName: item.shopName,
-              items: []
-            }
-          }
-          grouped[item.shopId].items.push(item)
-        })
-        
-        setGroupedCarts(Object.values(grouped))
-      } catch (error) {
-        console.error("Error loading cart:", error)
-      } finally {
-        setLoading(false)
-      }
+  // extract loadCart so other effects can call it (for refresh after checkout)
+  const loadCart = async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
 
+    try {
+      setLoading(true)
+      const cartDocs = await getUserCartWithDetails(user.uid)
+
+      // Get product details for each cart item
+      const items: CartItem[] = []
+      const shopIds = new Set<string>()
+
+      for (const cartDoc of cartDocs) {
+        const itemId = cartDoc.itemId
+        const itemType = cartDoc.itemType || 'product'
+
+        // Query products collection
+        const productsRef = collection(db, "products")
+        const itemQuery = query(productsRef, where("__name__", "==", itemId))
+        const itemSnapshot = await getDocs(itemQuery)
+
+        if (!itemSnapshot.empty) {
+          const itemData = itemSnapshot.docs[0].data()
+          const shopId = itemData.shopId || "unknown"
+          shopIds.add(shopId)
+
+          items.push({
+            id: cartDoc.id,
+            gameId: itemId,
+            name: itemData.name || "ไม่มีชื่อ",
+            category: itemData.gameName || "ไม่มีหมวดหมู่",
+            price: itemData.price || 0,
+            image: itemData.images?.[0] || "/placeholder.svg",
+            shopId: shopId,
+            shopName: "" // Will be filled later
+          })
+        }
+      }
+
+      // Get shop names
+      const shopNames: { [key: string]: string } = {}
+      for (const shopId of shopIds) {
+        if (shopId === "unknown") {
+          shopNames[shopId] = "ไม่ระบุร้านค้า"
+          continue
+        }
+
+        try {
+          const shopDocRef = doc(db, "shops", shopId)
+          const shopDoc = await getDoc(shopDocRef)
+          if (shopDoc.exists()) {
+            shopNames[shopId] = shopDoc.data().shopName || "ไม่ระบุชื่อร้าน"
+          } else {
+            shopNames[shopId] = "ไม่พบข้อมูลร้าน"
+          }
+        } catch (error) {
+          console.error(`Error fetching shop ${shopId}:`, error)
+          shopNames[shopId] = "ไม่สามารถโหลดข้อมูลร้าน"
+        }
+      }
+
+      // Update items with shop names and group by shop
+      const itemsWithShopNames = items.map(item => ({
+        ...item,
+        shopName: shopNames[item.shopId] || "ไม่ระบุร้านค้า"
+      }))
+
+      // Group items by shop
+      const grouped: { [key: string]: GroupedCart } = {}
+      itemsWithShopNames.forEach(item => {
+        if (!grouped[item.shopId]) {
+          grouped[item.shopId] = {
+            shopId: item.shopId,
+            shopName: item.shopName,
+            items: []
+          }
+        }
+        grouped[item.shopId].items.push(item)
+      })
+
+      setGroupedCarts(Object.values(grouped))
+    } catch (error) {
+      console.error("Error loading cart:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     loadCart()
   }, [user])
+
+  // Listen for navigation from payment success and refresh cart
+  useEffect(() => {
+    if (!user) return
+
+    // Small delay to ensure component is fully mounted and URL is updated
+    const checkTimer = setTimeout(() => {
+      // Method 1: Check URL parameter directly from window
+      const urlParams = new URLSearchParams(window.location.search)
+      const fromPayment = urlParams.get('from')
+      
+      // Method 2: Also check useSearchParams hook
+      const fromPaymentHook = searchParams.get('from')
+      
+      // Method 3: Check sessionStorage flag set before navigation
+      let fromSessionStorage = null
+      try {
+        fromSessionStorage = sessionStorage.getItem('returnFromPayment')
+        if (fromSessionStorage) {
+          sessionStorage.removeItem('returnFromPayment')
+        }
+      } catch (e) {
+        console.error('Error checking returnFromPayment:', e)
+      }
+      
+      console.log('🔍 Checking URL from window:', fromPayment)
+      console.log('🔍 Checking URL from hook:', fromPaymentHook)
+      console.log('🔍 Checking sessionStorage returnFromPayment:', fromSessionStorage)
+      
+      const isFromSuccess = fromPayment === 'success' || fromPaymentHook === 'success' || fromSessionStorage === 'success'
+      
+      if (isFromSuccess) {
+        console.log('✅ Came from payment success, refreshing cart in 1 second...')
+        // Clean URL
+        window.history.replaceState({}, '', '/cart')
+        // Reload cart after a short delay to ensure database updates are complete
+        setTimeout(() => {
+          console.log('🔄 Reloading cart after purchase...')
+          loadCart()
+        }, 1000)
+      }
+
+      // Also check cartCleared flag as backup
+      try {
+        const raw = sessionStorage.getItem('cartCleared')
+        if (raw) {
+          console.log('✅ Detected cartCleared flag, refreshing cart')
+          sessionStorage.removeItem('cartCleared')
+          setTimeout(() => loadCart(), 500)
+        }
+      } catch (e) {
+        console.error('❌ Error checking cartCleared:', e)
+      }
+    }, 100) // Small delay to ensure everything is ready
+
+    return () => clearTimeout(checkTimer)
+  }, [user, searchParams])
 
   const handleRemoveItem = async (cartItemId: string) => {
     if (!user) return
@@ -190,16 +254,26 @@ export function CartContent() {
       .reduce((sum, item) => sum + item.price, 0)
   }
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (selectedItems.length === 0) {
-      alert("กรุณาเลือกสินค้าที่ต้องการซื้อ")
+      console.log('🔔 Showing toast: No items selected')
+      toast({
+        title: "⚠️ กรุณาเลือกสินค้า",
+        description: "กรุณาเลือกสินค้าที่ต้องการซื้อ",
+        variant: "destructive",
+      })
       return
     }
 
     // Check email verification before proceeding
     const verification = canProceedWithTransaction(user)
     if (!verification.canProceed) {
-      alert(verification.message)
+      console.log('🔔 Showing toast: Email verification required')
+      toast({
+        title: "⚠️ ต้องยืนยันอีเมล",
+        description: verification.message,
+        variant: "destructive",
+      })
       return
     }
     
@@ -207,11 +281,72 @@ export function CartContent() {
     const allItems = getAllItems()
     const selectedProducts = allItems.filter(item => selectedItems.includes(item.id))
     
+    // Validate that all shops have payment setup before proceeding
+    try {
+      const checkoutItems = selectedProducts.map(item => ({
+        productId: item.gameId,
+        shopId: item.shopId,
+        price: item.price,
+        name: item.name,
+      }))
+      
+      const response = await fetch('/api/cart/validate-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: checkoutItems,
+          userId: user!.uid,
+        }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMsg = errorData.error || 'ไม่สามารถดำเนินการชำระเงินได้'
+        
+        // Extract shop name from error message if available
+        const shopNameMatch = errorMsg.match(/ร้านค้า (.+) ยังไม่ได้ตั้งค่าการรับชำระเงิน/)
+        const shopName = shopNameMatch ? shopNameMatch[1] : null
+        
+        console.log('🔔 Showing toast: Payment validation failed', { shopName, errorMsg })
+        toast({
+          title: "❌ ไม่สามารถชำระเงินได้",
+          description: shopName 
+            ? `ร้านค้า "${shopName}" ยังไม่ได้ตั้งค่าบัญชีรับเงิน กรุณาติดต่อผู้ขาย`
+            : errorMsg,
+          variant: "destructive",
+          duration: 5000,
+        })
+        return
+      }
+    } catch (err: any) {
+      console.error('Checkout validation error:', err)
+      console.log('🔔 Showing toast: Checkout validation error')
+      toast({
+        title: "❌ เกิดข้อผิดพลาด",
+        description: err.message || 'เกิดข้อผิดพลาดในการตรวจสอบรายการชำระเงิน',
+        variant: "destructive",
+      })
+      return
+    }
+    
     // Store selected items in sessionStorage for checkout page
     sessionStorage.setItem('checkoutItems', JSON.stringify(selectedProducts))
     
-    // Navigate to checkout page
-    window.location.href = '/cart/checkout'
+    // Store item IDs (gameId only, not full cart document ID) for cart clearing
+    const itemIdsToStore = selectedProducts.map(item => item.gameId)
+    sessionStorage.setItem('cartItemIds', JSON.stringify(itemIdsToStore))
+    
+    console.log('📦 Storing for checkout:', {
+      checkoutItems: selectedProducts.length,
+      cartItemIds: itemIdsToStore,
+    })
+    
+    // Save current profile tab before going to checkout (default to 'my-orders' for cart page)
+    sessionStorage.setItem('lastProfileTab', 'my-orders')
+    
+    // Navigate to checkout page in-place (do not open a new tab)
+    // Use Next.js router for client-side navigation
+    router.push('/cart/checkout')
   }
 
   if (!user) {

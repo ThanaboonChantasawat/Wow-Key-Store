@@ -44,11 +44,20 @@ const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategor
     });
   };
 
-  const getGamesByCategory = (categoryId: string) => {
-    // Filter games that have this category in their categories array and are active
-    return games.filter(game => 
-      game.categories?.includes(categoryId) && game.status === 'active'
-    );
+  const getGamesByCategory = (categorySlug: string) => {
+    // Filter games that have this category slug in their categories array and are active
+    console.log('Filtering games for category:', categorySlug);
+    console.log('Available games:', games);
+    
+    const filteredGames = games.filter(game => {
+      const hasCategory = game.categories?.includes(categorySlug);
+      const isActive = game.status === 'active';
+      console.log(`Game ${game.name}: categories=${game.categories}, hasCategory=${hasCategory}, isActive=${isActive}`);
+      return hasCategory && isActive;
+    });
+    
+    console.log('Filtered games:', filteredGames);
+    return filteredGames;
   };
 
   const handleGameClick = (gameId: string) => {
@@ -96,15 +105,15 @@ const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategor
 
         <div className="space-y-1">
           {categories.map((category) => {
-            const categoryId = (category as { slug?: string; id: string }).slug || category.id;
-            const categoryGames = getGamesByCategory(category.id);
-            const isExpanded = expandedCategories.has(categoryId);
+            const categorySlug = category.slug;
+            const categoryGames = getGamesByCategory(categorySlug);
+            const isExpanded = expandedCategories.has(categorySlug);
 
             return (
-              <div key={categoryId} className="border-b border-gray-100 last:border-b-0 py-1">
+              <div key={categorySlug} className="border-b border-gray-100 last:border-b-0 py-1">
                 {/* Category Header */}
                 <button
-                  onClick={() => toggleCategory(categoryId)}
+                  onClick={() => toggleCategory(categorySlug)}
                   className="w-full flex items-center justify-between py-3 px-3 hover:bg-gray-50 rounded-lg transition-all duration-200 group"
                 >
                   <div className="flex items-center gap-3">

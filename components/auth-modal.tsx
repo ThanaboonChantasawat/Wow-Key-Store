@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from 'lucide-react'
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { auth, googleProvider, facebookProvider } from '@/components/firebase-config'
-import { createUserProfile } from '@/lib/user-service'
+import { auth, googleProvider } from '@/components/firebase-config'
+import { createUserProfile } from '@/lib/user-client'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -137,7 +137,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       const user = result.user
       
       // Check if user profile exists, if not create it
-      const { getUserProfile, updateLastLogin } = await import('@/lib/user-service')
+  const { getUserProfile, updateLastLogin } = await import('@/lib/user-client')
       const existingProfile = await getUserProfile(user.uid)
       
       if (!existingProfile) {
@@ -156,70 +156,6 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       handleClose()
     } catch {
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleFacebookLogin = async () => {
-    setLoading(true)
-    setError('')
-
-    try {
-      const result = await signInWithPopup(auth, facebookProvider)
-      const user = result.user
-      
-      // Debug: แสดงข้อมูลที่ได้จาก Facebook
-      console.log('=== Facebook Login Data ===');
-      console.log('User UID:', user.uid);
-      console.log('Display Name:', user.displayName);
-      console.log('Email:', user.email);
-      console.log('Photo URL:', user.photoURL);
-      console.log('Email Verified:', user.emailVerified);
-      console.log('Provider Data:', user.providerData);
-      
-      // เช็คว่ามี email หรือไม่
-      const userEmail = user.email || user.providerData[0]?.email;
-      console.log('Final Email to use:', userEmail);
-      
-      // ปล่อยให้เป็น undefined ถ้าไม่มี email (ให้ผู้ใช้ไปกรอกเองในหน้า Profile)
-      const needsEmailUpdate = !userEmail;
-      
-      console.log('Using email:', userEmail || 'undefined (user needs to add)');
-      console.log('Needs email update:', needsEmailUpdate);
-      
-      // Check if user profile exists, if not create it
-      const { getUserProfile, updateLastLogin } = await import('@/lib/user-service')
-      const existingProfile = await getUserProfile(user.uid)
-      
-      if (!existingProfile) {
-        await createUserProfile(
-          user.uid,
-          user.displayName || 'Facebook User',
-          user.photoURL,
-          userEmail || undefined,
-          user.emailVerified || false
-        )
-      } else {
-        // Update last login
-        await updateLastLogin(user.uid)
-      }
-      
-      handleClose()
-      
-      // ถ้าไม่มี email ให้แสดง toast แจ้งเตือนให้ไปกรอก
-      if (needsEmailUpdate) {
-        setTimeout(() => {
-          const event = new CustomEvent('show-email-prompt', { 
-            detail: { message: 'กรุณาอัปเดตอีเมลของคุณเพื่อรับข้อมูลข่าวสารและการติดต่อ' }
-          });
-          window.dispatchEvent(event);
-        }, 500);
-      }
-      
-    } catch (error) {
-      console.error('Facebook login error:', error);
-      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Facebook')
     } finally {
       setLoading(false)
     }
@@ -418,19 +354,6 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               sign in with Google
-            </Button>
-
-            <Button
-              type="button"
-              onClick={handleFacebookLogin}
-              disabled={loading}
-              variant="outline"
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200"
-            >
-              <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-              sign in with Facebook
             </Button>
           </div>
         </div>

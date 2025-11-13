@@ -11,7 +11,6 @@ import {
   Wallet,
   DollarSign,
   ShoppingCart,
-  ArrowDownToLine,
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,11 +38,9 @@ export function SellerSidebar({
     { id: "products", label: "สินค้าของฉัน", icon: Package },
     { id: "orders", label: "อัพเดทสถานะสินค้า", icon: Box },
     { id: "sales", label: "ประวัติการขาย", icon: ShoppingCart },
-    { id: "issues", label: "แจ้งปัญหา", icon: AlertCircle },
-    { id: "payment", label: "บัญชีรับเงิน", icon: Wallet },
     { id: "earnings", label: "รายได้ของฉัน", icon: DollarSign },
-    { id: "payouts", label: "การโอนเงิน", icon: ArrowDownToLine },
-    { id: "edit-account", label: "แก้ไขข้อมูลบัญชีรับเงิน", icon: CreditCard },
+    { id: "payout", label: "ถอนเงิน", icon: CreditCard },
+    { id: "payment", label: "บัญชีรับเงิน", icon: Wallet },
     { id: "settings", label: "ตั้งค่าร้านค้า", icon: Store },
   ];
 

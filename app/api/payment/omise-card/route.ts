@@ -1,0 +1,180 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { adminDb } from '@/lib/firebase-admin-config'
+import Omise from 'omise'
+
+// Initialize Omise with both public and secret keys
+const omise = Omise({
+  publicKey: process.env.OMISE_PUBLIC_KEY!,
+  secretKey: process.env.OMISE_SECRET_KEY!,
+  omiseVersion: '2019-05-29',
+})
+
+interface CardData {
+  number: string
+  name: string
+  expiration_month: string
+  expiration_year: string
+  security_code: string
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { orderId, amount, card } = await request.json()
+
+    console.log('💳 Omise Card Payment Request:', { orderId, amount })
+    console.log('🔑 Using OMISE_PUBLIC_KEY:', process.env.OMISE_PUBLIC_KEY?.substring(0, 10) + '...')
+    console.log('🔑 Using OMISE_SECRET_KEY:', process.env.OMISE_SECRET_KEY?.substring(0, 10) + '...')
+
+    if (!orderId || !amount || !card) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    if (!process.env.OMISE_SECRET_KEY || !process.env.OMISE_PUBLIC_KEY) {
+      console.error('❌ Omise API keys not configured!')
+      return NextResponse.json(
+        { success: false, error: 'Payment system not configured' },
+        { status: 500 }
+      )
+    }
+
+    // Validate card data
+    const cardData = {
+      number: card.number,
+      name: card.name,
+      expiration_month: card.expiration_month,
+      expiration_year: card.expiration_year,
+      security_code: card.security_code,
+      city: '', // Optional
+      postal_code: '', // Optional
+    }
+
+    // Step 1: Create token from card
+    console.log('🔐 Creating Omise token...')
+    const token = await new Promise<any>((resolve, reject) => {
+      omise.tokens.create(
+        {
+          card: cardData,
+        },
+        (err: any, token: any) => {
+          if (err) reject(err)
+          else resolve(token)
+        }
+      )
+    })
+
+    console.log('✅ Token created:', token.id)
+
+    // Step 2: Create charge with token
+    console.log('💰 Creating charge...')
+    const charge = await new Promise<any>((resolve, reject) => {
+      omise.charges.create(
+        {
+          amount: amount * 100, // Convert to smallest currency unit (satang)
+          currency: 'THB',
+          card: token.id,
+          metadata: {
+            orderId,
+            paymentMethod: 'credit_card',
+          },
+        },
+        (err: any, charge: any) => {
+          if (err) reject(err)
+          else resolve(charge)
+        }
+      )
+    })
+
+    console.log('📦 Charge created:', {
+      id: charge.id,
+      status: charge.status,
+      paid: charge.paid,
+      authorized: charge.authorized,
+    })
+
+    // Step 3: Update order in Firestore
+    const orderRef = adminDb.collection('orders').doc(orderId)
+    const updateData: any = {
+      chargeId: charge.id,
+      paymentMethod: 'omise_card',
+      updatedAt: new Date().toISOString(),
+    }
+
+    // Check if payment is successful
+    if (charge.paid) {
+      updateData.paymentStatus = 'completed'
+      updateData.status = 'processing'
+      updateData.paidAt = new Date().toISOString()
+      
+      console.log('✅ Payment completed!')
+    } else if (charge.status === 'failed') {
+      updateData.paymentStatus = 'failed'
+      updateData.failureCode = charge.failure_code
+      updateData.failureMessage = charge.failure_message
+      
+      console.log('❌ Payment failed:', charge.failure_message)
+      
+      return NextResponse.json(
+        { success: false, error: charge.failure_message || 'Payment failed' },
+        { status: 400 }
+      )
+    } else if (charge.authorized && charge.authorize_uri) {
+      // 3D Secure authentication required
+      console.log('🔐 3D Secure required:', charge.authorize_uri)
+      
+      updateData.paymentStatus = 'pending'
+      updateData.authorizeUri = charge.authorize_uri
+      
+      await orderRef.update(updateData)
+      
+      return NextResponse.json({
+        success: true,
+        requiresAuth: true,
+        authorizeUri: charge.authorize_uri,
+        chargeId: charge.id,
+      })
+    }
+
+    await orderRef.update(updateData)
+
+    console.log('✅ Order updated successfully')
+
+    return NextResponse.json({
+      success: true,
+      chargeId: charge.id,
+      paid: charge.paid,
+    })
+  } catch (error: any) {
+    console.error('❌ Omise Card Payment Error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      statusCode: error.statusCode,
+    })
+    
+    let errorMessage = 'เกิดข้อผิดพลาดในการชำระเงิน'
+    
+    if (error.message?.includes('authentication failed')) {
+      errorMessage = 'ระบบชำระเงินไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ'
+      console.error('❌ Authentication failed - check OMISE_SECRET_KEY and OMISE_PUBLIC_KEY')
+    } else if (error.code === 'invalid_card') {
+      errorMessage = 'ข้อมูลบัตรไม่ถูกต้อง'
+    } else if (error.code === 'insufficient_fund') {
+      errorMessage = 'ยอดเงินในบัตรไม่เพียงพอ'
+    } else if (error.code === 'stolen_or_lost_card') {
+      errorMessage = 'บัตรถูกรายงานว่าสูญหายหรือถูกขโมย'
+    } else if (error.code === 'failed_processing') {
+      errorMessage = 'การประมวลผลล้มเหลว กรุณาลองใหม่'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+
+    return NextResponse.json(
+      { success: false, error: errorMessage },
+      { status: 500 }
+    )
+  }
+}

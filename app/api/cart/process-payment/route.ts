@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } from 'firebase/firestore'
-import { db } from '@/components/firebase-config'
+import { adminDb } from '@/lib/firebase-admin-config'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-09-30.clover',
@@ -21,18 +20,21 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Processing payment for:', paymentIntentId)
 
     // Check if already processed (ป้องกัน double processing)
-    const existingOrdersQuery = query(
-      collection(db, 'orders'),
-      where('paymentIntentId', '==', paymentIntentId)
-    )
-    const existingOrders = await getDocs(existingOrdersQuery)
+    const existingOrdersQuery = adminDb.collection('orders').where('paymentIntentId', '==', paymentIntentId)
+    const existingOrders = await existingOrdersQuery.get()
     
     if (!existingOrders.empty) {
       console.log('⚠️ Payment already processed, returning existing orders')
       const orderIds = existingOrders.docs.map(doc => doc.id)
+      
+      // Get cartItemIds from metadata if available
+      const firstOrder = existingOrders.docs[0].data()
+      const cartItemIds = firstOrder.cartItemIds || []
+      
       return NextResponse.json({
         success: true,
         orderIds,
+        cartItemIds,
         message: 'Payment already processed',
         alreadyProcessed: true,
       })
@@ -58,6 +60,8 @@ export async function POST(request: NextRequest) {
 
     // Parse shops data from metadata
     const shops = JSON.parse(metadata.shops)
+    const cartItemIds = metadata.cartItemIds ? JSON.parse(metadata.cartItemIds) : []
+    console.log('📦 Cart item IDs to clear:', cartItemIds)
     const userId = metadata.userId
 
     // Process each shop order
@@ -68,56 +72,73 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`📦 Creating order for shop: ${shop.shopName}`)
         
+        // Fetch game names for each item
+        const itemsWithGameNames = await Promise.all(
+          shop.items.map(async (item: any) => {
+            let gameName = null
+            const gameId = item.productId // productId is actually gameId from checkout
+            
+            if (gameId) {
+              try {
+                const gameDoc = await adminDb.collection('games').doc(gameId).get()
+                if (gameDoc.exists) {
+                  gameName = gameDoc.data()?.name
+                }
+              } catch (err) {
+                console.error(`Error fetching game for item ${item.name}:`, err)
+              }
+            }
+            
+            return {
+              ...item,
+              gameId, // Store gameId explicitly
+              gameName // Add game name
+            }
+          })
+        )
+        
         // Create order in Firestore
         const orderData = {
           userId,
           shopId: shop.shopId,
           shopName: shop.shopName,
-          items: shop.items,
+          items: itemsWithGameNames,
           totalAmount: shop.amount,
           platformFee: shop.platformFee,
           sellerAmount: shop.sellerAmount,
           paymentIntentId,
           paymentStatus: 'completed',
           status: 'pending', // Order status: pending, processing, completed, cancelled
+          cartItemIds, // Store cartItemIds for potential clearing
           createdAt: new Date(),
           updatedAt: new Date(),
         }
 
-        const orderRef = await addDoc(collection(db, 'orders'), orderData)
+        const orderRef = await adminDb.collection('orders').add(orderData)
         orderIds.push(orderRef.id)
         console.log(`✅ Order created: ${orderRef.id}`)
 
-        // Create transfer to seller's Stripe account
-        const transfer = await stripe.transfers.create({
-          amount: shop.sellerAmount, // Amount seller receives after platform fee
-          currency: 'thb',
-          destination: shop.stripeAccountId,
-          transfer_group: paymentIntentId, // Group all transfers from this payment
-          metadata: {
-            orderId: orderRef.id,
-            shopId: shop.shopId,
-            shopName: shop.shopName,
-            platformFee: shop.platformFee.toString(),
-            originalAmount: shop.amount.toString(),
-          },
-        })
-
+        // Record order for seller payout tracking
+        // Money stays in platform account until seller requests payout
+        console.log(`💰 Seller amount ฿${shop.sellerAmount} recorded for future payout`)
+        
         transferResults.push({
           shopId: shop.shopId,
           shopName: shop.shopName,
           orderId: orderRef.id,
-          transferId: transfer.id,
+          transferId: null, // Will be created when seller requests payout
           amount: shop.amount,
           platformFee: shop.platformFee,
           sellerAmount: shop.sellerAmount,
-          status: 'success',
+          status: 'pending_payout', // Waiting for seller to request payout
         })
 
-        // Update order with transfer info
-        await updateDoc(doc(db, 'orders', orderRef.id), {
-          transferId: transfer.id,
-          transferStatus: 'completed',
+        // Update order with payout tracking info
+        await adminDb.collection('orders').doc(orderRef.id).update({
+          payoutStatus: 'waiting_confirmation', // Waiting for buyer to confirm receipt
+          payoutAmount: shop.sellerAmount,
+          stripeAccountId: shop.stripeAccountId,
+          buyerConfirmed: false, // Buyer needs to confirm receipt first
         })
 
       } catch (error: any) {
@@ -133,12 +154,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if all transfers succeeded
-    const allSuccess = transferResults.every(r => r.status === 'success')
+    // Check if all transfers succeeded or are pending payout
+    const allSuccess = transferResults.every(
+      r => r.status === 'success' || r.status === 'pending_payout'
+    )
 
     return NextResponse.json({
       success: allSuccess,
       orderIds,
+      cartItemIds, // Return cartItemIds for clearing
       transfers: transferResults,
       message: allSuccess
         ? 'All orders processed successfully'

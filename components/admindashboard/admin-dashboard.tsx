@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "./admin-sidebar"
 import { AdminOverview } from "./admin-overview"
@@ -9,19 +10,36 @@ import { AdminShops } from "./admin-shops"
 import { AdminCategories } from "./admin-categories"
 import { AdminGames } from "./admin-games"
 import AdminReopenRequests from "./admin-reopen-requests"
+import { AdminReports } from "./admin-reports"
+import { AdminActivityLog } from "./admin-activity-log"
+import { SupportMessagesContent } from "./support-messages"
+import { SliderManagement } from "./slider-management"
 import { Button } from "@/components/ui/button"
 
 interface AdminDashboardProps {
   userId: string
 }
-
 export function AdminDashboard({ userId }: AdminDashboardProps) {
+  const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState("overview")
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  // Check URL params for initial section
+  useEffect(() => {
+    const section = searchParams.get('section')
+    if (section) {
+      setActiveSection(section)
+    }
+  }, [searchParams])
 
   const handleSectionChange = (section: string) => {
     setActiveSection(section)
     setIsSidebarOpen(false) // Close sidebar on mobile after selection
+    
+    // Update URL
+    const url = new URL(window.location.href)
+    url.searchParams.set('section', section)
+    window.history.pushState({}, '', url.toString())
   }
 
   return (
@@ -62,19 +80,20 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
             pt-4 lg:pt-0
             px-3 lg:px-0
           `}>
-            <AdminSidebar 
-              activeSection={activeSection} 
-              onSectionChange={handleSectionChange}
-            />
+            <AdminSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
           </div>
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             <div className="w-full">
-              {activeSection === "overview" && <AdminOverview />}
+              {activeSection === "overview" && <AdminOverview onNavigate={handleSectionChange} />}
               {activeSection === "users" && <AdminUsers />}
               {activeSection === "shops" && <AdminShops adminId={userId} />}
               {activeSection === "reopen-requests" && <AdminReopenRequests />}
+              {activeSection === "reports" && <AdminReports reportId={searchParams.get('reportId') || undefined} />}
+              {activeSection === "activities" && <AdminActivityLog />}
+              {activeSection === "support" && <SupportMessagesContent />}
+              {activeSection === "slider" && <SliderManagement />}
               {activeSection === "categories" && <AdminCategories />}
               {activeSection === "games" && <AdminGames />}
             </div>

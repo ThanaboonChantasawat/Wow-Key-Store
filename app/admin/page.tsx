@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth-context"
-import { getUserProfile } from "@/lib/user-service"
+import { getUserProfile } from "@/lib/user-client"
 import { AdminDashboard } from "@/components/admindashboard/admin-dashboard"
 import { Shield, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"

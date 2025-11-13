@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/components/firebase-config'
+import { adminDb } from '@/lib/firebase-admin-config'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const orderId = params.id
 
     if (!orderId) {
@@ -19,10 +19,10 @@ export async function GET(
     console.log('Fetching order:', orderId)
 
     // Get order from Firestore
-    const orderRef = doc(db, 'orders', orderId)
-    const orderDoc = await getDoc(orderRef)
+    const orderRef = adminDb.collection('orders').doc(orderId)
+    const orderDoc = await orderRef.get()
 
-    if (!orderDoc.exists()) {
+    if (!orderDoc.exists) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
@@ -30,6 +30,13 @@ export async function GET(
     }
 
     const orderData = orderDoc.data()
+    if (!orderData) {
+      return NextResponse.json(
+        { error: 'Order data is invalid' },
+        { status: 500 }
+      )
+    }
+
     const order = {
       id: orderDoc.id,
       ...orderData,

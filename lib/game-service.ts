@@ -1,13 +1,9 @@
-import { db } from "@/components/firebase-config";
+import { db, auth } from "@/components/firebase-config";
 import { 
   collection, 
   doc, 
-  setDoc, 
   getDoc,
   getDocs,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
   query,
   orderBy,
   where
@@ -25,7 +21,16 @@ export interface Game {
   updatedAt: Date;
 }
 
-// Create new game
+// Helper to get auth token
+async function getAuthToken(): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  return await user.getIdToken();
+}
+
+// Create new game (via API route)
 export async function createGame(gameData: {
   name: string;
   description?: string;
@@ -35,30 +40,24 @@ export async function createGame(gameData: {
   status?: 'active' | 'inactive';
 }): Promise<string> {
   try {
-    console.log("createGame called with data:", gameData);
+    const token = await getAuthToken();
     
-    const gameRef = doc(collection(db, "gamesList"));
-    const gameId = gameRef.id;
-    
-    console.log("Generated game ID:", gameId);
-    console.log("Game reference path:", gameRef.path);
-    
-    const dataToSave = {
-      id: gameId,
-      ...gameData,
-      isPopular: gameData.isPopular || false,
-      status: gameData.status || 'active',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    
-    console.log("Data to save:", dataToSave);
-    
-    await setDoc(gameRef, dataToSave);
-    
-    console.log("Game saved successfully!");
-    
-    return gameId;
+    const response = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(gameData)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create game');
+    }
+
+    const result = await response.json();
+    return result.id;
   } catch (error) {
     console.error("Error creating game:", error);
     throw error;
@@ -155,28 +154,49 @@ export async function getGameById(gameId: string): Promise<Game | null> {
   }
 }
 
-// Update game
+// Update game (via API route)
 export async function updateGame(
   gameId: string,
   gameData: Partial<Omit<Game, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   try {
-    const gameRef = doc(db, "gamesList", gameId);
-    await updateDoc(gameRef, {
-      ...gameData,
-      updatedAt: serverTimestamp()
+    const token = await getAuthToken();
+    
+    const response = await fetch('/api/games', {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ id: gameId, ...gameData })
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update game');
+    }
   } catch (error) {
     console.error("Error updating game:", error);
     throw error;
   }
 }
 
-// Delete game
+// Delete game (via API route)
 export async function deleteGame(gameId: string): Promise<void> {
   try {
-    const gameRef = doc(db, "gamesList", gameId);
-    await deleteDoc(gameRef);
+    const token = await getAuthToken();
+    
+    const response = await fetch(`/api/games?id=${gameId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete game');
+    }
   } catch (error) {
     console.error("Error deleting game:", error);
     throw error;

@@ -1,23 +1,8 @@
-import {
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  getDocs,
-  query,
-  where,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/components/firebase-config";
+import { adminDb } from "@/lib/firebase-admin-config";
+import admin from 'firebase-admin';
+import type { Favorite } from "./favorite-types";
 
-export interface Favorite {
-  id: string;
-  userId: string;
-  itemId: string; // Can be gameId or productId
-  itemType: 'game' | 'product'; // Type of item
-  gameId?: string; // Keep for backward compatibility
-  createdAt: Timestamp;
-}
+export type { Favorite };
 
 // Add to favorites
 export const addToFavorites = async (
@@ -27,14 +12,14 @@ export const addToFavorites = async (
 ) => {
   try {
     const favoriteId = `${userId}_${itemId}`;
-    const favoriteRef = doc(db, "favorites", favoriteId);
+    const favoriteRef = adminDb.collection("favorites").doc(favoriteId);
     
-    await setDoc(favoriteRef, {
+    await favoriteRef.set({
       userId,
       itemId,
       itemType,
       gameId: itemId, // Keep for backward compatibility
-      createdAt: Timestamp.now(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     
     return { success: true };
@@ -48,9 +33,9 @@ export const addToFavorites = async (
 export const removeFromFavorites = async (userId: string, itemId: string) => {
   try {
     const favoriteId = `${userId}_${itemId}`;
-    const favoriteRef = doc(db, "favorites", favoriteId);
+    const favoriteRef = adminDb.collection("favorites").doc(favoriteId);
     
-    await deleteDoc(favoriteRef);
+    await favoriteRef.delete();
     
     return { success: true };
   } catch (error) {
@@ -62,13 +47,14 @@ export const removeFromFavorites = async (userId: string, itemId: string) => {
 // Get user favorites
 export const getUserFavorites = async (userId: string): Promise<string[]> => {
   try {
-    const favoritesRef = collection(db, "favorites");
-    const q = query(favoritesRef, where("userId", "==", userId));
-    const querySnapshot = await getDocs(q);
+    const snapshot = await adminDb.collection("favorites")
+      .where("userId", "==", userId)
+      .get();
     
     const itemIds: string[] = [];
-    querySnapshot.forEach((doc) => {
-      itemIds.push(doc.data().itemId || doc.data().gameId);
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      itemIds.push(data.itemId || data.gameId);
     });
     
     return itemIds;
@@ -81,26 +67,21 @@ export const getUserFavorites = async (userId: string): Promise<string[]> => {
 // Check if item is favorited
 export const isFavorited = async (userId: string, itemId: string): Promise<boolean> => {
   try {
-    const favoritesRef = collection(db, "favorites");
-    const q = query(
-      favoritesRef,
-      where("userId", "==", userId),
-      where("itemId", "==", itemId)
-    );
-    const querySnapshot = await getDocs(q);
+    const snapshot = await adminDb.collection("favorites")
+      .where("userId", "==", userId)
+      .where("itemId", "==", itemId)
+      .get();
     
     // If not found with itemId, try with gameId for backward compatibility
-    if (querySnapshot.empty) {
-      const qLegacy = query(
-        favoritesRef,
-        where("userId", "==", userId),
-        where("gameId", "==", itemId)
-      );
-      const querySnapshotLegacy = await getDocs(qLegacy);
-      return !querySnapshotLegacy.empty;
+    if (snapshot.empty) {
+      const legacySnapshot = await adminDb.collection("favorites")
+        .where("userId", "==", userId)
+        .where("gameId", "==", itemId)
+        .get();
+      return !legacySnapshot.empty;
     }
     
-    return !querySnapshot.empty;
+    return !snapshot.empty;
   } catch (error) {
     console.error("Error checking favorite:", error);
     return false;

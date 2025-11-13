@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
+    
+    // Users collection - อ่านได้ทุกคนที่ login, แก้ไขได้เฉพาะเจ้าของหรือ admin
+    match /users/{userId} {
+      allow read: if isAuthenticated() || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if false; // ใช้ API route สำหรับ delete
+    }
+
+    // Shops collection - อ่านได้ทุกคนหรือ admin, แก้ไขเฉพาะเจ้าของ (admin ใช้ API route)
+    match /shops/{shopId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if false; // ใช้ API route
+    }
+
+    // Products collection - อ่านได้ทุกคน, แก้ไขได้เฉพาะเจ้าของร้าน
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+        resource.data.shopId == 'shop_' + request.auth.uid;
+    }
+
+    // Games collections - อ่านได้ทุกคน, แก้ไขผ่าน API route เท่านั้น
+    match /games/{gameId} {
+      allow read: if true;
+      allow write: if false; // ใช้ API route ที่เช็ค admin role
+    }
+    
+    match /gamesList/{gameId} {
+      allow read: if true;
+      allow write: if false; // ใช้ API route
+    }
+
+    // Categories collection - อ่านได้ทุกคน, แก้ไขผ่าน API route
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if false; // ใช้ API route ที่เช็ค admin role
+    }
+
+    // Orders collection - เฉพาะเจ้าของคำสั่งซื้อหรือ admin
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if false; // ใช้ API route
+    }
+
+    // Cart collections - เฉพาะเจ้าของตะกร้า
+    match /carts/{cartId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /cart/{userId}/items/{itemId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Alternative cart structure
+    match /cart/{cartItemId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Favorites collection - เฉพาะเจ้าของ
+    match /favorites/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Reopen requests - เจ้าของร้านสร้างได้, ส่วนอื่นใช้ API route
+    match /reopenRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if false; // ใช้ API route ที่เช็ค admin
+    }
+
+    // Admin activity logs - admin อ่านได้, ใช้ API route สำหรับเขียน
+    match /adminActivities/{activityId} {
+      allow read: if isAdmin();
+      allow write: if false; // ใช้ API route
+    }
+    
+    // Alternative naming
+    match /adminActivity/{activityId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // ใช้ API route
+    }
+
+    // Notifications - user สามารถอ่านและอัปเดตของตัวเองได้
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, delete: if false; // ใช้ API route
+    }
+
+    // Shop Reviews - อ่านได้ทุกคน, สร้างได้เฉพาะผู้ที่ซื้อแล้ว, แก้/ลบได้เฉพาะเจ้าของ
+    match /shopReviews/{reviewId} {
+      allow read: if true; // ทุกคนอ่านรีวิวได้
+      allow create: if isAuthenticated(); // การตรวจสอบการซื้อจริงทำใน backend
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Product Reviews - อ่านได้ทุกคน, สร้างได้เฉพาะผู้ที่ซื้อแล้ว, แก้/ลบได้เฉพาะเจ้าของ
+    match /productReviews/{reviewId} {
+      allow read: if true; // ทุกคนอ่านรีวิวได้
+      allow create: if isAuthenticated(); // การตรวจสอบการซื้อจริงทำใน backend
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Shop Comments - อ่านได้ทุกคน, สร้าง/แก้/ลบได้เฉพาะ login แล้ว
+    match /shopComments/{commentId} {
+      allow read: if true; // ทุกคนอ่านคอมเมนต์ได้
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Product Comments - อ่านได้ทุกคน, สร้าง/แก้/ลบได้เฉพาะ login แล้ว
+    match /productComments/{commentId} {
+      allow read: if true; // ทุกคนอ่านคอมเมนต์ได้
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default: deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

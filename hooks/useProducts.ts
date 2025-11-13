@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react"
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore"
-import { db } from "@/components/firebase-config"
 import { Product } from "@/lib/product-service"
 
 export function useProducts(gameId?: string | null) {
@@ -14,37 +12,16 @@ export function useProducts(gameId?: string | null) {
         setLoading(true)
         setError(null)
 
-        const productsRef = collection(db, "products")
-        let q
+        const url = gameId 
+          ? `/api/products?gameId=${gameId}`
+          : '/api/products'
 
-        if (gameId) {
-          // Filter by gameId and only active products
-          q = query(
-            productsRef,
-            where("gameId", "==", gameId),
-            where("status", "==", "active")
-          )
-        } else {
-          // Get all active products
-          q = query(
-            productsRef,
-            where("status", "==", "active")
-          )
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error('Failed to fetch products')
         }
 
-        const snapshot = await getDocs(q)
-        const productsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[]
-
-        // Sort by createdAt manually
-        productsData.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis?.() || 0
-          const timeB = b.createdAt?.toMillis?.() || 0
-          return timeB - timeA
-        })
-
+        const productsData = await response.json()
         setProducts(productsData)
       } catch (err) {
         console.error("Error fetching products:", err)
@@ -77,34 +54,12 @@ export function useSearchProducts(searchQuery: string | null) {
         setLoading(true)
         setError(null)
 
-        const productsRef = collection(db, "products")
-        const q = query(
-          productsRef,
-          where("status", "==", "active")
-        )
+        const response = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}`)
+        if (!response.ok) {
+          throw new Error('Failed to search products')
+        }
 
-        const snapshot = await getDocs(q)
-        const productsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[]
-
-        // Filter by search query (client-side)
-        const searchLower = searchQuery.toLowerCase()
-        const filtered = productsData.filter(
-          (product) =>
-            product.name.toLowerCase().includes(searchLower) ||
-            product.gameName.toLowerCase().includes(searchLower) ||
-            product.description?.toLowerCase().includes(searchLower)
-        )
-
-        // Sort by createdAt
-        filtered.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis?.() || 0
-          const timeB = b.createdAt?.toMillis?.() || 0
-          return timeB - timeA
-        })
-
+        const filtered = await response.json()
         setProducts(filtered)
       } catch (err) {
         console.error("Error searching products:", err)

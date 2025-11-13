@@ -2,15 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { loadStripe } from "@stripe/stripe-js"
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/components/auth-context"
-import { ShoppingCart, Store, CreditCard, Loader2, CheckCircle } from "lucide-react"
+import { ShoppingCart, Store, Loader2 } from "lucide-react"
 import Image from "next/image"
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+import { PaymentMethodSelector } from "@/components/payment/payment-method-selector"
 
 interface CheckoutItem {
   id: string
@@ -26,162 +23,52 @@ interface CheckoutItem {
 interface GroupedOrder {
   shopId: string
   shopName: string
-  stripeAccountId: string
   items: CheckoutItem[]
   totalAmount: number
   platformFee: number
   sellerAmount: number
 }
 
-function CheckoutForm({ 
-  clientSecret, 
-  orders, 
-  grandTotal,
-  totalPlatformFee 
-}: { 
-  clientSecret: string
-  orders: GroupedOrder[]
-  grandTotal: number
-  totalPlatformFee: number
-}) {
-  const stripe = useStripe()
-  const elements = useElements()
-  const router = useRouter()
-  const [processing, setProcessing] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!stripe || !elements) {
-      return
-    }
-
-    setProcessing(true)
-    setErrorMessage(null)
-
-    try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment/success?type=cart`,
-        },
-        redirect: "if_required",
-      })
-
-      if (error) {
-        setErrorMessage(error.message || "เกิดข้อผิดพลาดในการชำระเงิน")
-        setProcessing(false)
-      } else if (paymentIntent && paymentIntent.status === "succeeded") {
-        // Payment succeeded
-        router.push(`/payment/success?payment_intent=${paymentIntent.id}&type=cart`)
-      }
-    } catch (err) {
-      console.error("Payment error:", err)
-      setErrorMessage("เกิดข้อผิดพลาดในการชำระเงิน")
-      setProcessing(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Payment Element */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            ข้อมูลการชำระเงิน
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PaymentElement />
-        </CardContent>
-      </Card>
-
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-600">{errorMessage}</p>
-        </div>
-      )}
-
-      {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-medium py-6 text-lg"
-      >
-        {processing ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            กำลังดำเนินการ...
-          </>
-        ) : (
-          <>
-            <CheckCircle className="w-5 h-5 mr-2" />
-            ชำระเงิน ฿{grandTotal.toLocaleString()}
-          </>
-        )}
-      </Button>
-
-      {/* Payment Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-xs text-blue-800">
-          🔒 การชำระเงินของคุณปลอดภัยและเข้ารหัสโดย Stripe
-        </p>
-      </div>
-    </form>
-  )
-}
-
 export default function CartCheckoutPage() {
   const { user, isInitialized } = useAuth()
   const router = useRouter()
   const [items, setItems] = useState<CheckoutItem[]>([])
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [orders, setOrders] = useState<GroupedOrder[]>([])
   const [grandTotal, setGrandTotal] = useState(0)
   const [totalPlatformFee, setTotalPlatformFee] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState({
+    promptpay: true,
+    creditCard: true,
+    bankTransfer: true,
+  })
 
   useEffect(() => {
-    console.log('Cart Checkout Page: useEffect triggered')
-    console.log('User:', user)
-    console.log('Auth initialized:', isInitialized)
-    
-    // Wait for auth to finish initializing
     if (!isInitialized) {
-      console.log('Auth not initialized yet, waiting...')
       return
     }
     
     if (!user) {
-      console.log('No user, redirecting to cart')
       router.push('/cart')
       return
     }
 
-    // Get items from sessionStorage
     const storedItems = sessionStorage.getItem('checkoutItems')
-    console.log('Stored items from sessionStorage:', storedItems)
-    
     if (!storedItems) {
-      console.log('No stored items, redirecting to cart')
       router.push('/cart')
       return
     }
 
     const parsedItems: CheckoutItem[] = JSON.parse(storedItems)
-    console.log('Parsed items:', parsedItems)
     setItems(parsedItems)
 
-    // Create checkout session
-    const createCheckoutSession = async () => {
+    // Validate checkout items (check shop payment setup)
+    const validateCheckout = async () => {
       try {
         setLoading(true)
         
-        // Prepare items for API
+        console.log('� Validating checkout items...')
+        
         const checkoutItems = parsedItems.map(item => ({
           productId: item.gameId,
           shopId: item.shopId,
@@ -189,10 +76,7 @@ export default function CartCheckoutPage() {
           name: item.name,
         }))
         
-        console.log('Checkout items prepared:', checkoutItems)
-        console.log('User ID:', user.uid)
-
-        const response = await fetch('/api/cart/checkout', {
+        const response = await fetch('/api/cart/validate-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -201,37 +85,32 @@ export default function CartCheckoutPage() {
           }),
         })
         
-        console.log('API response status:', response.status)
-
         if (!response.ok) {
-          const errorText = await response.text()
-          console.error('API error response:', errorText)
-          let errorData
-          try {
-            errorData = JSON.parse(errorText)
-          } catch {
-            errorData = { error: errorText || 'Failed to create checkout session' }
-          }
-          console.error('API error:', errorData)
+          const errorData = await response.json()
           throw new Error(errorData.error || `API Error: ${response.status}`)
         }
 
         const data = await response.json()
-        console.log('API response data:', data)
         
-        setClientSecret(data.clientSecret)
-        setOrders(data.orders)
+        console.log('✅ Checkout validation successful')
+        
+        // Calculate totals
         setGrandTotal(data.grandTotal)
         setTotalPlatformFee(data.totalPlatformFee)
+        
+        // Set available payment methods
+        if (data.availablePaymentMethods) {
+          setAvailablePaymentMethods(data.availablePaymentMethods)
+        }
       } catch (err: any) {
-        console.error('Checkout error:', err)
-        setError(err.message || 'เกิดข้อผิดพลาดในการสร้างรายการชำระเงิน')
+        console.error('Checkout validation error:', err)
+        setError(err.message || 'เกิดข้อผิดพลาดในการตรวจสอบรายการชำระเงิน')
       } finally {
         setLoading(false)
       }
     }
 
-    createCheckoutSession()
+    validateCheckout()
   }, [user, isInitialized, router])
 
   if (!isInitialized) {
@@ -260,7 +139,7 @@ export default function CartCheckoutPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <Loader2 className="w-12 h-12 animate-spin text-[#ff9800] mx-auto mb-4" />
-              <p className="text-gray-600">กำลังเตรียมการชำระเงิน...</p>
+              <p className="text-gray-600">กำลังตรวจสอบรายการ...</p>
             </CardContent>
           </Card>
         </div>
@@ -269,9 +148,8 @@ export default function CartCheckoutPage() {
   }
 
   if (error) {
-    // Check if error is about payment setup
-    const isPaymentSetupError = error.includes('has not set up payment yet')
-    const shopName = isPaymentSetupError ? error.match(/Shop (.+) has not set up payment yet/)?.[1] : null
+    const isPaymentSetupError = error.includes('ยังไม่ได้ตั้งค่าการรับชำระเงิน')
+    const shopName = isPaymentSetupError ? error.match(/ร้านค้า (.+) ยังไม่ได้ตั้งค่าการรับชำระเงิน/)?.[1] : null
     
     return (
       <div className="container mx-auto px-4 py-16">
@@ -287,14 +165,14 @@ export default function CartCheckoutPage() {
               {isPaymentSetupError && shopName ? (
                 <div className="space-y-3 mb-6">
                   <p className="text-gray-600">
-                    ร้านค้า <span className="font-semibold text-gray-900">{shopName}</span> ยังไม่ได้ตั้งค่าระบบรับชำระเงิน
+                    ร้านค้า <span className="font-semibold text-gray-900">{shopName}</span> ยังไม่ได้ตั้งค่าระบบรับชำระเงินผ่าน Omise
                   </p>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-left">
                     <p className="text-sm text-yellow-800 mb-2">
                       <strong>💡 คำแนะนำ:</strong>
                     </p>
                     <ul className="text-sm text-yellow-700 space-y-1 list-disc list-inside">
-                      <li>กรุณาติดต่อเจ้าของร้านค้าเพื่อแจ้งให้ตั้งค่า Stripe Connect</li>
+                      <li>กรุณาติดต่อเจ้าของร้านค้าเพื่อแจ้งให้ตั้งค่าบัญชี Omise</li>
                       <li>หรือเลือกซื้อสินค้าจากร้านค้าอื่นแทน</li>
                     </ul>
                   </div>
@@ -313,10 +191,6 @@ export default function CartCheckoutPage() {
         </div>
       </div>
     )
-  }
-
-  if (!clientSecret) {
-    return null
   }
 
   // Group items by shop for display
@@ -379,15 +253,7 @@ export default function CartCheckoutPage() {
 
                 {/* Total Breakdown */}
                 <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">ยอดรวม</span>
-                    <span className="font-medium">฿{grandTotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">ค่าธรรมเนียมแพลตฟอร์ม (10%)</span>
-                    <span className="font-medium">฿{totalPlatformFee.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                  <div className="flex justify-between text-lg font-bold">
                     <span>ยอดชำระทั้งหมด</span>
                     <span className="text-[#ff9800]">฿{grandTotal.toLocaleString()}</span>
                   </div>
@@ -414,25 +280,15 @@ export default function CartCheckoutPage() {
 
           {/* Payment Form */}
           <div className="lg:col-span-2">
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: 'stripe',
-                  variables: {
-                    colorPrimary: '#ff9800',
-                  },
-                },
+            <PaymentMethodSelector
+              amount={grandTotal}
+              items={items}
+              availablePaymentMethods={availablePaymentMethods}
+              onPaymentSuccess={() => {
+                // Payment success is handled by PromptPayQRPayment component
+                // It will auto-redirect to orders page
               }}
-            >
-              <CheckoutForm
-                clientSecret={clientSecret}
-                orders={orders}
-                grandTotal={grandTotal}
-                totalPlatformFee={totalPlatformFee}
-              />
-            </Elements>
+            />
           </div>
         </div>
       </div>

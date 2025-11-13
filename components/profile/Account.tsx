@@ -40,7 +40,7 @@ import {
   updateUserProfile,
   UserProfile,
   deleteUserAccount,
-} from "@/lib/user-service";
+} from "@/lib/user-client";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -400,7 +400,8 @@ export function AccountContent() {
     );
   }
 
-  if (!user) {
+  // แสดง "กรุณาเข้าสู่ระบบ" เฉพาะเมื่อ auth initialized แล้วและไม่มี user
+  if (isInitialized && !user) {
     return (
       <div className="space-y-6">
         <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-lg p-12 text-center border border-orange-100">
@@ -811,6 +812,53 @@ export function AccountContent() {
                   : "-"}
               </div>
             </div>
+
+            {/* ✅ Violation History - แสดงประวัติการละเมิด */}
+            {userProfile && (userProfile.violations || userProfile.banned) && (
+              <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-red-50 rounded-lg p-4 border-2 border-red-200">
+                <label className="text-red-700 font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  สถานะบัญชี
+                </label>
+                <div className="space-y-2">
+                  {userProfile.banned && (
+                    <div className="text-red-700 font-bold flex items-center gap-2">
+                      <span className="px-3 py-1 bg-red-600 text-white rounded-full text-sm">
+                        🚫 บัญชีถูกระงับ
+                      </span>
+                      {userProfile.bannedUntil && (
+                        <span className="text-sm">
+                          จนถึง {new Date(userProfile.bannedUntil).toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {userProfile.violations && userProfile.violations > 0 && (
+                    <div className="text-sm text-red-600">
+                      ⚠️ ประวัติการละเมิด: <strong>{userProfile.violations} ครั้ง</strong>
+                      {userProfile.violations >= 3 && (
+                        <span className="block mt-1 text-xs text-red-700 font-medium">
+                          คำเตือน: หากละเมิดอีกอาจถูกระงับถาวร
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {userProfile.bannedReason && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">เหตุผล:</span> {userProfile.bannedReason}
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-600 mt-2">
+                    💡 หากคุณคิดว่ามีการดำเนินการผิดพลาด กรุณาติดต่อทีมงานผ่านหน้า{' '}
+                    <a href="/support" className="text-blue-600 underline">ช่วยเหลือ</a>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           </div>
 
@@ -885,7 +933,7 @@ export function AccountContent() {
           )}
 
           {/* Last Sign In */}
-          {!isEditing && user.metadata.lastSignInTime && (
+          {!isEditing && user?.metadata.lastSignInTime && (
             <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200 mt-6">
               <label className="text-[#292d32] font-semibold flex items-center gap-2">
                 <UserRoundCheck className="h-4 w-4 text-[#ff9800]" />

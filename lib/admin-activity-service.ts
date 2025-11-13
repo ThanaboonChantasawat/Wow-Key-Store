@@ -1,14 +1,5 @@
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  limit, 
-  getDocs,
-  serverTimestamp,
-  Timestamp
-} from "firebase/firestore"
-import { db } from "@/components/firebase-config"
+import { adminDb } from "@/lib/firebase-admin-config";
+import admin from 'firebase-admin';
 
 export interface AdminActivity {
   id: string
@@ -20,7 +11,8 @@ export interface AdminActivity {
   targetId: string
   targetName: string
   details: string // คำอธิบายเพิ่มเติม
-  createdAt: Timestamp
+  affectedUserId?: string // ✅ userId ของผู้ที่ได้รับผลกระทบ (สำหรับ query ง่ายๆ)
+  createdAt: Date
 }
 
 // บันทึกกิจกรรม Admin
@@ -32,10 +24,11 @@ export async function logAdminActivity(
   targetType: string,
   targetId: string,
   targetName: string,
-  details: string
+  details: string,
+  affectedUserId?: string // ✅ เพิ่ม parameter นี้
 ): Promise<void> {
   try {
-    await addDoc(collection(db, "adminActivities"), {
+    await adminDb.collection("adminActivities").add({
       adminId,
       adminName,
       adminEmail,
@@ -44,7 +37,8 @@ export async function logAdminActivity(
       targetId,
       targetName,
       details,
-      createdAt: serverTimestamp()
+      affectedUserId: affectedUserId || null, // ✅ บันทึก affectedUserId
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     })
   } catch (error) {
     console.error("Error logging admin activity:", error)
@@ -55,20 +49,27 @@ export async function logAdminActivity(
 // ดึงกิจกรรมล่าสุด
 export async function getRecentAdminActivities(limitCount: number = 10): Promise<AdminActivity[]> {
   try {
-    const q = query(
-      collection(db, "adminActivities"),
-      orderBy("createdAt", "desc"),
-      limit(limitCount)
-    )
+    const snapshot = await adminDb.collection("adminActivities")
+      .orderBy("createdAt", "desc")
+      .limit(limitCount)
+      .get();
     
-    const snapshot = await getDocs(q)
     const activities: AdminActivity[] = []
     
-    snapshot.forEach((doc) => {
+    snapshot.forEach((doc: any) => {
+      const data = doc.data();
       activities.push({
         id: doc.id,
-        ...doc.data()
-      } as AdminActivity)
+        adminId: data.adminId,
+        adminName: data.adminName,
+        adminEmail: data.adminEmail,
+        action: data.action,
+        targetType: data.targetType,
+        targetId: data.targetId,
+        targetName: data.targetName,
+        details: data.details,
+        createdAt: data.createdAt?.toDate() || new Date()
+      })
     })
     
     return activities

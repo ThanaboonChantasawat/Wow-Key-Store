@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-context"
-import { getShopByOwnerId } from "@/lib/shop-service"
+import { getShopByOwnerId } from "@/lib/shop-client"
 import { Package, ShoppingCart, Star, TrendingUp, Store } from "lucide-react"
 
 export function SellerOverview() {

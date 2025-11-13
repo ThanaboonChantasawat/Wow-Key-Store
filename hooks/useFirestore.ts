@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { GameWithCategories, Category } from '@/lib/types';
-import { getGamesWithCategories, getCategories, getGamesByCategory } from '@/lib/firestore-service';
+import { getGamesWithCategories, getCategories, getGamesByCategory } from '@/lib/firestore-client';
 
 // Hook สำหรับดึงข้อมูลเกมทั้งหมดพร้อม categories
 export const useGames = () => {
@@ -225,7 +225,7 @@ export const useFavoriteGames = (userId: string | null) => {
         setError(null);
         
         // Get user's favorite item IDs
-        const { getUserFavorites } = await import('@/lib/favorites-service');
+        const { getUserFavorites } = await import('@/lib/favorites-client');
         const favoriteItemIds = await getUserFavorites(userId);
         
         if (favoriteItemIds.length === 0) {

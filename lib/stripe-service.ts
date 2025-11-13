@@ -1,6 +1,5 @@
 import { stripe, STRIPE_CONNECT_CONFIG } from './stripe-config';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from '@/components/firebase-config';
+import { adminDb } from '@/lib/firebase-admin-config';
 
 export interface StripeAccountInfo {
   accountId: string;
@@ -52,8 +51,8 @@ export async function createStripeConnectAccount(
     console.log('Account link created:', accountLink.url);
 
     // Save Stripe account ID to Firestore
-    const shopRef = doc(db, 'shops', `shop_${userId}`);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection('shops').doc(`shop_${userId}`);
+    await shopRef.update({
       stripeAccountId: account.id,
       stripeAccountStatus: 'incomplete',
       stripeOnboardingCompleted: false,
@@ -144,8 +143,8 @@ export async function updateShopStripeStatus(
       throw new Error('Failed to retrieve Stripe account info');
     }
 
-    const shopRef = doc(db, 'shops', `shop_${userId}`);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection('shops').doc(`shop_${userId}`);
+    await shopRef.update({
       stripeAccountId: accountId,
       stripeAccountStatus: accountInfo.chargesEnabled && accountInfo.payoutsEnabled ? 'active' : 'incomplete',
       stripeOnboardingCompleted: accountInfo.detailsSubmitted,
@@ -172,8 +171,8 @@ export async function updateShopStripeStatusDirect(
   }
 ): Promise<void> {
   try {
-    const shopRef = doc(db, 'shops', `shop_${userId}`);
-    await updateDoc(shopRef, {
+    const shopRef = adminDb.collection('shops').doc(`shop_${userId}`);
+    await shopRef.update({
       stripeAccountId: statusData.accountId,
       stripeAccountStatus: statusData.chargesEnabled && statusData.payoutsEnabled ? 'active' : 'incomplete',
       stripeOnboardingCompleted: statusData.detailsSubmitted,
@@ -193,14 +192,18 @@ export async function updateShopStripeStatusDirect(
  */
 export async function canReceivePayments(userId: string): Promise<boolean> {
   try {
-    const shopRef = doc(db, 'shops', `shop_${userId}`);
-    const shopSnap = await getDoc(shopRef);
+    const shopRef = adminDb.collection('shops').doc(`shop_${userId}`);
+    const shopSnap = await shopRef.get();
     
-    if (!shopSnap.exists()) {
+    if (!shopSnap.exists) {
       return false;
     }
 
     const shopData = shopSnap.data();
+    if (!shopData) {
+      return false;
+    }
+    
     const stripeAccountId = shopData.stripeAccountId;
 
     if (!stripeAccountId) {

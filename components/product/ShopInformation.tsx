@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
-import { getShopById } from "@/lib/shop-service";
-import type { Shop } from "@/lib/shop-service";
+import { getShopById } from "@/lib/shop-client";
+import type { Shop } from "@/lib/shop-client";
 
 interface ShopInformationProps {
   shopId: string;

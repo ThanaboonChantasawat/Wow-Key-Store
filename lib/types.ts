@@ -23,6 +23,11 @@ export interface Game {
   description: string;
   price: number;
   categoryIds: string[];
+  shopId?: string;
+  shopName?: string;
+  views?: number;
+  status?: string;
+  categories?: string[];
 }
 
 // Helper type for Game with populated categories

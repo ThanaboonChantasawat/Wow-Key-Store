@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, Shield, Crown, Ban, Check, Edit2, Trash2, AlertCircle } from "lucide-react"
+import { User, Shield, Crown, Ban, Check, Search, UserCircle2, Mail, Calendar, Activity, XCircle, CheckCircle, X, Edit2, Trash2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { getAllUsers, updateUserRole, updateAccountStatus, deleteUserAccount, UserProfile } from "@/lib/user-service"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { getAllUsers, updateUserRole, updateAccountStatus, deleteUserAccount, UserProfile } from "@/lib/user-client"
 import { useAuth } from "@/components/auth-context"
 
 interface UserWithId extends UserProfile {
@@ -19,14 +21,15 @@ export function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null)
-  const [showRoleDialog, setShowRoleDialog] = useState(false)
-  const [showStatusDialog, setShowStatusDialog] = useState(false)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [currentUserRole, setCurrentUserRole] = useState<string>('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [newRole, setNewRole] = useState<'buyer' | 'seller' | 'admin' | 'superadmin'>('buyer')
   const [newStatus, setNewStatus] = useState<'active' | 'suspended' | 'banned'>('active')
-  const [currentUserRole, setCurrentUserRole] = useState<string>('')
+  const itemsPerPage = 10
 
   useEffect(() => {
     loadUsers()
@@ -36,10 +39,19 @@ export function AdminUsers() {
     try {
       setLoading(true)
       const allUsers = await getAllUsers()
-      setUsers(allUsers)
+      
+      // Convert date strings back to Date objects
+      const usersWithDates = allUsers.map(user => ({
+        ...user,
+        createdAt: new Date(user.createdAt),
+        updatedAt: new Date(user.updatedAt),
+        lastLoginAt: new Date(user.lastLoginAt)
+      }));
+      
+      setUsers(usersWithDates)
       
       // Get current user's role
-      const current = allUsers.find(u => u.id === currentUser?.uid)
+      const current = usersWithDates.find(u => u.id === currentUser?.uid)
       if (current) {
         setCurrentUserRole(current.role)
       }
@@ -50,17 +62,33 @@ export function AdminUsers() {
     }
   }
 
+  const openUserModal = (user: UserWithId) => {
+    setSelectedUser(user)
+    setNewRole(user.role as 'buyer' | 'seller' | 'admin' | 'superadmin')
+    setNewStatus(user.accountStatus as 'active' | 'suspended' | 'banned')
+    setShowUserModal(true)
+  }
+
+  const closeUserModal = () => {
+    setShowUserModal(false)
+    setSelectedUser(null)
+  }
+
   const handleRoleChange = async () => {
     if (!selectedUser) return
     
     try {
+      setIsUpdating(true)
       await updateUserRole(selectedUser.id, newRole)
       await loadUsers()
-      setShowRoleDialog(false)
-      setSelectedUser(null)
+      // Update selected user
+      setSelectedUser({ ...selectedUser, role: newRole })
+      alert("เปลี่ยนบทบาทสำเร็จ")
     } catch (error) {
       console.error("Error updating role:", error)
       alert("เกิดข้อผิดพลาดในการเปลี่ยนบทบาท")
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -68,30 +96,22 @@ export function AdminUsers() {
     if (!selectedUser) return
     
     try {
+      setIsUpdating(true)
       await updateAccountStatus(selectedUser.id, newStatus)
       await loadUsers()
-      setShowStatusDialog(false)
-      setSelectedUser(null)
+      // Update selected user
+      setSelectedUser({ ...selectedUser, accountStatus: newStatus })
+      alert("เปลี่ยนสถานะสำเร็จ")
     } catch (error) {
       console.error("Error updating status:", error)
       alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ")
+    } finally {
+      setIsUpdating(false)
     }
   }
 
-  const openRoleDialog = (user: UserWithId) => {
-    setSelectedUser(user)
-    setNewRole(user.role)
-    setShowRoleDialog(true)
-  }
-
-  const openStatusDialog = (user: UserWithId) => {
-    setSelectedUser(user)
-    setNewStatus(user.accountStatus)
-    setShowStatusDialog(true)
-  }
-
-  const openDeleteDialog = (user: UserWithId) => {
-    setSelectedUser(user)
+  const openDeleteDialog = () => {
+    if (!selectedUser) return
     setDeleteConfirmText("")
     setShowDeleteDialog(true)
   }
@@ -168,7 +188,7 @@ export function AdminUsers() {
         return (
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1 justify-center">
             <Check className="w-3 h-3" />
-            ใช้งานอยู่
+            ใช้งานปกติ
           </span>
         )
       case "suspended":
@@ -181,7 +201,7 @@ export function AdminUsers() {
         return (
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1 justify-center">
             <Ban className="w-3 h-3" />
-            ถูกระงับ
+            แบน
           </span>
         )
       default:
@@ -251,70 +271,29 @@ export function AdminUsers() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">อีเมล</th>
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">ชื่อผู้ใช้</th>
-                    <th className="hidden md:table-cell px-6 py-4 text-center font-bold text-gray-800 text-sm">บทบาท</th>
-                    <th className="hidden lg:table-cell px-6 py-4 text-center font-bold text-gray-800 text-sm">สมัครเมื่อ</th>
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">สถานะ</th>
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">จัดการ</th>
+                    <th className="px-4 py-3 text-left font-bold text-gray-800 text-sm">ชื่อผู้ใช้</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-800 text-sm">บทบาท</th>
+                    <th className="px-4 py-3 text-center font-bold text-gray-800 text-sm">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-3 sm:px-6 py-3 sm:py-4">
-                        <span className="font-medium text-gray-800 text-sm sm:text-base block truncate max-w-[150px] sm:max-w-none">
-                          {user.email || "ไม่มีอีเมล"}
-                        </span>
-                      </td>
-                      <td className="px-3 sm:px-6 py-3 sm:py-4">
-                        <span className="text-gray-800 text-sm sm:text-base">{user.displayName}</span>
-                        <div className="md:hidden mt-1">
-                          {getRoleBadge(user.role)}
+                    <tr 
+                      key={user.id} 
+                      className="border-b border-gray-100 hover:bg-orange-50 transition-colors cursor-pointer"
+                      onClick={() => openUserModal(user)}
+                    >
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-medium text-gray-900">{user.displayName}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[200px]">{user.email || "ไม่มีอีเมล"}</div>
                         </div>
                       </td>
-                      <td className="hidden md:table-cell px-6 py-4 text-center">
+                      <td className="px-4 py-3 text-center">
                         {getRoleBadge(user.role)}
                       </td>
-                      <td className="hidden lg:table-cell px-6 py-4 text-center text-gray-600 text-sm">
-                        {user.createdAt.toLocaleDateString('th-TH')}
-                      </td>
-                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                      <td className="px-4 py-3 text-center">
                         {getStatusBadge(user.accountStatus)}
-                      </td>
-                      <td className="px-3 sm:px-6 py-3 sm:py-4">
-                        <div className="flex items-center justify-center gap-1 sm:gap-2">
-                          {canEditRole(user) && (
-                            <>
-                              <button 
-                                onClick={() => openRoleDialog(user)}
-                                className="p-1.5 sm:p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="เปลี่ยนบทบาท"
-                              >
-                                <Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-                              </button>
-                              <button 
-                                onClick={() => openStatusDialog(user)}
-                                className="p-1.5 sm:p-2 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="เปลี่ยนสถานะ"
-                              >
-                                <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-600" />
-                              </button>
-                              {currentUser && user.id !== currentUser.uid && (
-                                <button 
-                                  onClick={() => openDeleteDialog(user)}
-                                  className="p-1.5 sm:p-2 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="ลบบัญชี"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
-                                </button>
-                              )}
-                            </>
-                          )}
-                          {!canEditRole(user) && (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -405,153 +384,131 @@ export function AdminUsers() {
             )}
           </div>
         </>
-      )}      {/* Role Change Dialog */}
-      {showRoleDialog && selectedUser && (
+      )}
+
+      {/* User Management Modal */}
+      {showUserModal && selectedUser && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
-          onClick={() => setShowRoleDialog(false)}
+          onClick={closeUserModal}
         >
-          <Card className="max-w-md w-full bg-white relative animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-            {/* Close Button */}
-            <button
-              onClick={() => setShowRoleDialog(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700 z-10"
-            >
-              <span className="text-xl">×</span>
-            </button>
+          <div 
+            className="max-w-lg w-full bg-white relative animate-in zoom-in-95 duration-300 rounded-xl shadow-xl" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 rounded-t-xl relative bg-gradient-to-r from-[#ff9800] to-[#f57c00]">
+              {/* Close Button */}
+              <button
+                onClick={closeUserModal}
+                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors z-10"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
 
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3 pr-8">
-                <span className="text-3xl">👤</span>
-                เปลี่ยนบทบาทผู้ใช้
+              <h3 className="text-xl font-bold text-white flex items-center gap-2 pr-8">
+                <UserCircle2 className="w-6 h-6" />
+                <div>
+                  <div>จัดการผู้ใช้</div>
+                  <div className="text-xs text-white/90 font-normal mt-0.5">
+                    {selectedUser.displayName}
+                  </div>
+                </div>
               </h3>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">ผู้ใช้:</p>
-                <p className="font-semibold text-gray-900">{selectedUser.displayName}</p>
-                <p className="text-sm text-gray-500">{selectedUser.email}</p>
+            {/* Modal Body */}
+            <div className="p-4 space-y-4">
+              {/* User Info Card */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 border border-gray-200">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Mail className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="font-medium text-gray-700">อีเมล:</span>
+                    <span className="text-gray-900 truncate">{selectedUser.email || "ไม่มีอีเมล"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="font-medium text-gray-700">สมัครเมื่อ:</span>
+                    <span className="text-gray-900">{selectedUser.createdAt.toLocaleDateString('th-TH')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Activity className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="font-medium text-gray-700">เข้าสู่ระบบล่าสุด:</span>
+                    <span className="text-gray-900">{selectedUser.lastLoginAt.toLocaleDateString('th-TH')}</span>
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  บทบาทใหม่
-                </label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as 'buyer' | 'seller' | 'admin' | 'superadmin')}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
-                >
-                  <option value="buyer">🎮 Buyer - ผู้ซื้อ</option>
-                  <option value="seller">👤 Seller - ผู้ขาย</option>
-                  {currentUserRole === 'superadmin' && (
-                    <>
-                      <option value="admin">🛡️ Admin - ผู้ดูแลระบบ</option>
-                      {selectedUser.id === currentUser?.uid && (
-                        <option value="superadmin">👑 Super Admin - ผู้ดูแลระบบสูงสุด</option>
+
+              {/* Role and Status in Grid */}
+              {canEditRole(selectedUser) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Role Management */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-800 flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-[#ff9800]" />
+                      บทบาท
+                    </label>
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value as 'buyer' | 'seller' | 'admin' | 'superadmin')}
+                      className="w-full px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
+                      disabled={isUpdating}
+                    >
+                      <option value="buyer">🎮 Buyer</option>
+                      <option value="seller">👤 Seller</option>
+                      {currentUserRole === 'superadmin' && (
+                        <>
+                          <option value="admin">🛡️ Admin</option>
+                          {selectedUser.id === currentUser?.uid && (
+                            <option value="superadmin">👑 Super Admin</option>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </select>
-                {currentUserRole === 'superadmin' && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    💡 Super Admin สามารถเปลี่ยนบทบาทได้ทุกระดับ ยกเว้น Super Admin อื่น
-                  </p>
-                )}
-              </div>
-            </div>
+                    </select>
+                  </div>
 
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
-              <Button
-                onClick={() => setShowRoleDialog(false)}
-                variant="outline"
-                className="flex-1 border-2"
-              >
-                ยกเลิก
-              </Button>
-              <Button
-                onClick={handleRoleChange}
-                className="flex-1 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold shadow-md"
-              >
-                บันทึก
-              </Button>
+                  {/* Status Management */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-800 flex items-center gap-1">
+                      <Activity className="w-3.5 h-3.5 text-[#ff9800]" />
+                      สถานะ
+                    </label>
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value as 'active' | 'suspended' | 'banned')}
+                      className="w-full px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
+                      disabled={isUpdating}
+                    >
+                      <option value="active">✅ ใช้งานปกติ</option>
+                      <option value="suspended">⏸ พักการใช้งาน</option>
+                      <option value="banned">🚫 แบน</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {canEditRole(selectedUser) && (selectedUser.role !== newRole || selectedUser.accountStatus !== newStatus) && (
+                <div className="pt-2">
+                  <Button
+                    onClick={() => {
+                      if (selectedUser.role !== newRole) handleRoleChange()
+                      if (selectedUser.accountStatus !== newStatus) handleStatusChange()
+                    }}
+                    className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-2"
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? 'กำลังบันทึก...' : '💾 บันทึกการเปลี่ยนแปลง'}
+                  </Button>
+                </div>
+              )}
             </div>
-          </Card>
+          </div>
         </div>
       )}
 
-      {/* Status Change Dialog */}
-      {showStatusDialog && selectedUser && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
-          onClick={() => setShowStatusDialog(false)}
-        >
-          <Card className="max-w-md w-full bg-white relative animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-            {/* Close Button */}
-            <button
-              onClick={() => setShowStatusDialog(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700 z-10"
-            >
-              <span className="text-xl">×</span>
-            </button>
-
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3 pr-8">
-                <span className="text-3xl">🔒</span>
-                เปลี่ยนสถานะบัญชี
-              </h3>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">ผู้ใช้:</p>
-                <p className="font-semibold text-gray-900">{selectedUser.displayName}</p>
-                <p className="text-sm text-gray-500">{selectedUser.email}</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  สถานะใหม่
-                </label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as 'active' | 'suspended' | 'banned')}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
-                >
-                  <option value="active">✅ Active - ใช้งานปกติ</option>
-                  <option value="suspended">⏸ Suspended - พักการใช้งาน</option>
-                  <option value="banned">🚫 Banned - ระงับการใช้งาน</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
-              <Button
-                onClick={() => setShowStatusDialog(false)}
-                variant="outline"
-                className="flex-1 border-2"
-              >
-                ยกเลิก
-              </Button>
-              <Button
-                onClick={handleStatusChange}
-                className="flex-1 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold shadow-md"
-              >
-                บันทึก
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Delete User Dialog */}
+      {/* Delete Confirmation Dialog */}
       {showDeleteDialog && selectedUser && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"

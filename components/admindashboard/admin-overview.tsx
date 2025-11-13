@@ -1,129 +1,155 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Package, ShoppingCart, Store, AlertCircle, FileText, Activity } from "lucide-react"
-import {
-  collection,
-  getDocs,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/components/firebase-config"
+import { Users, Package, Store, AlertCircle, FileText, Activity } from "lucide-react"
+import { Timestamp } from "firebase/firestore"
+import { useAuth } from "@/components/auth-context"
 import { 
-  getRecentAdminActivities, 
   getActionLabel, 
   getActionIcon, 
   getActionColor,
   type AdminActivity 
-} from "@/lib/admin-activity-service"
+} from "@/lib/admin-activity-client"
 
-export function AdminOverview() {
+interface AdminOverviewProps {
+  onNavigate?: (section: string) => void
+}
+
+export function AdminOverview({ onNavigate }: AdminOverviewProps) {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalUsers: 0,
+    onlineUsers: 0,
+    offlineUsers: 0,
     totalProducts: 0,
-    totalOrders: 0,
     totalShops: 0,
     pendingShops: 0,
-    reopenRequests: 0
+    reopenRequests: 0,
+    activeReports: 0
   })
   const [recentActivities, setRecentActivities] = useState<AdminActivity[]>([])
 
+  // Auto-refresh stats every 5 seconds
   useEffect(() => {
+    if (!user) return
+
+    // Initial fetch
     fetchStats()
-  }, [])
+    fetchActivities()
+
+    // Set up interval for auto-refresh
+    const intervalId = setInterval(() => {
+      fetchStats()
+    }, 5000) // Refresh every 5 seconds
+
+    // Cleanup
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [user])
 
   const fetchStats = async () => {
     try {
-      setLoading(true)
+      if (!user) return
 
-      // Fetch users count
-      const usersSnapshot = await getDocs(collection(db, "users"))
-      const totalUsers = usersSnapshot.size
+      const token = await user.getIdToken()
 
-      // Fetch products count
-      const productsSnapshot = await getDocs(collection(db, "products"))
-      const totalProducts = productsSnapshot.size
-
-      // Fetch orders count
-      const ordersSnapshot = await getDocs(collection(db, "orders"))
-      const totalOrders = ordersSnapshot.size
-
-      // Fetch shops count and pending shops
-      const shopsSnapshot = await getDocs(collection(db, "shops"))
-      const totalShops = shopsSnapshot.size
-      let pendingShops = 0
-      shopsSnapshot.forEach((doc) => {
-        const shop = doc.data()
-        if (shop.status === "pending") {
-          pendingShops++
+      const statsResponse = await fetch('/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      })
-
-      // Fetch reopen requests count
-      const reopenRequestsSnapshot = await getDocs(collection(db, "reopenRequests"))
-      const reopenRequests = reopenRequestsSnapshot.size
-
-      // Fetch recent admin activities
-      const activities = await getRecentAdminActivities(8)
-
-      setStats({
-        totalUsers,
-        totalProducts,
-        totalOrders,
-        totalShops,
-        pendingShops,
-        reopenRequests
-      })
-      setRecentActivities(activities)
+      });
+      
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setStats(statsData)
+      }
+      
+      setLoading(false)
     } catch (error) {
       console.error("Error fetching stats:", error)
-    } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchActivities = async () => {
+    try {
+      if (!user) return
+
+      const token = await user.getIdToken()
+
+      // Fetch recent admin activities via API (only 3 for overview)
+      const activitiesResponse = await fetch('/api/admin/activities?limit=3', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const activitiesData = activitiesResponse.ok 
+        ? await activitiesResponse.json() 
+        : { activities: [] };
+      
+      // Convert date strings back to Date objects
+      const activitiesWithDates = (activitiesData.activities || []).map((activity: any) => ({
+        ...activity,
+        createdAt: new Date(activity.createdAt)
+      }));
+
+      setRecentActivities(activitiesWithDates)
+    } catch (error) {
+      console.error("Error fetching activities:", error)
     }
   }
 
   const statsData = [
     { 
       label: "ผู้ใช้ทั้งหมด", 
-      value: loading ? "..." : stats.totalUsers.toLocaleString(), 
+      value: loading ? "..." : stats.totalUsers.toLocaleString(),
+      subValue: loading ? "" : `ออนไลน์ ${stats.onlineUsers} | ออฟไลน์ ${stats.offlineUsers}`,
       icon: Users, 
       color: "from-blue-500 to-blue-600",
-      bgColor: "from-blue-50 to-blue-100"
+      bgColor: "from-blue-50 to-blue-100",
+      section: "users"
     },
     { 
       label: "ร้านค้าทั้งหมด", 
       value: loading ? "..." : stats.totalShops.toLocaleString(), 
       icon: Store, 
       color: "from-orange-500 to-orange-600",
-      bgColor: "from-orange-50 to-orange-100"
+      bgColor: "from-orange-50 to-orange-100",
+      section: "shops"
     },
     { 
       label: "ร้านค้ารอตรวจสอบ", 
       value: loading ? "..." : stats.pendingShops.toLocaleString(), 
       icon: AlertCircle, 
       color: "from-yellow-500 to-yellow-600",
-      bgColor: "from-yellow-50 to-yellow-100"
+      bgColor: "from-yellow-50 to-yellow-100",
+      section: "shops"
     },
     { 
       label: "คำขอเปิดร้านค้าใหม่", 
       value: loading ? "..." : stats.reopenRequests.toLocaleString(), 
       icon: FileText, 
       color: "from-purple-500 to-purple-600",
-      bgColor: "from-purple-50 to-purple-100"
+      bgColor: "from-purple-50 to-purple-100",
+      section: "reopen-requests"
     },
     { 
       label: "สินค้าทั้งหมด", 
       value: loading ? "..." : stats.totalProducts.toLocaleString(), 
       icon: Package, 
       color: "from-green-500 to-green-600",
-      bgColor: "from-green-50 to-green-100"
+      bgColor: "from-green-50 to-green-100",
+      section: "products"
     },
     { 
-      label: "คำสั่งซื้อทั้งหมด", 
-      value: loading ? "..." : stats.totalOrders.toLocaleString(), 
-      icon: ShoppingCart, 
-      color: "from-pink-500 to-pink-600",
-      bgColor: "from-pink-50 to-pink-100"
+      label: "รายงานที่รอดำเนินการ", 
+      value: loading ? "..." : stats.activeReports.toLocaleString(), 
+      icon: AlertCircle, 
+      color: "from-red-500 to-red-600",
+      bgColor: "from-red-50 to-red-100",
+      section: "reports"
     },
   ]
 
@@ -169,18 +195,28 @@ export function AdminOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statsData.map((stat, index) => {
           const Icon = stat.icon
-          return (
-            <div 
-              key={index} 
-              className={`bg-gradient-to-br ${stat.bgColor} rounded-2xl p-6 border-2 border-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105`}
-            >
+          const CardContent = (
+            <>
               <div className="flex items-center justify-between mb-4">
                 <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center shadow-md`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
               </div>
               <div className="text-4xl font-bold text-[#292d32] mb-2">{stat.value}</div>
+              {stat.subValue && (
+                <div className="text-xs font-medium text-gray-500 mb-2">{stat.subValue}</div>
+              )}
               <div className="text-sm font-medium text-gray-600">{stat.label}</div>
+            </>
+          )
+
+          return (
+            <div 
+              key={index}
+              onClick={() => stat.section && onNavigate?.(stat.section)}
+              className={`bg-gradient-to-br ${stat.bgColor} rounded-2xl p-6 border-2 border-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${stat.section ? 'cursor-pointer' : ''}`}
+            >
+              {CardContent}
             </div>
           )
         })}
@@ -188,12 +224,20 @@ export function AdminOverview() {
 
       {/* Recent Activity */}
       <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-200">
-        <h3 className="text-2xl font-bold text-[#292d32] mb-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Activity className="w-5 h-5 text-white" />
-          </div>
-          กิจกรรมของ Admin
-        </h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-bold text-[#292d32] flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            กิจกรรมของ Admin
+          </h3>
+          <button 
+            onClick={() => onNavigate?.("activities")}
+            className="text-sm font-medium text-[#ff9800] hover:text-[#e08800] transition-colors cursor-pointer"
+          >
+            ดูทั้งหมด →
+          </button>
+        </div>
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800] mx-auto"></div>
@@ -206,34 +250,121 @@ export function AdminOverview() {
             <p className="text-gray-600">กิจกรรมของ Admin จะแสดงที่นี่</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div 
-                key={activity.id} 
-                className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
-              >
-                <div className={`w-12 h-12 bg-gradient-to-br ${getActionColor(activity.action)} rounded-xl flex items-center justify-center flex-shrink-0 shadow-md`}>
-                  <span className="text-2xl">{getActionIcon(activity.action)}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-semibold text-[#292d32]">
-                      {getActionLabel(activity.action)}
-                    </p>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {formatDate(activity.createdAt)}
-                    </span>
+          <div className="space-y-4">
+            {recentActivities.map((activity) => {
+              // Parse details
+              const parseDetails = (details: string) => {
+                const contentTypeMatch = details.match(/Deleted (comment|review)/)
+                const reasonMatch = details.match(/Reason: ([^.]+)/)
+                const noteMatch = details.match(/Admin note: ([^.]+)/)
+                const violationsMatch = details.match(/User violations: (\d+)/)
+                const durationMatch = details.match(/for (\d+) days/)
+                
+                return {
+                  contentType: contentTypeMatch?.[1] === 'comment' ? 'ความคิดเห็น' : 'รีวิว',
+                  reason: reasonMatch?.[1],
+                  adminNote: noteMatch?.[1],
+                  violations: violationsMatch?.[1],
+                  duration: durationMatch?.[1]
+                }
+              }
+
+              const parsed = parseDetails(activity.details)
+              
+              // Get Thai action description
+              const getThaiAction = () => {
+                switch(activity.action) {
+                  case 'delete_content':
+                    return `ลบ${parsed.contentType}`
+                  case 'ban_user':
+                    return 'แบนผู้ใช้'
+                  case 'approve_report':
+                    return 'อนุมัติรายงาน'
+                  case 'reject_report':
+                    return 'ปฏิเสธรายงาน'
+                  case 'reverse_report_decision':
+                    return 'ยกเลิกการตัดสิน'
+                  default:
+                    return activity.action
+                }
+              }
+
+              const getActionIcon = (action: string) => {
+                switch (action) {
+                  case 'ban_user':
+                    return '🚫'
+                  case 'delete_content':
+                    return '🗑️'
+                  case 'reverse_report_decision':
+                    return '🔄'
+                  case 'approve_report':
+                    return '✅'
+                  case 'reject_report':
+                    return '❌'
+                  default:
+                    return '📋'
+                }
+              }
+
+              return (
+                <div 
+                  key={activity.id} 
+                  className="bg-white rounded-xl p-5 border-l-4 shadow-sm hover:shadow-lg transition-all cursor-pointer"
+                  style={{
+                    borderLeftColor: activity.action === 'ban_user' ? '#dc2626' : 
+                                    activity.action === 'delete_content' ? '#ea580c' :
+                                    activity.action === 'reverse_report_decision' ? '#2563eb' :
+                                    activity.action === 'approve_report' ? '#16a34a' : 
+                                    activity.action === 'reject_report' ? '#dc2626' : '#6b7280'
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Icon Section */}
+                    <div className="flex-shrink-0">
+                      <div className={`p-3 rounded-xl ${
+                        activity.action === 'ban_user' ? 'bg-red-100' :
+                        activity.action === 'delete_content' ? 'bg-orange-100' :
+                        activity.action === 'reverse_report_decision' ? 'bg-blue-100' :
+                        activity.action === 'approve_report' ? 'bg-green-100' :
+                        activity.action === 'reject_report' ? 'bg-red-100' : 'bg-gray-100'
+                      }`}>
+                        <span className="text-xl">{getActionIcon(activity.action)}</span>
+                      </div>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="flex-1 min-w-0">
+                      {/* Badge & Time */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          activity.action === 'ban_user' ? 'bg-red-600 text-white' :
+                          activity.action === 'delete_content' ? 'bg-orange-600 text-white' :
+                          activity.action === 'reverse_report_decision' ? 'bg-blue-600 text-white' :
+                          activity.action === 'approve_report' ? 'bg-green-600 text-white' :
+                          activity.action === 'reject_report' ? 'bg-red-500 text-white' : 'bg-gray-600 text-white'
+                        }`}>
+                          {getActionIcon(activity.action)} {getThaiAction()}
+                        </span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full whitespace-nowrap">
+                          {formatDate(activity.createdAt)}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-2">
+                        {getThaiAction()}ของ {activity.targetName}
+                      </p>
+
+                      {/* Admin Info */}
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <Users className="w-3 h-3" />
+                        <span className="font-medium">{activity.adminName}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-700 mb-1">
-                    <span className="font-medium">{activity.targetName}</span>
-                  </p>
-                  <p className="text-xs text-gray-600">{activity.details}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    โดย: {activity.adminName} ({activity.adminEmail})
-                  </p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

@@ -1,13 +1,27 @@
 'use client'
 import { Card, CardContent } from "../ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
-import { Heart, ShoppingCart, Loader2 } from "lucide-react";
+import { Heart, ShoppingCart, Loader2, Star, MessageCircle, Eye, TrendingUp } from "lucide-react";
 import { Game, GameImage } from "@/lib/types";
+import { ReviewList } from "@/components/review/review-list";
+import { CommentList } from "@/components/comment/comment-list";
+import { ShopCard } from "@/components/product/shop-card";
+import { SimilarProducts } from "@/components/product/similar-products";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-context";
-import { addToFavorites, removeFromFavorites, isFavorited } from "@/lib/favorites-service";
-import { addToCart, removeFromCart, isInCart } from "@/lib/cart-service";
+import { addToFavorites, removeFromFavorites, isFavorited } from "@/lib/favorites-client";
+import { addToCart, removeFromCart, isInCart } from "@/lib/cart-client";
+
+interface ProductStats {
+  views: number
+  sales: number
+  rating: number
+  reviewCount: number
+  shopId: string
+  shopName: string
+}
 
 const ProductCard = ({ game }: { game: Game }) => {
   const { name, gameImages, description, price } = game;
@@ -18,6 +32,9 @@ const ProductCard = ({ game }: { game: Game }) => {
   const [isAddedToCart, setIsAddedToCart] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
   const [checkingCart, setCheckingCart] = useState(true);
+  const [stats, setStats] = useState<ProductStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
   // แยก images array จาก gameImages structure
   const getImagesArray = (): GameImage[] => {
@@ -96,6 +113,45 @@ const ProductCard = ({ game }: { game: Game }) => {
 
     checkCart();
   }, [user, game.id]);
+
+  // Fetch product stats and increment view count (unique per session)
+  useEffect(() => {
+    if (!game.id) return;
+
+    const fetchStats = async () => {
+      try {
+        // Check if already viewed in this session
+        const viewedKey = `product_viewed_${game.id}`;
+        const hasViewed = sessionStorage.getItem(viewedKey);
+
+        // Only increment view if not viewed in this session
+        if (!hasViewed) {
+          await fetch(`/api/products/${game.id}/view`, {
+            method: 'POST',
+          });
+          // Mark as viewed in this session
+          sessionStorage.setItem(viewedKey, 'true');
+        }
+
+        // Fetch stats
+        const response = await fetch(`/api/products/${game.id}/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Product stats:', data);
+          setStats(data);
+        } else {
+          const errorData = await response.json();
+          console.error('Stats API Error:', errorData);
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [game.id]);
 
   // Handle cart toggle
   const handleCartToggle = async () => {
@@ -177,12 +233,16 @@ const ProductCard = ({ game }: { game: Game }) => {
   };
 
   return (
+    <>
     <Card className="mb-4 sm:mb-6 lg:mb-8 bg-white border-gray-100 shadow-sm">
       <CardContent className="p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {/* Product Image */}
           <div className="space-y-3 sm:space-y-4">
-            <div className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-lg overflow-hidden">
+            <div 
+              className="relative w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-lg overflow-hidden cursor-zoom-in hover:opacity-95 transition-opacity"
+              onClick={() => setIsImageModalOpen(true)}
+            >
               <Image
                 src={getDisplayImage()}
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
@@ -225,12 +285,31 @@ const ProductCard = ({ game }: { game: Game }) => {
                 {name}
               </h1>
               <div className="flex flex-wrap gap-3 sm:gap-4 text-[#999999] text-xs sm:text-sm">
-                <span className="flex items-center">
-                  <span className="font-medium text-[#000000] mr-1">100</span> ขายแล้ว
-                </span>
-                <span className="flex items-center">
-                  <span className="font-medium text-[#000000] mr-1">200</span> เข้าชมแล้ว
-                </span>
+                {!statsLoading && stats && (
+                  <>
+                    <span className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full font-medium">
+                      <TrendingUp className="w-3 h-3" />
+                      <span className="font-bold text-green-800">{stats.sales}</span> ขายแล้ว
+                    </span>
+                    <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
+                      <Eye className="w-3 h-3" />
+                      <span className="font-bold text-blue-800">{stats.views}</span> เข้าชม
+                    </span>
+                    {stats.reviewCount > 0 && (
+                      <span className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full font-medium">
+                        <Star className="w-3 h-3 fill-yellow-500" />
+                        <span className="font-bold text-yellow-800">{stats.rating.toFixed(1)}</span>
+                        <span className="text-yellow-600">({stats.reviewCount})</span>
+                      </span>
+                    )}
+                  </>
+                )}
+                {statsLoading && (
+                  <>
+                    <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse"></div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -290,13 +369,132 @@ const ProductCard = ({ game }: { game: Game }) => {
                     fill={isFavorite ? "currentColor" : "none"}
                   />
                 )}
-                <span>{isFavorite ? "ลบออกจากรายการที่อยากได้" : "เพิ่มในรายการที่อยากได้"}</span>
+                <span>{isFavorite ? "ลบออกจากชื่นชอบ" : "ชื่นชอบ"}</span>
               </Button>
             </div>
           </div>
         </div>
       </CardContent>
     </Card>
+
+    {/* Shop Card */}
+    {stats && stats.shopId && (
+      <div className="mt-6">
+        <ShopCard shopId={stats.shopId} />
+      </div>
+    )}
+
+    {/* Similar Products */}
+    {game.id && (
+      <div className="mt-6">
+        <SimilarProducts productId={game.id} />
+      </div>
+    )}
+
+    {/* Reviews and Comments Section */}
+    <Card className="mt-6">
+      <CardContent className="p-6">
+        <Tabs defaultValue="reviews" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="reviews" className="flex items-center gap-2">
+              <Star className="w-4 h-4" />
+              รีวิวสินค้า
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              คำถาม & ความคิดเห็น
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="reviews">
+            <ReviewList
+              type="product"
+              productId={game.id}
+              currentUserId={user?.uid}
+            />
+          </TabsContent>
+          
+          <TabsContent value="comments">
+            <CommentList
+              type="product"
+              shopId={(game as any).shopId || ''}
+              shopName="ร้านค้า"
+              productId={game.id}
+              productName={game.name}
+              currentUserId={user?.uid}
+            />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+
+    {/* Image Modal */}
+    {isImageModalOpen && (
+      <div 
+        className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center"
+        onClick={() => setIsImageModalOpen(false)}
+      >
+        {/* Close Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsImageModalOpen(false);
+          }}
+          className="absolute top-4 right-4 z-[60] bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full p-2 text-white transition-all duration-200 hover:scale-110"
+          aria-label="ปิด"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        {/* Main Image Container */}
+        <div className="relative w-full flex-1 flex items-center justify-center px-4 pb-24">
+          <div className="relative w-full h-full max-w-6xl max-h-[calc(100vh-120px)]">
+            <Image
+              src={getDisplayImage()}
+              alt={name}
+              fill
+              className="object-contain"
+              onClick={(e) => e.stopPropagation()}
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Thumbnail navigation in modal */}
+        {finalGameImages && finalGameImages.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-8 pb-4 px-4">
+            <div className="flex justify-center">
+              <div className="flex gap-2 overflow-x-auto max-w-4xl hide-scrollbar">
+                {finalGameImages.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImageIndex(index);
+                    }}
+                    className={`relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-all duration-200 ${
+                      selectedImageIndex === index 
+                        ? 'border-[#ff9800] ring-2 ring-[#ff9800]/50 scale-110' 
+                        : 'border-white/30 hover:border-white/60 hover:scale-105'
+                    }`}
+                  >
+                    <Image
+                      src={image.url}
+                      alt={`${name} รูปที่ ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    </>
   );
 };
 export default ProductCard;

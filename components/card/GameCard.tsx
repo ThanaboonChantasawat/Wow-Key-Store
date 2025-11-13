@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useGames } from "@/hooks/useFirestore";
 import { GameWithCategories, GameImage } from "@/lib/types";
 import { useAuth } from "@/components/auth-context";
-import { addToFavorites, removeFromFavorites, isFavorited } from "@/lib/favorites-service";
+import { addToFavorites, removeFromFavorites, isFavorited } from "@/lib/favorites-client";
 
 interface GameCardProps {
   games?: GameWithCategories[];
@@ -137,12 +137,12 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
       
       {displayGames.map((game) => (
         <div
           key={game.id}
-          className="bg-white rounded-lg sm:rounded-xl shadow-md overflow-hidden hover:shadow-xl hover:shadow-orange-100 transition-all duration-300 flex flex-col h-full group border-2 border-gray-200 hover:border-[#ff9800] hover:scale-105"
+          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl hover:shadow-orange-100 transition-all duration-300 flex flex-col h-full group border-2 border-gray-200 hover:border-[#ff9800] hover:scale-[1.02]"
         >
           {/* Image Container with Overlay */}
           <div className="relative w-full aspect-square overflow-hidden flex-shrink-0 bg-gradient-to-br from-gray-900 to-gray-800">
@@ -210,7 +210,7 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
             </Link>
             
             {/* Price Badge */}
-            <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-gradient-to-r from-[#ff9800] to-[#f57c00] text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg shadow-lg font-bold text-xs sm:text-sm">
+            <div className="absolute top-3 right-3 bg-gradient-to-r from-[#ff9800] to-[#f57c00] text-white px-3 py-2 rounded-lg shadow-lg font-bold text-sm sm:text-base">
               ฿{game.price.toLocaleString()}
             </div>
 
@@ -218,13 +218,13 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
             <button
               onClick={(e) => handleFavoriteToggle(game.id, e, game)}
               disabled={favoriteLoading[game.id]}
-              className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white/90 hover:bg-white text-red-500 p-1.5 sm:p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 z-10"
+              className="absolute top-3 left-3 bg-white/90 hover:bg-white text-red-500 p-2 sm:p-2.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 z-10"
             >
               {favoriteLoading[game.id] ? (
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
               ) : (
                 <Heart 
-                  className="w-4 h-4 sm:w-5 sm:h-5" 
+                  className="w-5 h-5 sm:w-6 sm:h-6" 
                   fill={favorites[game.id] ? "currentColor" : "none"}
                 />
               )}
@@ -232,40 +232,40 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
           </div>
 
           {/* Content */}
-          <div className="p-2 sm:p-3 lg:p-4 flex-grow flex flex-col">
+          <div className="p-3 sm:p-4 lg:p-5 flex-grow flex flex-col">
             <Link href={`/products/${game.id}`}>
-              <h4 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 hover:text-[#ff9800] transition-colors text-center">
+              <h4 className="font-bold text-base sm:text-lg text-gray-900 mb-2 line-clamp-2 hover:text-[#ff9800] transition-colors text-center min-h-[3rem]">
                 {game.name}
               </h4>
             </Link>
             
-            <p className="text-md text-gray-500 text-center line-clamp-3 mb-2 overflow-hidden text-ellipsis">
-              {game.description && game.description.length > 200
-                ? `${game.description.substring(0, 200)}...` 
+            <p className="text-sm sm:text-base text-gray-500 text-center line-clamp-3 mb-3 overflow-hidden text-ellipsis min-h-[4rem]">
+              {game.description && game.description.length > 150
+                ? `${game.description.substring(0, 150)}...` 
                 : game.description || 'ไม่มีคำอธิบาย'}
             </p>
             
             {/* Categories Tags */}
             {game.categories && game.categories.length > 0 && (
-              <div className="flex flex-wrap gap-1 justify-center mb-3">
+              <div className="flex flex-wrap gap-1.5 justify-center mb-4">
                 {game.categories.slice(0, 2).map((category) => (
                   <span 
                     key={category.id}
-                    className="text-xs bg-gradient-to-r from-orange-50 to-orange-100 text-[#ff9800] px-2 py-1 rounded-full font-medium border border-orange-200"
+                    className="text-xs sm:text-sm bg-gradient-to-r from-orange-50 to-orange-100 text-[#ff9800] px-2.5 py-1 rounded-full font-medium border border-orange-200"
                   >
                     {category.name}
                   </span>
                 ))}
                 {game.categories.length > 2 && (
-                  <span className="text-xs text-gray-400 px-1 py-1">+{game.categories.length - 2}</span>
+                  <span className="text-xs sm:text-sm text-gray-400 px-1 py-1">+{game.categories.length - 2}</span>
                 )}
               </div>
             )}
             
             {/* Action Button */}
             <Link href={`/products/${game.id}`} className="mt-auto">
-              <button className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white py-2 sm:py-2.5 rounded-lg flex items-center justify-center transition-all duration-300 font-medium text-xs sm:text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:scale-95">
-                <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <button className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white py-3 rounded-lg flex items-center justify-center transition-all duration-300 font-medium text-sm sm:text-base shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:scale-95">
+                <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 <span>ดูรายละเอียด</span>
               </button>
             </Link>

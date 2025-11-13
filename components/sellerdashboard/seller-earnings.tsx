@@ -56,22 +56,34 @@ export default function SellerEarnings() {
     try {
       setRefreshing(true)
 
-      // Fetch balance
-      const balanceRes = await fetch(`/api/stripe/balance?userId=${user.uid}`)
-      if (balanceRes.ok) {
-        const balanceData = await balanceRes.json()
-        setBalance(balanceData)
+      // Fetch seller balance from our custom API (based on buyer confirmations)
+      const sellerBalanceRes = await fetch(`/api/seller/balance?userId=${user.uid}`)
+      if (sellerBalanceRes.ok) {
+        const data = await sellerBalanceRes.json()
+        if (data.success && data.balance) {
+          // Convert to Stripe balance format for compatibility
+          setBalance({
+            available: [{ amount: Math.round(data.balance.available * 100), currency: 'thb' }],
+            pending: [{ amount: Math.round(data.balance.pending * 100), currency: 'thb' }],
+            currency: 'thb',
+          })
+          
+          // Set statistics (using actual time-based data from API)
+          setStatistics({
+            today: Math.round((data.balance.todayEarnings || 0) * 100),
+            week: Math.round((data.balance.weekEarnings || 0) * 100),
+            month: Math.round((data.balance.monthEarnings || 0) * 100),
+            currency: 'thb',
+          })
+          
+          console.log('💰 Seller balance loaded:', data.balance)
+        }
+      } else {
+        console.error('Failed to fetch seller balance:', await sellerBalanceRes.text())
       }
 
-      // Fetch statistics
-      const statsRes = await fetch(`/api/stripe/balance-transactions?userId=${user.uid}`)
-      if (statsRes.ok) {
-        const statsData = await statsRes.json()
-        setStatistics(statsData.statistics)
-      }
-
-      // Fetch next payout
-      const payoutsRes = await fetch(`/api/stripe/payouts?userId=${user.uid}`)
+      // Fetch manual payouts from Firestore for payout history
+      const payoutsRes = await fetch(`/api/seller/manual-payouts?userId=${user.uid}`)
       if (payoutsRes.ok) {
         const payoutsData = await payoutsRes.json()
         if (payoutsData.payouts && payoutsData.payouts.length > 0) {
@@ -157,7 +169,7 @@ export default function SellerEarnings() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
               <Wallet className="w-4 h-4" />
-              พร้อมโอน
+              พร้อมถอน
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -165,7 +177,7 @@ export default function SellerEarnings() {
               ฿{formatAmount(availableAmount)}
             </div>
             <p className="text-xs text-green-600 mt-2">
-              สามารถโอนเข้าบัญชีธนาคารได้
+              ✅ ผู้ซื้อยืนยันแล้ว - พร้อมโอนได้
             </p>
           </CardContent>
         </Card>
@@ -175,7 +187,7 @@ export default function SellerEarnings() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-yellow-700 flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              รอดำเนินการ
+              รอยืนยัน
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -183,7 +195,7 @@ export default function SellerEarnings() {
               ฿{formatAmount(pendingAmount)}
             </div>
             <p className="text-xs text-yellow-600 mt-2">
-              รอการตรวจสอบจาก Stripe
+              ⏳ รอผู้ซื้อยืนยันรับสินค้า
             </p>
           </CardContent>
         </Card>
@@ -303,8 +315,8 @@ export default function SellerEarnings() {
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">ℹ️ หมายเหตุ</p>
               <ul className="space-y-1 text-blue-700">
-                <li>• ยอดเงินจะถูกโอนเข้าบัญชีธนาคารตามรอบที่ Stripe กำหนด</li>
-                <li>• ค่าธรรมเนียม Stripe จะถูกหักออกจากยอดขายอัตโนมัติ</li>
+                <li>• ยอดเงินจะถูกโอนเข้าบัญชีธนาคารตามการตั้งค่าบัญชีรับเงิน</li>
+                <li>• ค่าธรรมเนียมแพลตฟอร์มจะถูกหักออกจากยอดขายอัตโนมัติ</li>
                 <li>• สถิติแสดงเฉพาะยอดสุทธิหลังหักค่าธรรมเนียม</li>
               </ul>
             </div>

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { SellerDashboard } from "@/components/sellerdashboard/seller-dashboard"
 import { CreateShopForm } from "@/components/sellerdashboard/create-shop-form"
 import { useAuth } from "@/components/auth-context"
-import { getShopByOwnerId, type Shop } from "@/lib/shop-service"
-import { getUserProfile, type UserProfile } from "@/lib/user-service"
+import { type Shop } from "@/lib/shop-client"
+import { getUserProfile, type UserProfile } from "@/lib/user-client"
 import { AlertCircle, Clock, XCircle, CheckCircle2, Ban } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -24,13 +24,29 @@ export default function SellerPage() {
       }
 
       try {
-        const shopData = await getShopByOwnerId(user.uid)
-        setShop(shopData)
-        
-        // Load verifier profile if shop was verified/rejected
-        if (shopData?.verifiedBy) {
-          const profile = await getUserProfile(shopData.verifiedBy)
-          setVerifierProfile(profile)
+        // Call API instead of direct service
+        const response = await fetch(`/api/shops/owner/${user.uid}`);
+        if (response.ok) {
+          const shopData = await response.json();
+          
+          // Convert date strings back to Date objects
+          if (shopData.createdAt) shopData.createdAt = new Date(shopData.createdAt);
+          if (shopData.updatedAt) shopData.updatedAt = new Date(shopData.updatedAt);
+          if (shopData.verifiedAt) shopData.verifiedAt = new Date(shopData.verifiedAt);
+          if (shopData.suspendedAt) shopData.suspendedAt = new Date(shopData.suspendedAt);
+          
+          setShop(shopData);
+          
+          // Load verifier profile if shop was verified/rejected
+          if (shopData?.verifiedBy) {
+            const profile = await getUserProfile(shopData.verifiedBy)
+            setVerifierProfile(profile)
+          }
+        } else if (response.status === 404) {
+          // Shop not found - user hasn't created one yet
+          setShop(null);
+        } else {
+          console.error("Error fetching shop:", await response.text());
         }
       } catch (error) {
         console.error("Error checking shop:", error)
@@ -44,11 +60,22 @@ export default function SellerPage() {
     }
   }, [user, isInitialized])
 
-  const handleShopCreated = () => {
+  const handleShopCreated = async () => {
     // Reload shop data
     setIsEditing(false)
     if (user) {
-      getShopByOwnerId(user.uid).then(setShop)
+      const response = await fetch(`/api/shops/owner/${user.uid}`);
+      if (response.ok) {
+        const shopData = await response.json();
+        
+        // Convert date strings back to Date objects
+        if (shopData.createdAt) shopData.createdAt = new Date(shopData.createdAt);
+        if (shopData.updatedAt) shopData.updatedAt = new Date(shopData.updatedAt);
+        if (shopData.verifiedAt) shopData.verifiedAt = new Date(shopData.verifiedAt);
+        if (shopData.suspendedAt) shopData.suspendedAt = new Date(shopData.suspendedAt);
+        
+        setShop(shopData);
+      }
     }
   }
 

@@ -4,18 +4,18 @@ import { db } from '@/components/firebase-config'
 import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-09-30.clover',
 })
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { chargeId: string } }
+  { params }: { params: Promise<{ chargeId: string }> }
 ) {
   console.log('🚀 API /api/orders/by-charge/[chargeId] called')
-  console.log('📋 Params:', params)
   
   try {
-    const { chargeId } = params
+    const { chargeId } = await params
+    console.log('📋 ChargeId from params:', chargeId)
     console.log('🔑 ChargeId from params:', chargeId)
 
     if (!chargeId) {

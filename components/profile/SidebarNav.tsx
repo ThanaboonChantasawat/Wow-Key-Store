@@ -15,10 +15,10 @@ const navItems = [
   { id: "account", label: "บัญชีของฉัน" },
   { id: "my-orders", label: "คำสั่งซื้อของฉัน" },
   { id: "seller-status", label: "สถานะร้านค้า" },
-  { id: "myGame", label: "ไอดีเกมของฉัน" },
-  { id: "update-order", label: "อัพเดทคำสั่งซื้อ" },
-  { id: "wishlist", label: "รายการที่อยากได้" },
-  { id: "help", label: "ช่วยเหลือ" },
+  { id: "wishlist", label: "ชื่นชอบ" },
+  { id: "my-reports", label: "รายงานของฉัน" },
+  { id: "violation-history", label: "ประวัติการละเมิด" },
+  { id: "support-messages", label: "ข้อความของฉัน" }, 
 ]
 
 interface SidebarNavProps {

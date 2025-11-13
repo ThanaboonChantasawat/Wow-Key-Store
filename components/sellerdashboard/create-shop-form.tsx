@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Store, Upload, AlertCircle, CheckCircle2 } from "lucide-react"
-import { createShop, type Shop } from "@/lib/shop-service"
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
+import { type Shop, createShop } from "@/lib/shop-client"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import { useAuth } from "@/components/auth-context"
 import { canProceedWithTransaction } from "@/lib/email-verification"
@@ -143,33 +143,27 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
       // Upload logo only if file is selected
       if (logoFile) {
         try {
-          // Delete old logo if exists and user is uploading a new one
-          if (existingShop?.logoUrl && existingShop.logoUrl.includes('firebasestorage.googleapis.com')) {
-            try {
-              const decodedUrl = decodeURIComponent(existingShop.logoUrl);
-              const pathMatch = decodedUrl.match(/\/o\/(.+?)\?/);
-              
-              if (pathMatch && pathMatch[1]) {
-                const filePath = pathMatch[1];
-                const oldLogoRef = ref(storage, filePath);
-                await deleteObject(oldLogoRef);
-                console.log("Old logo deleted successfully:", filePath);
-              }
-            } catch (deleteError) {
-              console.warn("Could not delete old logo:", deleteError)
-              // Continue anyway - don't fail the upload because of this
-            }
-          }
-
-          // Upload new logo
-          const storageRef = ref(storage, `shop-logos/${userId}/${Date.now()}_${logoFile.name}`)
-          await uploadBytes(storageRef, logoFile)
-          logoUrl = await getDownloadURL(storageRef)
-        } catch (uploadError) {
-          console.error("Error uploading logo:", uploadError)
-          setMessage({ type: "error", text: "อัปโหลดโลโก้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" })
-          setLoading(false)
-          return
+          console.log('🔄 Starting upload with Client SDK...');
+          
+          // Use Firebase Client SDK for upload (no CORS issues, no server bucket needed)
+          const storageRef = ref(storage, `shop-logos/${userId}/${Date.now()}_${logoFile.name}`);
+          
+          console.log('📤 Uploading to:', storageRef.fullPath);
+          
+          await uploadBytes(storageRef, logoFile);
+          logoUrl = await getDownloadURL(storageRef);
+          
+          console.log('✅ Upload successful! URL:', logoUrl);
+        } catch (uploadError: any) {
+          console.error("❌ Error uploading logo:", uploadError);
+          console.error("Error details:", uploadError.message);
+          
+          setMessage({ 
+            type: "error", 
+            text: `อัปโหลดโลโก้ไม่สำเร็จ: ${uploadError.message || 'กรุณาลองใหม่อีกครั้ง'}` 
+          });
+          setLoading(false);
+          return;
         }
       } else if (existingShop?.logoUrl) {
         // Keep existing logo if no new file selected
@@ -195,7 +189,8 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
       // Only add logo if it exists
       if (logoUrl) shopData.logoUrl = logoUrl;
 
-      await createShop(userId, shopData)
+      // Call API to create shop
+      await createShop(userId, shopData);
 
       // Note: User role will be updated to 'seller' only after admin approves the shop
       // This prevents users from accessing seller features before approval

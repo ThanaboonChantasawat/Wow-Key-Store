@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/components/firebase-config'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-})
+import { adminDb } from '@/lib/firebase-admin-config'
 
 interface CheckoutItem {
   productId: string
@@ -17,7 +11,6 @@ interface CheckoutItem {
 interface GroupedOrder {
   shopId: string
   shopName: string
-  stripeAccountId: string
   items: CheckoutItem[]
   totalAmount: number
   platformFee: number
@@ -30,7 +23,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Request body:', JSON.stringify(body, null, 2))
     
-    const { items, userId } = body
+    const { items, userId, cartItemIds } = body
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       console.error('No items provided')
@@ -49,6 +42,69 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Processing ${items.length} items for user ${userId}`)
+    console.log('Cart item IDs:', cartItemIds)
+
+    // Check if there's already a pending order with the same cart items (within last 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+    const existingOrdersSnapshot = await adminDb.collection('orders')
+      .where('userId', '==', userId)
+      .where('paymentStatus', '==', 'pending')
+      .where('type', '==', 'cart_checkout')
+      .get()
+
+    console.log(`Found ${existingOrdersSnapshot.size} pending cart orders for user`)
+
+    for (const doc of existingOrdersSnapshot.docs) {
+      const orderData = doc.data()
+      const createdAt = new Date(orderData.createdAt)
+      
+      console.log(`Checking order ${doc.id.substring(0, 12)}:`, {
+        createdAt: orderData.createdAt,
+        age: Math.floor((Date.now() - createdAt.getTime()) / 1000) + 's',
+        cartItemIds: orderData.cartItemIds,
+      })
+      
+      // Check if order was created within last 10 minutes
+      if (createdAt > tenMinutesAgo) {
+        // Check if it has the same cart items
+        const existingCartItemIds = orderData.cartItemIds || []
+        
+        // Sort both arrays for comparison
+        const sortedExisting = [...existingCartItemIds].sort()
+        const sortedNew = [...(cartItemIds || [])].sort()
+        
+        const hasSameItems = cartItemIds && 
+          sortedExisting.length === sortedNew.length &&
+          sortedExisting.every((id: string, index: number) => id === sortedNew[index])
+        
+        if (hasSameItems) {
+          console.log('⚠️ DUPLICATE DETECTED! Found existing pending order:', doc.id)
+          console.log('⚠️ Returning existing order instead of creating new one')
+          
+          // Calculate grand total and platform fee from shops
+          const grandTotal = orderData.totalAmount || 0
+          const totalPlatformFee = orderData.platformFee || 0
+          const orders = orderData.shops?.map((shop: any) => ({
+            shopId: shop.shopId,
+            shopName: shop.shopName,
+            items: shop.items || [],
+            totalAmount: shop.amount || 0,
+            platformFee: shop.platformFee || 0,
+            sellerAmount: shop.sellerAmount || 0,
+          })) || []
+          
+          return NextResponse.json({
+            orderId: doc.id,
+            orders,
+            grandTotal,
+            totalPlatformFee,
+            isDuplicate: true, // Flag to indicate this was a duplicate
+          })
+        }
+      }
+    }
+
+    console.log('✅ No duplicate found, creating new order...')
 
     // Group items by shop
     const shopGroups = new Map<string, GroupedOrder>()
@@ -57,10 +113,10 @@ export async function POST(request: NextRequest) {
       console.log(`Processing item:`, item)
       
       // Get shop details
-      const shopRef = doc(db, 'shops', item.shopId)
-      const shopDoc = await getDoc(shopRef)
+      const shopRef = adminDb.collection('shops').doc(item.shopId)
+      const shopDoc = await shopRef.get()
 
-      if (!shopDoc.exists()) {
+      if (!shopDoc.exists) {
         console.error(`Shop ${item.shopId} not found`)
         return NextResponse.json(
           { error: `Shop ${item.shopId} not found` },
@@ -69,21 +125,34 @@ export async function POST(request: NextRequest) {
       }
 
       const shopData = shopDoc.data()
-      console.log(`Shop data for ${item.shopId}:`, shopData.shopName)
-      
-      if (!shopData.stripeAccountId) {
+      if (!shopData) {
+        console.error(`Shop ${item.shopId} has invalid data`)
         return NextResponse.json(
-          { error: `Shop ${shopData.shopName} has not set up payment yet` },
+          { error: `Shop ${item.shopId} data is invalid` },
+          { status: 500 }
+        )
+      }
+
+      console.log(`Shop data for ${item.shopId}:`, shopData.shopName)
+      console.log(`Bank account check - bankAccountNumber: ${shopData.bankAccountNumber}, promptPayId: ${shopData.promptPayId}`)
+      
+      // Check if shop has bank account or PromptPay setup for payouts
+      const hasBankAccount = shopData.bankAccountNumber || shopData.promptPayId
+      if (!hasBankAccount) {
+        console.error(`❌ Shop ${shopData.shopName} (${item.shopId}) has no payment method configured`)
+        return NextResponse.json(
+          { error: `ร้านค้า ${shopData.shopName} ยังไม่ได้ตั้งค่าการรับชำระเงิน กรุณาติดต่อผู้ขาย` },
           { status: 400 }
         )
       }
+      
+      console.log(`✅ Shop ${shopData.shopName} has payment method configured`)
 
       // Add to group
       if (!shopGroups.has(item.shopId)) {
         shopGroups.set(item.shopId, {
           shopId: item.shopId,
           shopName: shopData.shopName,
-          stripeAccountId: shopData.stripeAccountId,
           items: [],
           totalAmount: 0,
           platformFee: 0,
@@ -115,47 +184,61 @@ export async function POST(request: NextRequest) {
 
     console.log('Grand total (THB):', grandTotal)
     console.log('Total platform fee (THB):', totalPlatformFee)
-    console.log('Amount to charge (satang):', grandTotal * 100)
 
-    // Create a single Payment Intent for the entire cart
-    // We'll use metadata to track which shops get which amounts
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: grandTotal * 100, // Convert THB to satang (smallest currency unit)
-      currency: 'thb',
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      metadata: {
-        userId,
-        type: 'cart_checkout',
-        orderCount: shopGroups.size.toString(),
-        shops: JSON.stringify(
-          Array.from(shopGroups.values()).map(g => ({
-            shopId: g.shopId,
-            shopName: g.shopName,
-            stripeAccountId: g.stripeAccountId,
-            amount: g.totalAmount,
-            platformFee: g.platformFee,
-            sellerAmount: g.sellerAmount,
-            items: g.items.map(i => ({
-              productId: i.productId,
-              name: i.name,
-              price: i.price,
-            })),
-          }))
-        ),
-      },
-    })
+    // Create a main order document in Firestore
+    const orderRef = adminDb.collection('orders').doc()
+    const orderId = orderRef.id
 
-    console.log('Payment Intent created:', paymentIntent.id)
-    console.log('Client secret:', paymentIntent.client_secret ? 'exists' : 'missing')
+    // For single shop orders, also set shopId and sellerAmount at root level
+    // This makes it easier for balance queries
+    const shopsArray = Array.from(shopGroups.values())
+    const isSingleShop = shopsArray.length === 1
+    const rootShopId = isSingleShop ? shopsArray[0].shopId : undefined
+    const rootSellerAmount = isSingleShop ? shopsArray[0].sellerAmount : undefined
+
+    const orderData: any = {
+      id: orderId,
+      userId,
+      type: 'cart_checkout',
+      shops: shopsArray.map(g => ({
+        shopId: g.shopId,
+        shopName: g.shopName,
+        amount: g.totalAmount,
+        platformFee: g.platformFee,
+        sellerAmount: g.sellerAmount,
+        items: g.items.map(i => ({
+          productId: i.productId,
+          name: i.name,
+          price: i.price,
+        })),
+      })),
+      totalAmount: grandTotal,
+      platformFee: totalPlatformFee,
+      paymentStatus: 'pending',
+      paymentMethod: 'pending', // Will be updated when customer chooses payment method
+      cartItemIds: cartItemIds || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    // Add root-level shopId and sellerAmount for single-shop orders
+    if (isSingleShop && rootShopId) {
+      orderData.shopId = rootShopId
+      orderData.sellerAmount = rootSellerAmount
+      console.log(`✅ Single shop order - added root shopId: ${rootShopId}, sellerAmount: ${rootSellerAmount}`)
+    }
+
+    await orderRef.set(orderData)
+    console.log('Order created:', orderId)
+
+    // DON'T clear cart items here - they will be cleared after successful payment
+    // This allows users to go back without losing their cart
 
     return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
+      orderId,
       orders: Array.from(shopGroups.values()),
       grandTotal,
       totalPlatformFee,
-      paymentIntentId: paymentIntent.id,
     })
   } catch (error) {
     console.error('=== Cart Checkout API Error ===')

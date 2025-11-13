@@ -18,8 +18,8 @@ import {
   type Product,
   type ProductFormData,
 } from "@/lib/product-service"
-import { getShopByOwnerId } from "@/lib/shop-service"
-import { updateUserProfile } from "@/lib/user-service"
+import { getShopByOwnerId } from "@/lib/shop-client"
+import { updateUserProfile } from "@/lib/user-client"
 import { getAllGames, type Game } from "@/lib/game-service"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
@@ -83,7 +83,7 @@ export function SellerProducts() {
     gameName: "",
     name: "",
     description: "",
-    price: 0,
+    price: "" as any, // Allow empty string for easier editing
     images: [],
     stock: "unlimited",
     category: "",
@@ -92,6 +92,7 @@ export function SellerProducts() {
   
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [primaryImageIndex, setPrimaryImageIndex] = useState<number>(0) // Track primary image
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -232,6 +233,15 @@ export function SellerProducts() {
   const handleRemoveImage = (index: number) => {
     setImageFiles(imageFiles.filter((_, i) => i !== index))
     setImagePreviews(imagePreviews.filter((_, i) => i !== index))
+    
+    // Adjust primary image index if needed
+    if (index === primaryImageIndex) {
+      // If removing primary image, set first image as primary
+      setPrimaryImageIndex(0)
+    } else if (index < primaryImageIndex) {
+      // If removing image before primary, adjust index
+      setPrimaryImageIndex(primaryImageIndex - 1)
+    }
   }
 
   const handleGameSelect = (gameId: string) => {
@@ -269,6 +279,7 @@ export function SellerProducts() {
       status: product.status === "out_of_stock" ? "active" : product.status,
     })
     setImagePreviews(product.images)
+    setPrimaryImageIndex(0) // Reset to first image when editing
     setShowModal(true)
   }
 
@@ -304,7 +315,15 @@ export function SellerProducts() {
           imageUrls = []; // Clear old URLs since we're replacing them
         }
         
-        const uploadPromises = imageFiles.map(async (file) => {
+        // Reorder files to put primary image first
+        const reorderedFiles = [...imageFiles]
+        if (primaryImageIndex > 0) {
+          const primaryFile = reorderedFiles[primaryImageIndex]
+          reorderedFiles.splice(primaryImageIndex, 1)
+          reorderedFiles.unshift(primaryFile)
+        }
+        
+        const uploadPromises = reorderedFiles.map(async (file) => {
           const timestamp = Date.now()
           const storageRef = ref(storage, `product-images/${shopId}/${timestamp}_${file.name}`)
           await uploadBytes(storageRef, file)
@@ -363,7 +382,7 @@ export function SellerProducts() {
       gameName: "",
       name: "",
       description: "",
-      price: 0,
+      price: "" as any,
       images: [],
       stock: "unlimited",
       category: "",
@@ -371,6 +390,7 @@ export function SellerProducts() {
     })
     setImageFiles([])
     setImagePreviews([])
+    setPrimaryImageIndex(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -774,11 +794,17 @@ export function SellerProducts() {
                     ราคา (บาท) <span className="text-red-500">*</span>
                   </label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                    placeholder="0"
-                    min="0"
+                    onChange={(e) => {
+                      const value = e.target.value
+                      // Allow empty string or valid numbers
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setFormData({ ...formData, price: value as any })
+                      }
+                    }}
+                    placeholder="ใส่ราคาสินค้า"
                     className="border-2 focus:border-[#ff9800]"
                     disabled={loadingProducts}
                     required
@@ -845,27 +871,45 @@ export function SellerProducts() {
                 
                 {/* Image Previews */}
                 {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-5 gap-2 mb-3">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <div className="relative w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-200">
-                          <Image src={preview} alt={`Preview ${index + 1}`} fill className="object-cover" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        {index === 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white text-xs text-center py-1">
-                            รูปหลัก
+                  <>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-xs text-blue-800">
+                        💡 <strong>คลิกที่รูปภาพ</strong>เพื่อเลือกเป็นรูปหลักที่จะแสดงในหน้าร้าน
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2 mb-3">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <div 
+                            className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                              index === primaryImageIndex 
+                                ? 'border-green-500 ring-2 ring-green-300' 
+                                : 'border-gray-200 hover:border-[#ff9800]'
+                            }`}
+                            onClick={() => setPrimaryImageIndex(index)}
+                            title="คลิกเพื่อตั้งเป็นรูปหลัก"
+                          >
+                            <Image src={preview} alt={`Preview ${index + 1}`} fill className="object-cover" />
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleRemoveImage(index)
+                            }}
+                            className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          {index === primaryImageIndex && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-green-500 text-white text-xs text-center py-1 font-semibold">
+                              รูปหลัก
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
 
                 {/* Upload Button */}

@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
-import { auth } from './firebase-config'
+import { auth, db } from './firebase-config'
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 
 interface AuthContextType {
   user: User | null
@@ -30,6 +31,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => auth.currentUser)
   const [loading, setLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(() => !!auth.currentUser)
+
+  // Update lastSeen every minute for logged in users
+  useEffect(() => {
+    if (!user) return
+
+    const updateLastSeen = async () => {
+      try {
+        const userRef = doc(db, 'users', user.uid)
+        await updateDoc(userRef, {
+          lastSeen: serverTimestamp()
+        })
+        console.log('✅ LastSeen updated for user:', user.uid)
+      } catch (error) {
+        console.error('Error updating lastSeen:', error)
+      }
+    }
+
+    // Update immediately
+    updateLastSeen()
+
+    // Then update every 1 minute
+    const intervalId = setInterval(updateLastSeen, 60000) // 60 seconds
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [user])
 
   useEffect(() => {
     let isMounted = true

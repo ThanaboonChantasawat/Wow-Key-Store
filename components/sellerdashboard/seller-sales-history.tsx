@@ -80,38 +80,34 @@ export default function SellerSalesHistory() {
     
     try {
       setRefreshing(true)
-      const response = await fetch(`/api/stripe/charges?userId=${user.uid}`)
+      // Fetch orders from Firestore - Use correct seller API endpoint
+      const response = await fetch(`/api/orders/seller?userId=${user.uid}`)
       
       if (response.ok) {
         const data = await response.json()
-        console.log('📊 Charges data:', data)
         
-        // Filter ออก test transactions (ที่มีคำว่า "Test" ใน description)
-        const filteredCharges = data.charges.filter((charge: Charge) => {
-          const isTest = charge.description?.includes('Test') || 
-                         charge.metadata?.productName?.includes('Test')
-          if (isTest) {
-            console.log('🧪 Hiding test transaction:', charge.id, charge.description)
+        // Convert orders to charge format for display compatibility
+        const charges = data.orders?.map((order: any, index: number) => ({
+          id: order.orderId || order.id || `order-${index}`, // Ensure unique ID
+          amount: order.totalAmount * 100, // Convert to cents for compatibility
+          created: order.createdAt?.seconds || Date.now() / 1000,
+          description: order.items?.map((item: any) => item.productName).join(', ') || 'Order',
+          status: order.paymentStatus,
+          receipt_url: `/receipt?orderId=${order.orderId || order.id}&from=seller`,
+          payment_intent: order.orderId || order.id, // Use orderId as identifier
+        })) || []
+        
+        setCharges(charges)
+        
+        // Build order mapping for quick lookup
+        const orderMap: { [key: string]: string } = {}
+        data.orders?.forEach((order: any) => {
+          const orderId = order.orderId || order.id
+          if (orderId) {
+            orderMap[orderId] = orderId
           }
-          return !isTest // ซ่อนถ้าเป็น test
         })
-        
-        console.log('✅ Filtered charges (hide tests):', filteredCharges.length)
-        setCharges(filteredCharges)
-        
-        // ดึง orders ที่เกี่ยวข้องกับ payment_intent
-        const paymentIntents = filteredCharges
-          .map((c: Charge) => c.payment_intent)
-          .filter((pi: string | null) => pi !== null)
-        
-        console.log('💳 Payment Intents from charges:', paymentIntents)
-        console.log('💳 Total payment intents:', paymentIntents.length)
-        
-        if (paymentIntents.length > 0) {
-          await fetchOrders(paymentIntents)
-        } else {
-          console.log('⚠️ No payment intents found in charges')
-        }
+        setOrders(orderMap)
       } else {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -132,50 +128,9 @@ export default function SellerSalesHistory() {
     }
   }
 
-  const fetchOrders = async (paymentIntents: string[]) => {
-    try {
-      console.log('🔍 Fetching orders for payment intents:', paymentIntents)
-      
-      // Firestore 'in' query จำกัดแค่ 10 items ต่อครั้ง
-      const chunks = []
-      for (let i = 0; i < paymentIntents.length; i += 10) {
-        chunks.push(paymentIntents.slice(i, i + 10))
-      }
-
-      const orderMap: { [key: string]: string } = {}
-      
-      for (const chunk of chunks) {
-        console.log('🔍 Querying chunk:', chunk)
-        const ordersRef = collection(db, 'orders')
-        const q = query(ordersRef, where('paymentIntentId', 'in', chunk))
-        const snapshot = await getDocs(q)
-        
-        console.log(`📦 Found ${snapshot.docs.length} orders in this chunk`)
-        
-        snapshot.docs.forEach(doc => {
-          const orderData = doc.data()
-          console.log('📄 Order:', doc.id, 'PaymentIntent:', orderData.paymentIntentId)
-          orderMap[orderData.paymentIntentId] = doc.id
-        })
-      }
-      
-      setOrders(orderMap)
-      console.log('✅ Orders mapping:', orderMap)
-      console.log('✅ Total orders loaded:', Object.keys(orderMap).length)
-    } catch (error) {
-      console.error('❌ Error fetching orders:', error)
-    }
-  }
-
   useEffect(() => {
-    console.log('🔄 SellerSalesHistory mounted')
-    console.log('👤 User:', user?.uid || 'Not logged in')
-    
     if (user) {
-      console.log('✅ User is logged in, fetching charges...')
       fetchCharges()
-    } else {
-      console.log('❌ User not logged in yet')
     }
   }, [user])
 
@@ -428,12 +383,12 @@ export default function SellerSalesHistory() {
                           if (charge.payment_intent && orders[charge.payment_intent]) {
                             // มี orderId → เปิดหน้าใบเสร็จในเว็บเรา
                             const orderId = orders[charge.payment_intent]
-                            console.log('✅ Opening internal receipt with orderId:', `/receipt?orderId=${orderId}`)
-                            router.push(`/receipt?orderId=${orderId}`)
+                            console.log('✅ Opening internal receipt with orderId:', `/receipt?orderId=${orderId}&from=seller`)
+                            router.push(`/receipt?orderId=${orderId}&from=seller`)
                           } else {
                             // ไม่มี orderId → ใช้ chargeId แทน
                             console.log('⚠️ No order found, using chargeId:', charge.id)
-                            router.push(`/receipt?chargeId=${charge.id}`)
+                            router.push(`/receipt?chargeId=${charge.id}&from=seller`)
                           }
                         }}
                       >
@@ -540,12 +495,12 @@ export default function SellerSalesHistory() {
                             if (charge.payment_intent && orders[charge.payment_intent]) {
                               // มี orderId → เปิดหน้าใบเสร็จในเว็บเรา
                               const orderId = orders[charge.payment_intent]
-                              console.log('✅ Opening internal receipt with orderId:', `/receipt?orderId=${orderId}`)
-                              router.push(`/receipt?orderId=${orderId}`)
+                              console.log('✅ Opening internal receipt with orderId:', `/receipt?orderId=${orderId}&from=seller`)
+                              router.push(`/receipt?orderId=${orderId}&from=seller`)
                             } else {
                               // ไม่มี orderId → ใช้ chargeId แทน
                               console.log('⚠️ No order found, using chargeId:', charge.id)
-                              router.push(`/receipt?chargeId=${charge.id}`)
+                              router.push(`/receipt?chargeId=${charge.id}&from=seller`)
                             }
                           }}
                           className="text-xs"

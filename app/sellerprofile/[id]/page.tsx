@@ -1,7 +1,9 @@
-import { Star, ShoppingCart, User } from "lucide-react";
+import { Star, ShoppingCart, User, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SellerReviewsSection } from "@/components/sellerprofile/seller-reviews-section";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -244,21 +246,8 @@ export default async function SellerProfile({ params }: SellerProfilePageProps) 
           </Card>
         </div>
 
-        {/* Reviews Section - Coming Soon */}
-        <Card className="bg-white">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-bold text-[#000000] mb-6">
-              รีวิวร้านค้า
-            </h3>
-            <div className="text-center py-12">
-              <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">ยังไม่มีรีวิวสำหรับร้านค้านี้</p>
-              <p className="text-sm text-gray-400 mt-2">
-                ระบบรีวิวจะเปิดให้ใช้งานเร็วๆ นี้
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Reviews and Comments Section */}
+        <SellerReviewsSection shopId={shop.shopId} shopName={shop.shopName} />
       </main>
     </div>
   );

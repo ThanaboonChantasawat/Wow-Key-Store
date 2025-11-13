@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore'
-import { db } from '@/components/firebase-config'
+import { adminDb } from '@/lib/firebase-admin-config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,17 +17,17 @@ export async function GET(request: NextRequest) {
 
     // Try to get shop by document ID first (shop_userId)
     const shopId = `shop_${userId}`
-    const shopDocRef = doc(db, 'shops', shopId)
-    const shopDocSnap = await getDoc(shopDocRef)
+    const shopDocRef = adminDb.collection('shops').doc(shopId)
+    const shopDocSnap = await shopDocRef.get()
     
-    if (shopDocSnap.exists()) {
+    if (shopDocSnap.exists) {
       console.log('Found shop by ID:', shopId, 'data:', shopDocSnap.data())
       
       const shop = {
         id: shopDocSnap.id,
         ...shopDocSnap.data(),
-        createdAt: shopDocSnap.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        updatedAt: shopDocSnap.data().updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        createdAt: shopDocSnap.data()?.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: shopDocSnap.data()?.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       }
       
       return NextResponse.json({
@@ -38,14 +37,9 @@ export async function GET(request: NextRequest) {
     }
     
     // Fallback: Try to find by ownerId field
-    const shopsRef = collection(db, 'shops')
-    const q = query(
-      shopsRef,
-      where('ownerId', '==', userId),
-      limit(1)
-    )
+    const q = adminDb.collection('shops').where('ownerId', '==', userId).limit(1)
     
-    const querySnapshot = await getDocs(q)
+    const querySnapshot = await q.get()
     
     console.log('Shop query by ownerId - empty:', querySnapshot.empty, 'size:', querySnapshot.size)
     

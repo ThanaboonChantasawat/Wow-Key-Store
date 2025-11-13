@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Store, TrendingUp, DollarSign, Star, ArrowRight } from "lucide-react"
-import { getTopShopsBySales, type Shop } from "@/lib/shop-service"
+import { type Shop, getTopShopsBySales } from "@/lib/shop-client"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -18,9 +18,9 @@ export function TopShops() {
   const loadTopShops = async () => {
     try {
       setLoading(true)
-      const shops = await getTopShopsBySales(5) // Get top 5 shops
+      const shops = await getTopShopsBySales(5); // Get top 5 shops
       console.log("Top shops loaded:", shops)
-      console.log("Shop logos:", shops.map(s => ({ name: s.shopName, logo: s.logoUrl })))
+      console.log("Shop logos:", shops.map((s: Shop) => ({ name: s.shopName, logo: s.logoUrl })))
       setTopShops(shops)
     } catch (error) {
       console.error("Error loading top shops:", error)
@@ -37,8 +37,26 @@ export function TopShops() {
     return (
       <section className="py-12 bg-gradient-to-br from-orange-50 to-amber-50">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#ff9800]"></div>
+          <div className="mb-8">
+            <div className="h-8 w-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg mx-auto mb-2"></div>
+            <div className="h-4 w-40 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded mx-auto"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-md p-6 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded w-3/4"></div>
+                    <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded w-1/2"></div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded"></div>
+                  <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded w-5/6"></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

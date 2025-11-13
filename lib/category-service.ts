@@ -1,13 +1,10 @@
 import { db } from "@/components/firebase-config";
+import { auth } from "@/components/firebase-config";
 import { 
   collection, 
   doc, 
-  setDoc, 
   getDoc,
   getDocs,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
   query,
   orderBy
 } from "firebase/firestore";
@@ -20,34 +17,60 @@ export interface Category {
   updatedAt: Date;
 }
 
-// Create new category
+// Helper to get auth token
+async function getAuthToken(): Promise<string> {
+  const user = auth.currentUser;
+  console.log('[Category Service] Current user:', user?.uid);
+  
+  if (!user) {
+    console.error('[Category Service] No authenticated user');
+    throw new Error('User not authenticated');
+  }
+  
+  const token = await user.getIdToken();
+  console.log('[Category Service] Token obtained, length:', token.length);
+  return token;
+}
+
+// Create new category (via API route)
 export async function createCategory(categoryData: {
   name: string;
   description?: string;
   slug: string;
 }): Promise<string> {
   try {
-    // Use slug as document ID
-    const categorySlug = categoryData.slug;
-    const categoryRef = doc(db, "categories", categorySlug);
+    console.log('[Category Service] Creating category:', categoryData);
     
-    // Check if category with this slug already exists
-    const existingDoc = await getDoc(categoryRef);
-    if (existingDoc.exists()) {
-      throw new Error(`Category with slug "${categorySlug}" already exists`);
-    }
+    const token = await getAuthToken();
+    console.log('[Category Service] Sending POST request to /api/categories');
     
-    await setDoc(categoryRef, {
-      ...categoryData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+    const response = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(categoryData)
     });
-    
-    console.log(`Category created with slug: ${categorySlug}`);
-    return categorySlug;
+
+    console.log('[Category Service] Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      console.error("[Category Service] API error response:", errorData);
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log("[Category Service] Category created successfully:", result);
+    return result.slug;
   } catch (error) {
-    console.error("Error creating category:", error);
-    throw error;
+    console.error("[Category Service] Error creating category:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to create category');
   }
 }
 
@@ -102,48 +125,69 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
   }
 }
 
-// Update category
+// Update category (via API route)
 export async function updateCategory(
   slug: string,
   categoryData: Partial<Omit<Category, 'slug' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   try {
-    const categoryRef = doc(db, "categories", slug);
-    await updateDoc(categoryRef, {
-      ...categoryData,
-      updatedAt: serverTimestamp()
+    console.log('[Category Service] Updating category:', slug, categoryData);
+    
+    const token = await getAuthToken();
+    
+    const response = await fetch('/api/categories', {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ slug, ...categoryData })
     });
+
+    console.log('[Category Service] Update response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[Category Service] Update error:', errorData);
+      throw new Error(errorData.error || 'Failed to update category');
+    }
+    
+    console.log('[Category Service] Category updated successfully');
   } catch (error) {
-    console.error("Error updating category:", error);
+    console.error("[Category Service] Error updating category:", error);
     throw error;
   }
 }
 
-// Delete category
+// Delete category (via API route)
 export async function deleteCategory(slug: string): Promise<void> {
   try {
     if (!slug || typeof slug !== 'string') {
       throw new Error(`Invalid category slug: ${slug}`);
     }
     
-    if (!db) {
-      throw new Error("Firestore database is not initialized");
+    console.log('[Category Service] Deleting category:', slug);
+    
+    const token = await getAuthToken();
+    
+    const response = await fetch(`/api/categories?slug=${slug}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('[Category Service] Delete response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[Category Service] Delete error:', errorData);
+      throw new Error(errorData.error || 'Failed to delete category');
     }
     
-    console.log("Deleting category with slug:", slug);
-    console.log("Database instance:", db);
-    
-    const categoryRef = doc(db, "categories", slug);
-    console.log("Category ref created:", categoryRef.path);
-    
-    await deleteDoc(categoryRef);
-    console.log("Category deleted successfully");
+    console.log('[Category Service] Category deleted successfully');
   } catch (error) {
-    console.error("Error deleting category:", error);
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
+    console.error("[Category Service] Error deleting category:", error);
     throw error;
   }
 }

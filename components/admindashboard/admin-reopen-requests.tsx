@@ -11,8 +11,8 @@ import {
   rejectReopenRequest,
   type ReopenRequest 
 } from '@/lib/reopen-request-service';
-import { getUserProfile } from '@/lib/user-service';
-import { getShopById, type Shop } from '@/lib/shop-service';
+import { getUserProfile } from '@/lib/user-client';
+import { getShopById, type Shop } from '@/lib/shop-client';
 import { Input } from '@/components/ui/input';
 import { Search, Filter } from 'lucide-react';
 

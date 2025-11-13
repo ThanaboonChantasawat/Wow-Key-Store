@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/components/firebase-config'
+import { adminDb } from '@/lib/firebase-admin-config'
+import admin from 'firebase-admin'
+import { createNotification } from '@/lib/notification-service'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id
+    const { id } = await params
+    const orderId = id
     const body = await request.json()
     const { 
       status, 
@@ -28,10 +30,10 @@ export async function PATCH(
     console.log('Updating order:', orderId, 'status:', status)
 
     // Get current order
-    const orderRef = doc(db, 'orders', orderId)
-    const orderDoc = await getDoc(orderRef)
+    const orderRef = adminDb.collection('orders').doc(orderId)
+    const orderDoc = await orderRef.get()
 
-    if (!orderDoc.exists()) {
+    if (!orderDoc.exists) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
@@ -40,7 +42,7 @@ export async function PATCH(
 
     // Prepare update data
     const updateData: any = {
-      updatedAt: serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }
 
     // Update status if provided
@@ -77,7 +79,8 @@ export async function PATCH(
 
     // Set delivery timestamp if any game account info is provided
     if (hasGameAccountInfo) {
-      updateData.gameCodeDeliveredAt = serverTimestamp()
+      updateData.gameCodeDeliveredAt = admin.firestore.FieldValue.serverTimestamp()
+      updateData.payoutStatus = 'pending' // รอผู้ซื้อยืนยัน
     }
 
     // Update notes if provided
@@ -86,13 +89,31 @@ export async function PATCH(
     }
 
     // Update the order
-    await updateDoc(orderRef, updateData)
-
+    await orderRef.update(updateData)
 
     console.log('Order updated successfully:', orderId)
 
+    // 🔔 Send notification to buyer when game code is delivered
+    if (hasGameAccountInfo) {
+      try {
+        const orderData = orderDoc.data()
+        
+        if (orderData && orderData.userId) {
+          await createNotification(
+            orderData.userId,
+            'order_delivered',
+            '📦 รหัสเกมของคุณถูกส่งแล้ว!',
+            `รหัสเกมสำหรับคำสั่งซื้อ #${orderId.slice(-8)} ถูกส่งแล้ว กรุณาตรวจสอบและยืนยันการรับสินค้า`,
+            `/receipt?orderId=${orderId}`
+          )
+        }
+      } catch (notifError) {
+        console.error("Error sending delivery notification:", notifError)
+      }
+    }
+
     // Get updated order
-    const updatedOrderDoc = await getDoc(orderRef)
+    const updatedOrderDoc = await orderRef.get()
     const updatedOrder = {
       id: updatedOrderDoc.id,
       ...updatedOrderDoc.data(),

@@ -4,9 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getShopByOwnerId, type Shop } from "@/lib/shop-service"
-import { updateDoc, doc } from "firebase/firestore"
-import { db } from "@/components/firebase-config"
+import { getShopByOwnerId, updateShop, type Shop } from "@/lib/shop-client"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { storage } from "@/components/firebase-config"
 import { Store, Upload, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
@@ -199,16 +197,14 @@ export function SellerStoreSettings({ userId }: SellerStoreSettingsProps) {
         }
       }
 
-      // Update shop data
-      const shopRef = doc(db, "shops", shop.shopId)
-      await updateDoc(shopRef, {
+      // Update shop data via API
+      await updateShop(shop.shopId, {
         shopName: shopName.trim(),
         description: description.trim(),
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
         facebookUrl: facebookUrl.trim(),
-        logoUrl: newLogoUrl,
-        updatedAt: new Date()
+        logoUrl: newLogoUrl
       })
 
       setLogoUrl(newLogoUrl)

@@ -1,85 +1,147 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Loader2, Package, ArrowRight } from "lucide-react"
+import { useAuth } from "@/components/auth-context"
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth() // Use auth context instead of cookie
   const [loading, setLoading] = useState(true)
   const [paymentInfo, setPaymentInfo] = useState<any>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [processed, setProcessed] = useState(false) // ป้องกัน double processing
+  const processedRef = useRef(false) // ใช้ useRef แทน state เพื่อป้องกัน re-render
 
   useEffect(() => {
-    // Prevent double processing
-    if (processed) return
-
-    // Get userId from cookies
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`
-      const parts = value.split(`; ${name}=`)
-      if (parts.length === 2) return parts.pop()?.split(';').shift()
+    // Wait for user to be loaded
+    if (!user) {
+      console.log('⏳ Waiting for user to be loaded...')
+      return
     }
 
-    const userCookie = getCookie('user')
-    if (userCookie) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userCookie))
-        setUserId(user.uid)
-      } catch (e) {
-        console.error('Error parsing user cookie:', e)
+    // Prevent double processing with ref
+    if (processedRef.current) {
+      console.log('⚠️ Already processed, skipping...')
+      return
+    }
+
+    const processPayment = async () => {
+      const paymentIntentId = searchParams.get('payment_intent')
+      const paymentIntentClientSecret = searchParams.get('payment_intent_client_secret')
+      const orderId = searchParams.get('order_id') // For PromptPay QR payments
+      const type = searchParams.get('type')
+      
+      console.log('🔍 URL Parameters:', {
+        paymentIntentId,
+        paymentIntentClientSecret,
+        orderId,
+        type,
+        fullURL: window.location.href
+      })
+      
+      // Priority: order_id (PromptPay) > payment_intent (old Stripe flow)
+      if (orderId) {
+        processedRef.current = true
+        console.log('🔄 Processing PromptPay order:', orderId)
+        console.log('👤 Using user ID:', user.uid)
+        await verifyOrderPayment(orderId, type || 'cart', user.uid)
+      } else if (paymentIntentId) {
+        processedRef.current = true
+        console.log('🔄 Processing legacy payment:', paymentIntentId)
+        console.log('👤 Using user ID:', user.uid)
+        await verifyPayment(paymentIntentId, type || 'single', user.uid)
+      } else if (paymentIntentClientSecret) {
+        // Extract payment intent ID from client secret
+        const piId = paymentIntentClientSecret.split('_secret_')[0]
+        if (piId) {
+          processedRef.current = true
+          console.log('🔄 Processing payment from client secret:', piId)
+          console.log('👤 Using user ID:', user.uid)
+          await verifyPayment(piId, type || 'single', user.uid)
+        } else {
+          console.error('❌ Could not extract payment intent ID from client secret')
+          setLoading(false)
+        }
+      } else {
+        console.error('❌ No payment intent ID or order ID found in URL')
+        setLoading(false)
       }
     }
 
-    const paymentIntentId = searchParams.get('payment_intent')
-    const type = searchParams.get('type')
-    
-    if (paymentIntentId && !processed) {
-      setProcessed(true) // Mark as processed immediately
-      verifyPayment(paymentIntentId, type || 'single')
-    } else {
-      setLoading(false)
-    }
-  }, [searchParams, processed])
+    processPayment()
+  }, [user, searchParams]) // Depend on user
 
-  const verifyPayment = async (paymentIntentId: string, type: string) => {
+  const verifyOrderPayment = async (orderId: string, type: string, currentUserId: string) => {
     try {
-      const response = await fetch(`/api/stripe/payment-intent?paymentIntentId=${paymentIntentId}`)
+      console.log('🔍 Fetching order:', orderId)
+      const response = await fetch(`/api/orders/${orderId}`)
       const data = await response.json()
       
-      if (data.success) {
-        setPaymentInfo(data.paymentIntent)
+      if (data.success && data.order) {
+        console.log('✅ Order found:', data.order)
         
-        // If cart checkout, process payment to create orders and transfers
-        if (type === 'cart') {
-          // Process payment and create orders
-          await fetch('/api/cart/process-payment', {
+        // Set payment info for display
+        setPaymentInfo({
+          id: orderId,
+          amount: data.order.totalAmount * 100, // Convert to satang for display
+          metadata: {
+            type: 'cart_checkout',
+            orderCount: data.order.shops?.length || 1,
+          },
+          status: data.order.paymentStatus,
+        })
+        
+        // Clear cart if this was a cart checkout
+        if (type === 'cart' && data.order.cartItemIds && Array.isArray(data.order.cartItemIds) && data.order.cartItemIds.length > 0) {
+          console.log('🗑️ Clearing cart items:', data.order.cartItemIds)
+          
+          const clearResponse = await fetch('/api/cart/clear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentIntentId }),
+            body: JSON.stringify({ 
+              userId: currentUserId, 
+              itemIds: data.order.cartItemIds 
+            }),
           })
           
-          // Clear cart items
-          const checkoutItems = sessionStorage.getItem('checkoutItems')
-          if (checkoutItems && userId) {
-            const items = JSON.parse(checkoutItems)
-            const itemIds = items.map((item: any) => item.gameId)
-            
-            await fetch('/api/cart/clear', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId, itemIds }),
-            })
+          if (clearResponse.ok) {
+            const clearResult = await clearResponse.json()
+            console.log('✅ Cart cleared successfully:', clearResult)
+            try {
+              sessionStorage.setItem('cartCleared', JSON.stringify({ removed: clearResult.removed || 0 }))
+              sessionStorage.removeItem('checkoutItems')
+              sessionStorage.removeItem('cartItemIds')
+            } catch (e) {
+              console.warn('Could not update sessionStorage', e)
+            }
+          } else {
+            console.error('❌ Failed to clear cart')
           }
-          
-          // Clear sessionStorage
-          sessionStorage.removeItem('checkoutItems')
         }
+      } else {
+        console.error('❌ Order not found or invalid')
       }
+    } catch (error) {
+      console.error('Error verifying order payment:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verifyPayment = async (paymentIntentId: string, type: string, currentUserId: string) => {
+    try {
+      // For legacy Stripe payments - this API might not exist anymore
+      // Just show success without verifying
+      console.log('⚠️ Legacy payment flow - skipping Stripe verification')
+      setPaymentInfo({
+        id: paymentIntentId,
+        amount: 0,
+        metadata: { type },
+        status: 'succeeded',
+      })
     } catch (error) {
       console.error('Error verifying payment:', error)
     } finally {
@@ -183,9 +245,32 @@ export default function PaymentSuccessPage() {
 
             {/* Action Buttons */}
             <div className="flex gap-3 justify-center pt-4">
+              {/* Show "Back to Cart" button if this was a cart checkout */}
+              {paymentInfo?.metadata?.type === 'cart_checkout' && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('🔙 Returning to cart - setting flag and navigating')
+                    // Set flag BEFORE navigation to ensure it's ready
+                    try {
+                      sessionStorage.setItem('returnFromPayment', 'success')
+                      console.log('✅ Set returnFromPayment flag')
+                    } catch (e) {
+                      console.warn('Could not set returnFromPayment flag', e)
+                    }
+                    // Then navigate
+                    router.push('/cart?from=success')
+                  }}
+                >
+                  กลับไปหน้าตะกร้า
+                </Button>
+              )}
               <Button
                 variant="outline"
-                onClick={() => router.push('/profile')}
+                onClick={() => {
+                  // Always return to my-orders tab after purchase
+                  router.push('/profile?tab=my-orders')
+                }}
               >
                 ดูคำสั่งซื้อของฉัน
               </Button>

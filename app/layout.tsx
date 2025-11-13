@@ -6,6 +6,7 @@ import Footer from "@/components/footer";
 import { AuthProvider } from "@/components/auth-context";
 import { Navbar } from "@/components/navbar/Navbar";
 import { EmailPromptToast } from "@/components/email-prompt-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,12 +38,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="m-0 p-0">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-100 m-0 p-0`}
       >
         <AuthProvider>
           <Navbar/>
@@ -51,6 +52,7 @@ export default function RootLayout({
           </main>
           <Footer />
           <EmailPromptToast />
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

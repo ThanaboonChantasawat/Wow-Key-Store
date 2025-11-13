@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-context"
-import { getUserProfile, type UserProfile } from "@/lib/user-service"
+import { getUserProfile, type UserProfile } from "@/lib/user-client"
 
 export function useUserProfile() {
   const { user } = useAuth()

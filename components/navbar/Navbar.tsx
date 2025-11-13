@@ -20,6 +20,7 @@ import { useAuthModal } from "../use-auth-modal";
 import { useAuth } from "../auth-context";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { NotificationBell } from "./notification-bell";
 
 const navLinks = [
   { href: "/", label: "หน้าแรก" },
@@ -96,11 +97,11 @@ function NavbarContent() {
       <header className="bg-[#ff9800] print:hidden">
         <div className="px-4 md:px-6">
           {/* Top Row - Logo and Actions */}
-          <div className="h-16 md:h-20 flex items-center justify-between gap-3">
+          <div className="h-20 md:h-24 flex items-center justify-between gap-3">
             {/* Left Side: Logo */}
             <div className="flex items-center">
               {/* Logo */}
-              <Link href={"/"} className="relative h-28 md:h-44 w-44 md:w-56 flex-shrink-0">
+              <Link href={"/"} className="relative h-16 md:h-20 w-32 md:w-40 flex-shrink-0">
                 <Image
                   src={"/images/logo.png"}
                   alt="wowkeystore logo"
@@ -200,19 +201,17 @@ function NavbarContent() {
           </div>
 
           {/* Desktop Action Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-2">
             <Link
               href="/cart"
               className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
+              aria-label="ตะกร้าสินค้า"
             >
               <ShoppingBag className="h-5 w-5" />
             </Link>
-            <Link
-              href="/notifications"
-              className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
-            >
-              <Bell className="h-5 w-5" />
-            </Link>
+            
+            {/* Notification Bell with real-time updates */}
+            <NotificationBell />
 
             {!isInitialized ? (
               <div className="h-10 w-10 rounded-full bg-white/20 animate-pulse transition-opacity duration-300" />
@@ -504,16 +503,7 @@ function NavbarContent() {
 
 export function Navbar() {
   return (
-    <Suspense
-      fallback={
-        <nav className="bg-[#292d32] text-white py-3 px-6 print:hidden">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="h-8 w-32 bg-gray-600 animate-pulse rounded"></div>
-            <div className="h-8 w-64 bg-gray-600 animate-pulse rounded"></div>
-          </div>
-        </nav>
-      }
-    >
+    <Suspense fallback={null}>
       <NavbarContent />
     </Suspense>
   );

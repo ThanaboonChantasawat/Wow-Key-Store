@@ -223,9 +223,17 @@ export async function approveReopenRequest(
       updatedAt: Timestamp.now(),
     });
     
-    // ยกเลิกการระงับร้านค้า (เรียกใช้ unsuspendShop)
-    const { unsuspendShop } = await import('./shop-service');
-    await unsuspendShop(requestData.shopId);
+    // ยกเลิกการระงับร้านค้า - เรียกผ่าน API แทน
+    try {
+      await fetch(`/api/shops/${requestData.shopId}/unsuspend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId })
+      });
+    } catch (error) {
+      console.error('Error unsuspending shop:', error);
+      throw error;
+    }
     
     // ลบคำขอที่เหลือของร้านนี้ (ยกเว้นคำขอที่เพิ่งอนุมัติ)
     try {

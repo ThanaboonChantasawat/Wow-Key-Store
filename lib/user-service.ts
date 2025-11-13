@@ -1,21 +1,9 @@
-import { db } from "@/components/firebase-config";
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin-config";
+import admin from 'firebase-admin';
+import type { UserProfile } from "./user-types";
+import { createNotification } from "./notification-service";
 
-export interface UserProfile {
-  displayName: string;
-  email: string | null;
-  photoURL: string | null;
-  phoneNumber: string | null;
-  role: 'buyer' | 'seller' | 'admin' | 'superadmin';
-  isSeller: boolean;
-  isVerified: boolean;
-  emailVerified: boolean;
-  accountStatus: 'active' | 'suspended' | 'banned';
-  shopId?: string | null; // ID of seller's shop
-  lastLoginAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type { UserProfile };
 
 /**
  * Create a new user profile in Firestore
@@ -28,9 +16,9 @@ export async function createUserProfile(
   emailVerified: boolean = false
 ): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
+    const userRef = adminDb.collection("users").doc(userId);
     
-    await setDoc(userRef, {
+    await userRef.set({
       displayName,
       email: email || null,
       photoURL,
@@ -40,12 +28,26 @@ export async function createUserProfile(
       isVerified: false,
       emailVerified,
       accountStatus: 'active',
-      lastLoginAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     console.log("User profile created successfully:", userId);
+
+    // 🔔 Send welcome notification
+    try {
+      await createNotification(
+        userId,
+        'welcome',
+        '🎉 ยินดีต้อนรับสู่ WowKeyStore!',
+        `สวัสดี ${displayName}! ขอบคุณที่สมัครสมาชิกกับเรา เริ่มต้นช้อปปิ้งสินค้าเกมได้เลยตอนนี้`,
+        '/products'
+      )
+    } catch (notifError) {
+      console.error("Error sending welcome notification:", notifError)
+      // Don't fail user creation if notification fails
+    }
   } catch (error) {
     console.error("Error creating user profile:", error);
     throw error;
@@ -57,11 +59,13 @@ export async function createUserProfile(
  */
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   try {
-    const userRef = doc(db, "users", userId);
-    const userDoc = await getDoc(userRef);
+    const userRef = adminDb.collection("users").doc(userId);
+    const userDoc = await userRef.get();
     
-    if (userDoc.exists()) {
+    if (userDoc.exists) {
       const data = userDoc.data();
+      if (!data) return null;
+      
       return {
         displayName: data.displayName,
         email: data.email,
@@ -75,7 +79,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         shopId: data.shopId || null,
         lastLoginAt: data.lastLoginAt?.toDate() || new Date(),
         createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date()
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        // ✅ Violation & Ban information
+        violations: data.violations || 0,
+        lastViolation: data.lastViolation?.toDate() || undefined,
+        banned: data.banned || false,
+        bannedUntil: data.bannedUntil?.toDate() || undefined,
+        bannedReason: data.bannedReason || undefined,
+        bannedBy: data.bannedBy || undefined,
       };
     }
     
@@ -94,10 +105,10 @@ export async function updateUserProfile(
   updates: Partial<Omit<UserProfile, 'createdAt' | 'lastLoginAt'>>
 ): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.update({
       ...updates,
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     console.log("User profile updated successfully:", userId);
@@ -112,10 +123,10 @@ export async function updateUserProfile(
  */
 export async function updateLastLogin(userId: string): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      lastLoginAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.update({
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
     console.error("Error updating last login:", error);
@@ -128,16 +139,16 @@ export async function updateLastLogin(userId: string): Promise<void> {
  */
 export async function upgradeToSeller(userId: string, shopName: string): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.update({
       isSeller: true,
       role: 'seller',
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     // Create seller profile in separate collection
-    const sellerRef = doc(db, "sellerProfiles", userId);
-    await setDoc(sellerRef, {
+    const sellerRef = adminDb.collection("sellerProfiles").doc(userId);
+    await sellerRef.set({
       shopName,
       shopDescription: null,
       shopLogo: null,
@@ -147,8 +158,8 @@ export async function upgradeToSeller(userId: string, shopName: string): Promise
       completedSales: 0,
       responseRate: 0,
       responseTime: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     console.log("User upgraded to seller:", userId);
@@ -166,10 +177,10 @@ export async function updateAccountStatus(
   status: 'active' | 'suspended' | 'banned'
 ): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.update({
       accountStatus: status,
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
     console.error("Error updating account status:", error);
@@ -185,10 +196,10 @@ export async function updateUserRole(
   newRole: 'buyer' | 'seller' | 'admin' | 'superadmin'
 ): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
+    const userRef = adminDb.collection("users").doc(userId);
     const updates: Record<string, unknown> = {
       role: newRole,
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     
     // Update isSeller flag
@@ -198,7 +209,7 @@ export async function updateUserRole(
       updates.isSeller = false;
     }
     
-    await updateDoc(userRef, updates);
+    await userRef.update(updates);
     console.log("User role updated successfully:", userId, newRole);
   } catch (error) {
     console.error("Error updating user role:", error);
@@ -211,12 +222,11 @@ export async function updateUserRole(
  */
 export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
   try {
-    const { collection, getDocs, query, orderBy } = await import("firebase/firestore");
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
+    const snapshot = await adminDb.collection("users")
+      .orderBy("createdAt", "desc")
+      .get();
     
-    return snapshot.docs.map(doc => {
+    return snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -246,19 +256,17 @@ export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
  */
 export async function deleteUserAccount(userId: string): Promise<void> {
   try {
-    const { deleteDoc, collection, query, where, getDocs } = await import("firebase/firestore");
-    
     // Delete user profile from Firestore
-    const userRef = doc(db, "users", userId);
-    await deleteDoc(userRef);
+    const userRef = adminDb.collection("users").doc(userId);
+    await userRef.delete();
     
     // Delete user's shop if exists
-    const shopsRef = collection(db, "shops");
-    const shopsQuery = query(shopsRef, where("ownerId", "==", userId));
-    const shopsSnapshot = await getDocs(shopsQuery);
+    const shopsSnapshot = await adminDb.collection("shops")
+      .where("ownerId", "==", userId)
+      .get();
     
     for (const shopDoc of shopsSnapshot.docs) {
-      await deleteDoc(shopDoc.ref);
+      await shopDoc.ref.delete();
     }
     
     // Note: Additional cleanup can be added here:
@@ -280,15 +288,15 @@ export async function deleteUserAccount(userId: string): Promise<void> {
  */
 export async function anonymizeUserAccount(userId: string): Promise<void> {
   try {
-    const userRef = doc(db, "users", userId);
+    const userRef = adminDb.collection("users").doc(userId);
     
-    await updateDoc(userRef, {
+    await userRef.update({
       displayName: "Deleted User",
       email: null,
       photoURL: null,
       phoneNumber: null,
       accountStatus: 'banned',
-      updatedAt: serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     
     console.log("User account anonymized:", userId);

@@ -7,9 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Store, CheckCircle2, XCircle, Clock, AlertCircle, Search, Facebook, MessageCircle, Phone, Mail, User, Ban, PlayCircle, TrendingUp, DollarSign, Calendar } from "lucide-react"
-import { getAllShops, approveShop, rejectShop, suspendShop, unsuspendShop, type Shop } from "@/lib/shop-service"
-import { getUserProfile, type UserProfile } from "@/lib/user-service"
-import { logAdminActivity } from "@/lib/admin-activity-service"
+import { getAllShops, approveShop, rejectShop, suspendShop, unsuspendShop, type Shop } from "@/lib/shop-client"
+import { getUserProfile, type UserProfile } from "@/lib/user-client"
 import { useAuth } from "@/components/auth-context"
 
 interface AdminShopsProps {
@@ -69,9 +68,18 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       setLoading(true)
       const allShops = await getAllShops()
       
+      // Convert date strings to Date objects
+      const shopsWithDates = allShops.map(shop => ({
+        ...shop,
+        createdAt: new Date(shop.createdAt),
+        updatedAt: new Date(shop.updatedAt),
+        verifiedAt: shop.verifiedAt ? new Date(shop.verifiedAt) : undefined,
+        suspendedAt: shop.suspendedAt ? new Date(shop.suspendedAt) : undefined,
+      }));
+      
       // Load owner profiles for each shop
       const shopsWithOwners = await Promise.all(
-        allShops.map(async (shop) => {
+        shopsWithDates.map(async (shop) => {
           const ownerProfile = await getUserProfile(shop.ownerId)
           return {
             ...shop,
@@ -121,19 +129,7 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       setActionLoading(true)
       await approveShop(selectedShop.shopId, adminId)
       
-      // บันทึกกิจกรรม Admin
-      if (adminProfile) {
-        await logAdminActivity(
-          adminId,
-          adminProfile.displayName || adminProfile.email || 'Admin',
-          adminProfile.email || 'unknown@admin.com',
-          'approve_shop',
-          'shop',
-          selectedShop.shopId,
-          selectedShop.shopName,
-          `อนุมัติร้านค้า "${selectedShop.shopName}" ให้เปิดดำเนินการได้`
-        )
-      }
+      // Admin activity logging will be handled by the API route
       
       setMessage({ type: "success", text: `อนุมัติร้าน "${selectedShop.shopName}" สำเร็จ` })
       setShowReviewDialog(false)
@@ -157,19 +153,7 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       setActionLoading(true)
       await rejectShop(selectedShop.shopId, adminId, rejectionReason.trim())
       
-      // บันทึกกิจกรรม Admin
-      if (adminProfile) {
-        await logAdminActivity(
-          adminId,
-          adminProfile.displayName || adminProfile.email || 'Admin',
-          adminProfile.email || 'unknown@admin.com',
-          'reject_shop',
-          'shop',
-          selectedShop.shopId,
-          selectedShop.shopName,
-          `ปฏิเสธร้านค้า "${selectedShop.shopName}" เหตุผล: ${rejectionReason.trim()}`
-        )
-      }
+      // Admin activity logging will be handled by the API route
       
       setMessage({ type: "success", text: `ปฏิเสธร้าน "${selectedShop.shopName}" สำเร็จ` })
       setShowRejectDialog(false)
@@ -195,19 +179,7 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       setActionLoading(true)
       await suspendShop(selectedShop.shopId, adminId, suspensionReason.trim())
       
-      // บันทึกกิจกรรม Admin
-      if (adminProfile) {
-        await logAdminActivity(
-          adminId,
-          adminProfile.displayName || adminProfile.email || 'Admin',
-          adminProfile.email || 'unknown@admin.com',
-          'suspend_shop',
-          'shop',
-          selectedShop.shopId,
-          selectedShop.shopName,
-          `ระงับร้านค้า "${selectedShop.shopName}" เหตุผล: ${suspensionReason.trim()}`
-        )
-      }
+      // Admin activity logging will be handled by the API route
       
       setMessage({ type: "success", text: `ระงับร้าน "${selectedShop.shopName}" สำเร็จ` })
       setShowSuspendDialog(false)
@@ -235,24 +207,13 @@ export function AdminShops({ adminId }: AdminShopsProps) {
       setActionLoading(true)
       await unsuspendShop(selectedShop.shopId)
       
-      // บันทึกกิจกรรม Admin
-      if (adminProfile) {
-        await logAdminActivity(
-          adminId,
-          adminProfile.displayName || adminProfile.email || 'Admin',
-          adminProfile.email || 'unknown@admin.com',
-          'unsuspend_shop',
-          'shop',
-          selectedShop.shopId,
-          selectedShop.shopName,
-          `ยกเลิกการระงับร้านค้า "${selectedShop.shopName}"`
-        )
-      }
+      // Admin activity logging will be handled by the API route
       
-      // ลบคำขอเปิดร้านใหม่ทั้งหมดของร้านนี้ (ถ้ามี)
-      const { deleteAllReopenRequestsByShopId } = await import('@/lib/reopen-request-service')
+      // ลบคำขอเปิดร้านใหม่ทั้งหมดของร้านนี้ (ถ้ามี) - เรียกผ่าน API
       try {
-        await deleteAllReopenRequestsByShopId(selectedShop.shopId)
+        await fetch(`/api/shops/${selectedShop.shopId}/reopen-requests`, {
+          method: 'DELETE'
+        });
       } catch (error) {
         console.warn('Error deleting reopen requests:', error)
         // ไม่ throw error เพราะการยกเลิกระงับสำเร็จแล้ว

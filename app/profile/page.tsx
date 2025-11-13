@@ -1,29 +1,49 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useRouter } from "next/navigation";
 import { SidebarNav } from "@/components/profile/SidebarNav";
 import { AccountContent } from "@/components/profile/Account";
-import { UpdateOrderContent } from "@/components/profile/UpdateOrder";
 import { WishlistContent } from "@/components/profile/Wishlist";
-import { HelpContent } from "@/components/profile/Help";
-import { MyGameContent } from "@/components/profile/MyGame";
 import { SellerStatusContent } from "@/components/profile/SellerStatus";
 import { MyOrdersContent } from "@/components/profile/MyOrders";
+import { MyReportsContent } from "@/components/profile/MyReports";
+import { ViolationHistoryContent } from "@/components/profile/ViolationHistory";
+import { SupportMessagesContent } from "@/components/profile/SupportMessages";
 
 export default function AccountPage() {
+  const router = useRouter()
   const [activeItem, setActiveItem] = useState("account");
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Read tab from URL on mount
+  // Initialize tab from URL or sessionStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // URL parameter has highest priority
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      if (tab) {
-        setActiveItem(tab);
+      const urlTab = params.get("tab");
+      
+      if (urlTab) {
+        setActiveItem(urlTab);
+      } else {
+        // If no URL param, use saved tab from sessionStorage
+        const savedTab = sessionStorage.getItem('lastProfileTab');
+        if (savedTab) {
+          setActiveItem(savedTab);
+        }
       }
+      
+      // Mark as initialized after setting the correct tab
+      setIsInitialized(true);
     }
   }, []);
+
+  // Save active tab to sessionStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeItem) {
+      sessionStorage.setItem('lastProfileTab', activeItem);
+    }
+  }, [activeItem]);
 
   const renderContent = () => {
     switch (activeItem) {
@@ -33,14 +53,14 @@ export default function AccountPage() {
         return <MyOrdersContent />;
       case "seller-status":
         return <SellerStatusContent />;
-      case "myGame":
-        return <MyGameContent />;
-      case "update-order":
-        return <UpdateOrderContent />;
       case "wishlist":
         return <WishlistContent />;
-      case "help":
-        return <HelpContent />;
+      case "my-reports":
+        return <MyReportsContent />;
+      case "violation-history":
+        return <ViolationHistoryContent />;
+      case "support-messages":
+        return <SupportMessagesContent />; // ✅ เพิ่มหน้าข้อความ
       case "logout":
         return (
           <div className="bg-white rounded-lg shadow-sm p-8">
@@ -58,7 +78,7 @@ export default function AccountPage() {
   return (
     <div className="flex flex-col">
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 transition-opacity duration-150 ${!isInitialized ? 'opacity-0' : 'opacity-100'}`}>
           <SidebarNav activeItem={activeItem} onItemChange={setActiveItem} />
 
           {renderContent()}

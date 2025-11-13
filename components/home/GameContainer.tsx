@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getPopularGames, type Game } from "@/lib/game-service"
+import type { Game } from "@/lib/game-service"
 import Image from "next/image"
 import Link from "next/link"
 import { Star, Gamepad2 } from "lucide-react"
@@ -14,8 +14,15 @@ const GameContainer = () => {
     const loadPopularGames = async () => {
       try {
         setLoading(true)
-        const popularGames = await getPopularGames()
-        setGames(popularGames)
+        // Call API route instead of direct Firestore access
+        const response = await fetch('/api/games/popular')
+        const data = await response.json()
+        
+        if (data.success && data.games) {
+          setGames(data.games)
+        } else {
+          console.error('Failed to load popular games:', data.error)
+        }
       } catch (error) {
         console.error("Error loading popular games:", error)
       } finally {
@@ -30,9 +37,18 @@ const GameContainer = () => {
     return (
       <section className="py-8 sm:py-12 lg:py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800] mx-auto"></div>
-            <p className="text-gray-500 mt-4 text-sm sm:text-base">กำลังโหลดเกมยอดนิยม...</p>
+          <div className="mb-8">
+            <div className="h-8 w-48 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg mb-2"></div>
+            <div className="h-4 w-32 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded"></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-[3/4] bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"></div>
+                <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded w-3/4"></div>
+                <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded w-1/2"></div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
