@@ -118,12 +118,25 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 60 // Revalidate every 60 seconds
 
 export default async function Home() {
-  // Fetch all data in parallel on server
-  const [sliderImages, popularGames, topShops] = await Promise.all([
-    getSliderImages(),
-    getPopularGames(),
-    getTopShops()
-  ])
+  // Fetch all data in parallel on server with proper error handling
+  let sliderImages: any[] = []
+  let popularGames: any[] = []
+  let topShops: any[] = []
+
+  try {
+    const results = await Promise.allSettled([
+      getSliderImages(),
+      getPopularGames(),
+      getTopShops()
+    ])
+
+    sliderImages = results[0].status === 'fulfilled' ? results[0].value : []
+    popularGames = results[1].status === 'fulfilled' ? results[1].value : []
+    topShops = results[2].status === 'fulfilled' ? results[2].value : []
+  } catch (error) {
+    console.error('Error fetching home page data:', error)
+    // Continue with empty arrays - don't crash the page
+  }
 
   return (
     <main className="bg-[#f2f2f4]">
