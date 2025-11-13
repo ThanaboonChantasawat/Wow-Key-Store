@@ -1,24 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
-import Stripe from 'stripe'
-
-// Initialize Stripe (for legacy orders)
-const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-09-30.clover',
-    })
-  : null
-
-// Initialize Omise
-const omise = require('omise')({
-  secretKey: process.env.OMISE_SECRET_KEY,
-})
+// Note: Stripe is no longer used; keep optional lazy initialization if needed
+// Initialize Omise lazily inside handler to avoid build-time errors
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const omise = require('omise')({ secretKey: process.env.OMISE_SECRET_KEY })
     const { userId, reason } = await request.json()
     const params = await context.params
     const orderId = params.id

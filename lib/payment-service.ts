@@ -1,8 +1,12 @@
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-})
+const getStripe = () => {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) {
+    throw new Error('Stripe is not configured')
+  }
+  return new Stripe(key, { apiVersion: '2024-06-20' })
+}
 
 export interface CreatePaymentIntentParams {
   amount: number // in smallest currency unit (e.g., satang for THB)
@@ -20,6 +24,7 @@ export interface CreatePaymentIntentParams {
  */
 export async function createPaymentIntent(params: CreatePaymentIntentParams) {
   try {
+    const stripe = getStripe()
     const paymentIntent = await stripe.paymentIntents.create({
       amount: params.amount,
       currency: params.currency,
@@ -50,6 +55,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams) {
  */
 export async function getPaymentIntent(paymentIntentId: string) {
   try {
+    const stripe = getStripe()
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
     return paymentIntent
   } catch (error: any) {

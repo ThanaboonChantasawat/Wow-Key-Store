@@ -7,11 +7,12 @@ import Omise from 'omise'
 import QRCode from 'qrcode'
 import generatePayload from 'promptpay-qr'
 
-// Initialize Omise
-const omise = Omise({
-  publicKey: process.env.OMISE_PUBLIC_KEY || '',
-  secretKey: process.env.OMISE_SECRET_KEY || '',
-})
+// Lazy initializer to avoid build-time errors when env vars are absent
+const getOmise = () =>
+  Omise({
+    publicKey: process.env.OMISE_PUBLIC_KEY || '',
+    secretKey: process.env.OMISE_SECRET_KEY || '',
+  })
 
 export interface PromptPayQRRequest {
   amount: number                    // จำนวนเงิน (บาท)
@@ -39,6 +40,7 @@ export async function createPromptPayQR(
   request: PromptPayQRRequest
 ): Promise<PromptPayQRResponse> {
   try {
+    const omise = getOmise()
     const { amount, orderId, description, customerEmail, customerName } = request
 
     // Validate amount
@@ -172,6 +174,7 @@ export async function createPromptPayQR(
  */
 export async function getChargeStatus(chargeId: string) {
   try {
+    const omise = getOmise()
     const charge: any = await omise.charges.retrieve(chargeId)
     
     return {

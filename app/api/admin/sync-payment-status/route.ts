@@ -2,17 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import Omise from 'omise'
 
-const omise = Omise({
-  publicKey: process.env.OMISE_PUBLIC_KEY!,
-  secretKey: process.env.OMISE_SECRET_KEY!,
-})
-
 /**
  * Admin API to sync payment status from Omise
  * This is useful when webhooks fail or orders get out of sync
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OMISE_SECRET_KEY || !process.env.OMISE_PUBLIC_KEY) {
+      return NextResponse.json(
+        { error: 'Payment system not configured' },
+        { status: 500 }
+      )
+    }
+
+    const omise = Omise({
+      publicKey: process.env.OMISE_PUBLIC_KEY!,
+      secretKey: process.env.OMISE_SECRET_KEY!,
+    })
     const body = await request.json()
     const { orderId, userId } = body
 

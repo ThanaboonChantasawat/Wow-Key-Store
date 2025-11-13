@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import Omise from 'omise'
 
-// Initialize Omise with both public and secret keys
-const omise = Omise({
-  publicKey: process.env.OMISE_PUBLIC_KEY!,
-  secretKey: process.env.OMISE_SECRET_KEY!,
-  omiseVersion: '2019-05-29',
-})
-
 interface CardData {
   number: string
   name: string
@@ -19,6 +12,19 @@ interface CardData {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OMISE_SECRET_KEY || !process.env.OMISE_PUBLIC_KEY) {
+      console.error('❌ Omise API keys not configured!')
+      return NextResponse.json(
+        { success: false, error: 'Payment system not configured' },
+        { status: 500 }
+      )
+    }
+
+    const omise = Omise({
+      publicKey: process.env.OMISE_PUBLIC_KEY!,
+      secretKey: process.env.OMISE_SECRET_KEY!,
+      omiseVersion: '2019-05-29',
+    })
     const { orderId, amount, card } = await request.json()
 
     console.log('💳 Omise Card Payment Request:', { orderId, amount })
@@ -32,13 +38,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!process.env.OMISE_SECRET_KEY || !process.env.OMISE_PUBLIC_KEY) {
-      console.error('❌ Omise API keys not configured!')
-      return NextResponse.json(
-        { success: false, error: 'Payment system not configured' },
-        { status: 500 }
-      )
-    }
+    
 
     // Validate card data
     const cardData = {
