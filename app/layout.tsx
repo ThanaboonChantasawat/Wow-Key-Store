@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/footer";
 
 import { AuthProvider } from "@/components/auth-context";
+import { CartProvider } from "@/components/cart-context";
 import { Navbar } from "@/components/navbar/Navbar";
 import { EmailPromptToast } from "@/components/email-prompt-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -45,13 +46,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-gray-100 m-0 p-0`}
       >
         <AuthProvider>
-          <Navbar/>
-          <main className="flex-1 min-h-0">
-            {children}
-          </main>
-          <Footer />
-          <EmailPromptToast />
-          <Toaster />
+          <CartProvider>
+            <Navbar/>
+            <main className="flex-1 min-h-0">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+            <EmailPromptToast />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

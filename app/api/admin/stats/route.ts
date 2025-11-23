@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin-config";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get counts for all collections
     const [usersSnapshot, productsSnapshot, shopsSnapshot, reopenRequestsSnapshot, reportsSnapshot] = 

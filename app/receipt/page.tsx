@@ -5,8 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ReviewFormComponent } from "@/components/review/ReviewFormComponent"
-import { useAuth } from "@/components/auth-context"
+// import { useAuth } from "@/components/auth-context"
 import { 
   Receipt, 
   Loader2, 
@@ -14,10 +13,8 @@ import {
   ArrowLeft,
   CheckCircle,
   Store,
-  Calendar,
   CreditCard,
-  Package,
-  Star
+  Package
 } from "lucide-react"
 
 interface OrderItem {
@@ -62,7 +59,7 @@ interface Order {
 function ReceiptPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user } = useAuth()
+  // const { user } = useAuth()
   const orderId = searchParams.get('orderId')
   const chargeId = searchParams.get('chargeId')
   const from = searchParams.get('from') // 'seller' or 'buyer'
@@ -70,7 +67,6 @@ function ReceiptPageContent() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showReviewForm, setShowReviewForm] = useState(false)
 
   useEffect(() => {
     if (orderId) {

@@ -325,10 +325,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-// Verify webhook signature (recommended for production)
-function verifyWebhookSignature(body: any, signature: string | null): boolean {
-  // TODO: Implement signature verification
-  // See: https://docs.omise.co/security-best-practices#verify-webhook-signatures
-  return true // For now, accept all webhooks
-}

@@ -64,6 +64,16 @@ export async function POST(
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     })
 
+    // Update shop stats (totalSales and totalRevenue)
+    if (orderData?.shopId) {
+      const shopRef = adminDb.collection('shops').doc(orderData.shopId)
+      await shopRef.update({
+        totalSales: admin.firestore.FieldValue.increment(1),
+        totalRevenue: admin.firestore.FieldValue.increment(orderData.totalAmount || 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      })
+    }
+
     console.log(`✅ Order ${orderId} confirmed by buyer ${userId}`)
 
     // 🔔 Notify seller - order confirmed by buyer

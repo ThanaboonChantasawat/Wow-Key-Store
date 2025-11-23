@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAllShops, updateShopProductCount, updateShopSalesStats } from "@/lib/shop-service";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const shops = await getAllShops();
     

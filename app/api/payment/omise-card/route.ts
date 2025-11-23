@@ -2,14 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import Omise from 'omise'
 
-interface CardData {
-  number: string
-  name: string
-  expiration_month: string
-  expiration_year: string
-  security_code: string
-}
-
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.OMISE_SECRET_KEY || !process.env.OMISE_PUBLIC_KEY) {

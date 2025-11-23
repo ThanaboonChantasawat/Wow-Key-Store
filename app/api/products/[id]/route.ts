@@ -33,6 +33,19 @@ export async function GET(
       )
     }
 
+    // If shopName is missing but shopId exists, fetch it
+    let shopName = data.shopName || ''
+    if (!shopName && data.shopId) {
+      try {
+        const shopDoc = await adminDb.collection('shops').doc(data.shopId).get()
+        if (shopDoc.exists) {
+          shopName = shopDoc.data()?.shopName || ''
+        }
+      } catch (err) {
+        console.error('Error fetching shop name:', err)
+      }
+    }
+
     const product = {
       id: productDoc.id,
       name: data.name || '',
@@ -41,7 +54,7 @@ export async function GET(
       images: Array.isArray(data.images) ? data.images : [],
       gameId: data.gameId || '',
       shopId: data.shopId || '',
-      shopName: data.shopName || '',
+      shopName: shopName,
       status: data.status || 'active',
       stock: data.stock || 0,
       sold: data.sold || 0,

@@ -5,9 +5,6 @@ import { Users, Package, Store, AlertCircle, FileText, Activity } from "lucide-r
 import { Timestamp } from "firebase/firestore"
 import { useAuth } from "@/components/auth-context"
 import { 
-  getActionLabel, 
-  getActionIcon, 
-  getActionColor,
   type AdminActivity 
 } from "@/lib/admin-activity-client"
 

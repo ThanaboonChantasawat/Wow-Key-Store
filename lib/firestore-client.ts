@@ -68,7 +68,7 @@ export const getCategoryById = async (categoryId: string): Promise<Category | nu
 }
 
 // For backward compatibility - keep search function
-export const useSearchGames = (searchTerm: string) => {
+export const useSearchGames = () => {
   // This will be handled by the hook itself
   return { games: [], loading: false }
 }

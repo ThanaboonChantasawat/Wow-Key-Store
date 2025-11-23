@@ -3,10 +3,10 @@ import { deleteNotification } from "@/lib/notification-service"
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const notificationId = params.id
+    const { id: notificationId } = await params
 
     if (!notificationId) {
       return NextResponse.json(

@@ -11,23 +11,40 @@ export function SellerOverview() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadShop = async () => {
+    const loadShopAndSync = async () => {
       if (!user) {
         setLoading(false)
         return
       }
 
       try {
+        // Initial load
         const shopData = await getShopByOwnerId(user.uid)
         setShop(shopData)
+        setLoading(false)
+
+        // Auto sync stats if shop exists
+        if (shopData?.shopId) {
+          try {
+            const response = await fetch(`/api/shops/${shopData.shopId}/update-stats`, {
+              method: 'POST'
+            })
+            if (response.ok) {
+              // Reload to get updated stats
+              const updatedShop = await getShopByOwnerId(user.uid)
+              setShop(updatedShop)
+            }
+          } catch (syncError) {
+            console.error("Error syncing stats:", syncError)
+          }
+        }
       } catch (error) {
         console.error("Error loading shop:", error)
-      } finally {
         setLoading(false)
       }
     }
 
-    loadShop()
+    loadShopAndSync()
   }, [user])
 
   if (loading) {

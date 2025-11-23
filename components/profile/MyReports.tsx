@@ -2,12 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/auth-context'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Clock, CheckCircle, XCircle, FileText, Star, MessageSquare, ExternalLink } from 'lucide-react'
+import { 
+  AlertCircle, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  FileText, 
+  Star, 
+  MessageSquare, 
+  ExternalLink,
+  Flag,
+  ChevronRight,
+  Search,
+  Trash2,
+  Ban
+} from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { th } from 'date-fns/locale'
+import Link from 'next/link'
 
 interface Report {
   id: string
@@ -30,7 +45,8 @@ interface Report {
   reviewedAt?: Date
   updatedAt?: Date
   reviewedBy?: string
-  adminNotes?: string
+  adminNote?: string
+  actionTaken?: 'approve' | 'reject' | 'delete' | 'ban'
 }
 
 export function MyReportsContent() {
@@ -65,48 +81,106 @@ export function MyReportsContent() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getActionDetails = (status: string, adminNote?: string, actionTaken?: string) => {
+    if (status === 'resolved' || status === 'approved') {
+      // Check explicit actionTaken first
+      if (actionTaken === 'delete') {
+        return { type: 'deleted', label: 'ลบเนื้อหา', icon: Trash2, color: 'text-orange-600', badge: 'bg-orange-100 text-orange-800 border-orange-200' }
+      }
+      if (actionTaken === 'ban') {
+        return { type: 'banned', label: 'แบนผู้ใช้', icon: Ban, color: 'text-red-600', badge: 'bg-red-100 text-red-800 border-red-200' }
+      }
+      if (actionTaken === 'approve') {
+        return { type: 'approved', label: 'อนุมัติรายงาน', icon: CheckCircle2, color: 'text-green-600', badge: 'bg-green-100 text-green-800 border-green-200' }
+      }
+
+      // Fallback to parsing adminNote
+      if (adminNote) {
+        if (adminNote.includes('Deleted') || adminNote.includes('ลบ') || adminNote.includes('เนื้อหาถูกลบ')) {
+           return { type: 'deleted', label: 'ลบเนื้อหา', icon: Trash2, color: 'text-orange-600', badge: 'bg-orange-100 text-orange-800 border-orange-200' }
+        }
+        if (adminNote.includes('Banned') || adminNote.includes('แบน') || adminNote.includes('ผู้ใช้ถูกแบน')) {
+           return { type: 'banned', label: 'แบนผู้ใช้', icon: Ban, color: 'text-red-600', badge: 'bg-red-100 text-red-800 border-red-200' }
+        }
+      }
+      return { type: 'approved', label: 'อนุมัติรายงาน', icon: CheckCircle2, color: 'text-green-600', badge: 'bg-green-100 text-green-800 border-green-200' }
+    }
+    if (status === 'rejected') {
+       return { type: 'rejected', label: 'ปฏิเสธรายงาน', icon: XCircle, color: 'text-red-600', badge: 'bg-red-100 text-red-800 border-red-200' }
+    }
+    return null
+  }
+
+  const getStatusInfo = (status: string, adminNote?: string, actionTaken?: string) => {
     switch (status) {
       case 'pending':
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-            <Clock className="w-3 h-3 mr-1" />
-            รอดำเนินการ
-          </Badge>
-        )
+        return {
+          label: 'รอดำเนินการ',
+          icon: Clock,
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          badgeColor: 'bg-yellow-100 text-yellow-800'
+        }
       case 'reviewed':
-        return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-            <FileText className="w-3 h-3 mr-1" />
-            กำลังตรวจสอบ
-          </Badge>
-        )
+        return {
+          label: 'กำลังตรวจสอบ',
+          icon: Search,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          badgeColor: 'bg-blue-100 text-blue-800'
+        }
       case 'resolved':
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            ดำเนินการแล้ว
-          </Badge>
-        )
+      case 'approved':
+        const action = getActionDetails(status, adminNote, actionTaken)
+        if (action) {
+          return {
+            label: action.type !== 'approved' ? `ดำเนินการแล้ว (${action.label})` : 'ดำเนินการแล้ว',
+            icon: action.icon,
+            color: action.color,
+            bgColor: action.type === 'approved' ? 'bg-green-50' : (action.type === 'deleted' ? 'bg-orange-50' : 'bg-red-50'),
+            borderColor: action.type === 'approved' ? 'border-green-200' : (action.type === 'deleted' ? 'border-orange-200' : 'border-red-200'),
+            badgeColor: action.badge
+          }
+        }
+        return {
+          label: 'ดำเนินการแล้ว',
+          icon: CheckCircle2,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          badgeColor: 'bg-green-100 text-green-800'
+        }
       case 'rejected':
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
-            <XCircle className="w-3 h-3 mr-1" />
-            ปิดรายงาน
-          </Badge>
-        )
+        return {
+          label: 'ปิดรายงาน',
+          icon: XCircle,
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          badgeColor: 'bg-red-100 text-red-800'
+        }
       default:
-        return null
+        return {
+          label: status,
+          icon: AlertCircle,
+          color: 'text-gray-600',
+          bgColor: 'bg-gray-50',
+          borderColor: 'border-gray-200',
+          badgeColor: 'bg-gray-100 text-gray-800'
+        }
     }
   }
+
   const getReportedTypeIcon = (type: string) => {
     switch (type) {
       case 'review':
-        return <Star className="w-4 h-4 text-yellow-600" />
+        return <Star className="w-5 h-5 text-yellow-500" />
       case 'comment':
-        return <FileText className="w-4 h-4 text-blue-600" />
+        return <MessageSquare className="w-5 h-5 text-blue-500" />
       default:
-        return <AlertCircle className="w-4 h-4" />
+        return <Flag className="w-5 h-5 text-orange-500" />
     }
   }
 
@@ -137,222 +211,294 @@ export function MyReportsContent() {
 
   const filteredReports = filter === 'all' 
     ? reports 
-    : reports.filter(r => r.status === filter)
+    : reports.filter(r => {
+        if (filter === 'resolved') {
+          return r.status === 'resolved' || r.status === 'approved'
+        }
+        return r.status === filter
+      })
 
   const getFilterCount = (status: 'all' | 'pending' | 'reviewed' | 'resolved' | 'rejected') => {
     if (status === 'all') return reports.length
+    if (status === 'resolved') {
+      return reports.filter(r => r.status === 'resolved' || r.status === 'approved').length
+    }
     return reports.filter(r => r.status === status).length
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลด...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#ff9800] mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">รายงานของฉัน</h2>
-        <p className="text-gray-600">ติดตามสถานะรายงานที่คุณส่ง</p>
+    <div className="space-y-8">
+      {/* Header Card with Gradient */}
+      <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <h2 className="text-4xl font-bold mb-2 drop-shadow-lg flex items-center gap-3">
+            <Flag className="w-10 h-10" />
+            รายงาน
+          </h2>
+          <p className="text-white/90 text-lg">
+            ติดตามสถานะและประวัติการรายงานของคุณ
+          </p>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card 
-          className={`cursor-pointer transition-colors ${filter === 'all' ? 'border-orange-500 bg-orange-50' : 'hover:border-gray-300'}`}
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${filter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
           onClick={() => setFilter('all')}
         >
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{getFilterCount('all')}</div>
-              <div className="text-sm text-gray-600 mt-1">ทั้งหมด</div>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${filter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
-          </CardContent>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${filter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{getFilterCount('all')}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${filter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
         </Card>
 
         <Card 
-          className={`cursor-pointer transition-colors ${filter === 'pending' ? 'border-yellow-500 bg-yellow-50' : 'hover:border-gray-300'}`}
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${filter === 'pending' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
           onClick={() => setFilter('pending')}
         >
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-700">{getFilterCount('pending')}</div>
-              <div className="text-sm text-gray-600 mt-1">รอดำเนินการ</div>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${filter === 'pending' ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
-          </CardContent>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${filter === 'pending' ? 'text-yellow-900' : 'text-gray-900'}`}>{getFilterCount('pending')}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${filter === 'pending' ? 'text-yellow-700' : 'text-gray-500'}`}>รอดำเนินการ</div>
+            </div>
+          </div>
         </Card>
 
         <Card 
-          className={`cursor-pointer transition-colors ${filter === 'reviewed' ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-300'}`}
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${filter === 'reviewed' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
           onClick={() => setFilter('reviewed')}
         >
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-700">{getFilterCount('reviewed')}</div>
-              <div className="text-sm text-gray-600 mt-1">กำลังตรวจสอบ</div>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${filter === 'reviewed' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Search className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
-          </CardContent>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${filter === 'reviewed' ? 'text-blue-900' : 'text-gray-900'}`}>{getFilterCount('reviewed')}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${filter === 'reviewed' ? 'text-blue-700' : 'text-gray-500'}`}>กำลังตรวจสอบ</div>
+            </div>
+          </div>
         </Card>
 
         <Card 
-          className={`cursor-pointer transition-colors ${filter === 'resolved' ? 'border-green-500 bg-green-50' : 'hover:border-gray-300'}`}
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${filter === 'resolved' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
           onClick={() => setFilter('resolved')}
         >
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-700">{getFilterCount('resolved')}</div>
-              <div className="text-sm text-gray-600 mt-1">ดำเนินการแล้ว</div>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${filter === 'resolved' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
-          </CardContent>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${filter === 'resolved' ? 'text-green-900' : 'text-gray-900'}`}>{getFilterCount('resolved')}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${filter === 'resolved' ? 'text-green-700' : 'text-gray-500'}`}>ดำเนินการแล้ว</div>
+            </div>
+          </div>
         </Card>
 
         <Card 
-          className={`cursor-pointer transition-colors ${filter === 'rejected' ? 'border-red-500 bg-red-50' : 'hover:border-gray-300'}`}
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${filter === 'rejected' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
           onClick={() => setFilter('rejected')}
         >
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-700">{getFilterCount('rejected')}</div>
-              <div className="text-sm text-gray-600 mt-1">ปิดรายงาน</div>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${filter === 'rejected' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
-          </CardContent>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${filter === 'rejected' ? 'text-red-900' : 'text-gray-900'}`}>{getFilterCount('rejected')}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${filter === 'rejected' ? 'text-red-700' : 'text-gray-500'}`}>ปิดรายงาน</div>
+            </div>
+          </div>
         </Card>
       </div>
 
       {/* Reports List */}
-      {filteredReports.length === 0 ? (
-        <Card>
-          <CardContent className="p-12">
-            <div className="text-center text-gray-500">
-              <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium mb-2">ไม่พบรายงาน</p>
-              <p className="text-sm">
-                {filter === 'all' 
-                  ? 'คุณยังไม่มีรายงานในระบบ' 
-                  : `ไม่มีรายงานที่มีสถานะ "${filter}"`}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredReports.map((report) => (
-            <Card key={report.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {getStatusBadge(report.status)}
-                      <span className="text-sm text-gray-500">•</span>
-                      <span className="text-sm text-gray-600">
-                        {formatDistanceToNow(report.createdAt, { 
-                          addSuffix: true, 
-                          locale: th 
-                        })}
-                      </span>
-                    </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-[#292d32] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#ff9800]" />
+            รายการรายงาน ({filteredReports.length})
+          </h3>
+        </div>
 
-                    {/* Reported Item */}
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-gray-100 rounded-lg">
-                        {getReportedTypeIcon(report.targetType)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="text-sm text-gray-600">
-                                รายงาน{getReportedTypeLabel(report.targetType)}โดย:
-                              </span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {report.targetUserName}
+        {filteredReports.length === 0 ? (
+          <Card className="border-dashed border-2 border-gray-200 bg-gray-50/50">
+            <CardContent className="p-12 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">ไม่พบรายงาน</h3>
+              <p className="text-gray-500">
+                {filter === 'all' 
+                  ? 'คุณยังไม่มีประวัติการรายงานในระบบ' 
+                  : `ไม่มีรายงานที่มีสถานะ "${getStatusInfo(filter).label}"`}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {filteredReports.map((report) => {
+              const statusInfo = getStatusInfo(report.status, report.adminNote, report.actionTaken)
+              const StatusIcon = statusInfo.icon
+
+              return (
+                <Card 
+                  key={report.id} 
+                  className="group hover:shadow-lg transition-all duration-200 border-l-4 overflow-hidden"
+                  style={{ borderLeftColor: 
+                    report.status === 'pending' ? '#eab308' :
+                    report.status === 'reviewed' ? '#3b82f6' :
+                    report.status === 'rejected' ? '#ef4444' :
+                    (statusInfo.color.includes('orange') ? '#f97316' : 
+                     statusInfo.color.includes('red') ? '#ef4444' : '#22c55e')
+                  }}
+                >
+                  <CardContent className="p-0">
+                    <div className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-start gap-6">
+                        {/* Icon & Type */}
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                            {getReportedTypeIcon(report.targetType)}
+                          </div>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-3">
+                              <Badge className={`${statusInfo.badgeColor} border-0 px-3 py-1`}>
+                                <StatusIcon className="w-3 h-3 mr-1.5" />
+                                {statusInfo.label}
+                              </Badge>
+                              <span className="text-sm text-gray-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatDistanceToNow(report.createdAt, { addSuffix: true, locale: th })}
                               </span>
                             </div>
-                            {(report.productName || report.shopName) && (
-                              <div className="text-xs text-gray-500 mb-2">
-                                {report.productName && (
-                                  <span>สินค้า: {report.productName}</span>
-                                )}
-                                {report.productName && report.shopName && <span className="mx-1">•</span>}
-                                {report.shopName && !report.productName && (
-                                  <span>ร้านค้า: {report.shopName}</span>
-                                )}
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                รายงาน{getReportedTypeLabel(report.targetType)}
+                                <span className="font-normal text-gray-500">ของ</span>
+                                <span className="text-[#ff9800]">{report.targetUserName}</span>
+                              </h4>
+                              
+                              {(report.productName || report.shopName) && (
+                                <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                                  <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">
+                                    {report.productName ? 'สินค้า' : 'ร้านค้า'}
+                                  </span>
+                                  {report.productName || report.shopName}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                              <div className="flex items-start gap-2">
+                                <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-600 italic line-clamp-2">
+                                  "{report.targetContent}"
+                                </p>
                               </div>
-                            )}
-                            {report.targetContent && (
-                              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 line-clamp-2 mb-2">
-                                "{report.targetContent}"
+                            </div>
+
+                            <div className="flex flex-wrap gap-y-2 gap-x-6 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">เหตุผล:</span>
+                                <span className="text-gray-600">{getReasonText(report.reason)}</span>
                               </div>
-                            )}
-                          {(report.productId || report.shopOwnerId) && (
+                              {report.description && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-700">รายละเอียด:</span>
+                                  <span className="text-gray-600">{report.description}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Admin Response Section */}
+                          {report.adminNote && (
+                            <div className={`mt-4 ${statusInfo.bgColor} border ${statusInfo.borderColor} rounded-xl p-4`}>
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-white/60">
+                                  <StatusIcon className={`w-4 h-4 ${statusInfo.color}`} />
+                                </div>
+                                <div>
+                                  <p className={`text-sm font-bold mb-1 ${statusInfo.color}`}>
+                                    ผลการตรวจสอบ
+                                  </p>
+                                  <p className={`text-sm leading-relaxed ${statusInfo.color.replace('600', '800')}`}>
+                                    {statusInfo.label.includes('ลบเนื้อหา') && !report.adminNote?.includes('ลบ') && !report.adminNote?.includes('Deleted') && (
+                                      <span className="font-semibold mr-1">[ลบเนื้อหา]</span>
+                                    )}
+                                    {statusInfo.label.includes('แบนผู้ใช้') && !report.adminNote?.includes('แบน') && !report.adminNote?.includes('Banned') && (
+                                      <span className="font-semibold mr-1">[แบนผู้ใช้]</span>
+                                    )}
+                                    {report.adminNote}
+                                  </p>
+                                  {report.reviewedAt && (
+                                    <p className={`text-xs mt-2 flex items-center gap-1 opacity-75 ${statusInfo.color}`}>
+                                      <Clock className="w-3 h-3" />
+                                      ตรวจสอบเมื่อ {formatDistanceToNow(report.reviewedAt, { addSuffix: true, locale: th })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Button */}
+                        {(report.productId || report.shopOwnerId) && (
+                          <div className="flex-shrink-0 mt-4 md:mt-0">
                             <Button
                               variant="outline"
-                              size="sm"
-                              className="h-8 px-3 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 shrink-0"
+                              className="w-full md:w-auto border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800 hover:border-orange-300 transition-colors"
                               onClick={() => {
                                 if (report.productId) {
                                   window.open(`/products/${report.productId}`, '_blank')
                                 } else if (report.shopOwnerId) {
-                                  // Go to seller profile
                                   window.open(`/sellerprofile/${report.shopOwnerId}`, '_blank')
                                 }
                               }}
                             >
-                              <ExternalLink className="w-3 h-3 mr-1" />
+                              <ExternalLink className="w-4 h-4 mr-2" />
                               ดูรายการ
                             </Button>
-                          )}
-                        </div>
-                        </div>
-                        <div className="mt-2">
-                          <span className="text-sm font-medium text-gray-700">เหตุผล: </span>
-                          <span className="text-sm text-gray-600">{getReasonText(report.reason)}</span>
-                        </div>
-                        {report.description && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            รายละเอียด: {report.description}
-                          </p>
+                          </div>
                         )}
                       </div>
                     </div>
-
-                    {/* Admin Response */}
-                    {report.adminNotes && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <FileText className="w-4 h-4 text-blue-600 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-blue-900 mb-1">
-                              การตอบกลับจากผู้ดูแล:
-                            </p>
-                            <p className="text-sm text-blue-800">{report.adminNotes}</p>
-                            {report.reviewedAt && (
-                              <p className="text-xs text-blue-600 mt-1">
-                                {formatDistanceToNow(report.reviewedAt, { 
-                                  addSuffix: true, 
-                                  locale: th 
-                                })}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

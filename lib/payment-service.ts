@@ -121,3 +121,58 @@ export async function createRefund(
 export function calculatePlatformFee(amount: number): number {
   return Math.round(amount * 0.1) // 10% fee
 }
+
+/**
+ * Calculate platform fee based on payment method
+ * All payment methods: 3% platform fee (from seller's revenue)
+ * But buyer pays surcharge for non-PromptPay methods
+ */
+export function calculatePlatformFeeByMethod(
+  amount: number,
+  // paymentMethod: 'promptpay' | 'card' | 'bank' = 'card'
+): number {
+  // Platform always takes 3% from seller
+  return Math.round(amount * 0.03)
+}
+
+/**
+ * Calculate payment method surcharge (what buyer pays extra)
+ * PromptPay: 0% (no surcharge)
+ * Credit Card/Bank: +5% (buyer pays this extra)
+ */
+export function calculatePaymentSurcharge(
+  amount: number,
+  paymentMethod: 'promptpay' | 'card' | 'bank' = 'card'
+): number {
+  if (paymentMethod === 'promptpay') {
+    return 0 // No surcharge for PromptPay
+  }
+  return Math.round(amount * 0.05) // 5% surcharge for card/bank
+}
+
+/**
+ * Calculate final payment amount (base + surcharge)
+ */
+export function calculateFinalPaymentAmount(
+  baseAmount: number,
+  paymentMethod: 'promptpay' | 'card' | 'bank' = 'card'
+): { 
+  baseAmount: number
+  surcharge: number
+  totalAmount: number
+  platformFee: number
+  sellerReceives: number
+} {
+  const surcharge = calculatePaymentSurcharge(baseAmount, paymentMethod)
+  const totalAmount = baseAmount + surcharge
+  const platformFee = calculatePlatformFeeByMethod(baseAmount, paymentMethod)
+  const sellerReceives = baseAmount - platformFee
+  
+  return {
+    baseAmount,
+    surcharge,
+    totalAmount,
+    platformFee,
+    sellerReceives,
+  }
+}

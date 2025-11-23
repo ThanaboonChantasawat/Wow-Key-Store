@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAllUsers } from "@/lib/user-service";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const users = await getAllUsers();
     return NextResponse.json(users);

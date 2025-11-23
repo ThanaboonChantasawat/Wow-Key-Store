@@ -141,13 +141,15 @@ export function ShopCard({ shopId }: ShopCardProps) {
           </div>
 
           {/* Visit Shop Button */}
-          <Button
-            onClick={() => router.push(`/sellerprofile/${stats.ownerId}`)}
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
-          >
-            <Store className="w-4 h-4 mr-2" />
-            เยี่ยมชมร้านค้า
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              onClick={() => router.push(`/sellerprofile/${stats.ownerId}`)}
+              className="w-full max-w-xs bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+            >
+              <Store className="w-4 h-4 mr-2" />
+              เยี่ยมชมร้านค้า
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

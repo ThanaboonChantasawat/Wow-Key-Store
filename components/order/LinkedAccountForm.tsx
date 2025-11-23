@@ -16,7 +16,7 @@ interface FullAccessFormProps {
   disabled?: boolean
 }
 
-export function FullAccessForm({ orderId, onSubmit, initialData, disabled }: FullAccessFormProps) {
+export function FullAccessForm({ onSubmit, initialData, disabled }: FullAccessFormProps) {
   const [formData, setFormData] = useState<Partial<FullAccessAccountInfo>>(initialData || {})
   const [submitting, setSubmitting] = useState(false)
   const [showPasswords, setShowPasswords] = useState({

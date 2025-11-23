@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Store, TrendingUp, DollarSign, Star, ArrowRight } from "lucide-react"
+import { Store, TrendingUp, Star, ArrowRight } from "lucide-react"
 import { type Shop, getTopShopsBySales } from "@/lib/shop-client"
 import Link from "next/link"
-import Image from "next/image"
 
 export function TopShops() {
   const [topShops, setTopShops] = useState<Shop[]>([])

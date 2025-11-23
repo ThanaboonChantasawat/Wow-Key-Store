@@ -123,7 +123,7 @@ export async function POST(
         // Log entire response to inspect message id and metadata
         try {
           console.log('📧 Resend response:', JSON.stringify(emailResult, null, 2))
-        } catch (e) {
+        } catch {
           console.log('📧 Resend response (raw):', emailResult)
         }
         // Some SDKs return id under different paths; try common ones

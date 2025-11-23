@@ -488,6 +488,10 @@ export function ViolationHistoryContent() {
                         return '✅'
                       case 'reject_report':
                         return '❌'
+                      case 'Approved':
+                        return '✅'
+                      case 'Rejected':
+                        return '❌'
                       default:
                         return '📋'
                     }
@@ -505,6 +509,10 @@ export function ViolationHistoryContent() {
                         return 'ปฏิเสธรายงาน'
                       case 'reverse_report_decision':
                         return 'ยกเลิกการตัดสิน'
+                      case 'Approved':
+                        return 'อนุมัติ'
+                      case 'Rejected':
+                        return 'ปฏิเสธ'
                       default:
                         return violation.action
                     }

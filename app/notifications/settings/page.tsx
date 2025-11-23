@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth-context"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Bell, Mail, Shield, ShoppingBag, Store } from "lucide-react"
+import { Bell, Mail, ShoppingBag, Store } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 

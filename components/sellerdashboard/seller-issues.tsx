@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Mail, Trash2 } from "lucide-react"
+import { Search, Mail, Trash2, AlertTriangle, CheckCircle, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 export function SellerIssues() {
   const [currentPage, setCurrentPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'resolved'>('all')
   const totalPages = 5
 
   const issues = [
@@ -88,14 +90,86 @@ export function SellerIssues() {
     },
   ]
 
+  // Calculate stats
+  const pendingCount = issues.filter(i => i.status === 'red').length
+  const resolvedCount = issues.filter(i => i.status === 'green').length
+
+  // Filter issues
+  const filteredIssues = issues.filter(issue => {
+    if (statusFilter === 'all') return true
+    if (statusFilter === 'pending') return issue.status === 'red'
+    if (statusFilter === 'resolved') return issue.status === 'green'
+    return true
+  })
+
   return (
-    <div className="bg-white rounded-lg shadow-sm">
-      <div className="p-6 border-b border-[#d9d9d9]">
-        <h2 className="text-2xl font-bold text-[#292d32]">การแจ้งปัญหา</h2>
+    <div className="space-y-6">
+      {/* Header - Orange Gradient */}
+      <div className="bg-gradient-to-r from-orange-500 via-[#ff9800] to-red-500 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <h2 className="text-4xl font-bold mb-2 drop-shadow-lg flex items-center gap-3">
+            <MessageSquare className="w-10 h-10" />
+            การแจ้งปัญหา
+          </h2>
+          <p className="text-white/90 text-lg">
+            จัดการปัญหาและข้อร้องเรียนจากลูกค้า
+          </p>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{issues.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'pending' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('pending')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'pending' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'pending' ? 'text-red-900' : 'text-gray-900'}`}>{pendingCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'pending' ? 'text-red-700' : 'text-gray-500'}`}>รอการแก้ไข</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'resolved' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('resolved')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'resolved' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'resolved' ? 'text-green-900' : 'text-gray-900'}`}>{resolvedCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'resolved' ? 'text-green-700' : 'text-gray-500'}`}>แก้ไขแล้ว</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="w-full">
           <thead>
             <tr className="bg-[#f9fafb] border-b border-[#d9d9d9]">
               <th className="px-6 py-4 text-left font-semibold text-[#292d32]">Buyer</th>
@@ -108,7 +182,7 @@ export function SellerIssues() {
             </tr>
           </thead>
           <tbody>
-            {issues.map((issue) => (
+            {filteredIssues.map((issue) => (
               <tr key={issue.id} className="border-b border-[#d9d9d9] hover:bg-[#f9fafb]">
                 <td className="px-6 py-4">
                   <div className="text-sm">
@@ -182,5 +256,6 @@ export function SellerIssues() {
         <Button className="bg-[#ff9800] hover:bg-[#ff9800]/90 text-white px-8">บันทึก</Button>
       </div>
     </div>
+  </div>
   )
 }

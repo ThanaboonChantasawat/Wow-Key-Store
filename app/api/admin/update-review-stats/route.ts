@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin-config";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get all reviews
     const reviewsSnapshot = await adminDb.collection('reviews').get();

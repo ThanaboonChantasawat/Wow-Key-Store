@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
-import { Shield, User, Trash2, Ban, CheckCircle, XCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Shield, User, Trash2, Ban, CheckCircle, XCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Filter, Activity } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AdminActivity {
   id: string
@@ -30,6 +33,8 @@ export function AdminActivityLog() {
   const [selectedActivity, setSelectedActivity] = useState<AdminActivity | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [actionFilter, setActionFilter] = useState("all")
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -37,11 +42,25 @@ export function AdminActivityLog() {
     fetchActivities()
   }, [user])
 
+  // Filter logic
+  const filteredActivities = activities.filter(activity => {
+    const matchesSearch = 
+      activity.adminName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      activity.targetName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      activity.details.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesAction = actionFilter === "all" || 
+                          (actionFilter === "approve_all" && (activity.action === "approve_report" || activity.action === "approve_shop")) ||
+                          activity.action === actionFilter
+    
+    return matchesSearch && matchesAction
+  })
+
   // Pagination
-  const totalPages = Math.ceil(activities.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredActivities.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentActivities = activities.slice(startIndex, endIndex)
+  const currentActivities = filteredActivities.slice(startIndex, endIndex)
 
   const fetchActivities = async () => {
     setIsLoading(true)
@@ -133,8 +152,86 @@ export function AdminActivityLog() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Input 
+          type="search" 
+          placeholder="ค้นหาประวัติ (ชื่อ Admin, เป้าหมาย, รายละเอียด)..." 
+          className="pl-10 bg-white"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${actionFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setActionFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${actionFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${actionFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{activities.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${actionFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${actionFilter === 'ban_user' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setActionFilter('ban_user')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${actionFilter === 'ban_user' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Ban className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${actionFilter === 'ban_user' ? 'text-red-900' : 'text-gray-900'}`}>{activities.filter(a => a.action === 'ban_user').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${actionFilter === 'ban_user' ? 'text-red-700' : 'text-gray-500'}`}>แบนผู้ใช้</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${actionFilter === 'delete_content' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setActionFilter('delete_content')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${actionFilter === 'delete_content' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Trash2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${actionFilter === 'delete_content' ? 'text-orange-900' : 'text-gray-900'}`}>{activities.filter(a => a.action === 'delete_content').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${actionFilter === 'delete_content' ? 'text-orange-700' : 'text-gray-500'}`}>ลบเนื้อหา</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${actionFilter === 'approve_all' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setActionFilter('approve_all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${actionFilter === 'approve_all' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${actionFilter === 'approve_all' ? 'text-green-900' : 'text-gray-900'}`}>{activities.filter(a => a.action === 'approve_report' || a.action === 'approve_shop').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${actionFilter === 'approve_all' ? 'text-green-700' : 'text-gray-500'}`}>อนุมัติ</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      {/* Removed old filter card */}
+
       <div className="space-y-4">
-        {activities.length === 0 ? (
+        {filteredActivities.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-gray-500">
               ไม่พบประวัติการดำเนินการ

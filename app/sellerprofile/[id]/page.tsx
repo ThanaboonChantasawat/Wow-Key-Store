@@ -1,16 +1,13 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import { Star, ShoppingCart, User, MessageCircle, Loader2 } from "lucide-react";
+import { Star, ShoppingCart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SellerReviewsSection } from "@/components/sellerprofile/seller-reviews-section";
 import { ReviewAndCommentSection } from "@/components/review/ReviewAndCommentSection";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 
 interface Shop {
   shopId: string;
@@ -53,7 +50,7 @@ interface Product {
 
 export default function SellerProfile() {
   const params = useParams();
-  const ownerId = params?.id as string;
+  const id = params?.id as string;
   
   const [shop, setShop] = useState<Shop | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -64,25 +61,42 @@ export default function SellerProfile() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch shop data
-        const shopRes = await fetch(`/api/shops/owner/${ownerId}`);
-        if (!shopRes.ok) {
+        let shopData: Shop | null = null;
+
+        // Check if id is shopId (starts with "shop_") or ownerId
+        if (id.startsWith('shop_')) {
+          // Fetch by shopId
+          const shopRes = await fetch(`/api/shops/${id}`);
+          if (shopRes.ok) {
+            shopData = await shopRes.json();
+          }
+        } else {
+          // Fetch by ownerId
+          const shopRes = await fetch(`/api/shops/owner/${id}`);
+          if (shopRes.ok) {
+            shopData = await shopRes.json();
+          }
+        }
+
+        if (!shopData) {
           setNotFoundError(true);
           setLoading(false);
           return;
         }
-        const shopData = await shopRes.json();
+
         setShop(shopData);
 
-        // Fetch user profile
-        try {
-          const userRes = await fetch(`/api/users/${ownerId}`);
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setUserProfile(userData);
+        // Fetch user profile using ownerId from shop data
+        if (shopData.ownerId) {
+          try {
+            const userRes = await fetch(`/api/users/${shopData.ownerId}`);
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              setUserProfile(userData);
+            }
+          } catch {
+            console.log("Could not fetch user profile");
           }
-        } catch (err) {
-          console.log("Could not fetch user profile");
         }
 
         // Fetch products
@@ -99,10 +113,10 @@ export default function SellerProfile() {
       }
     }
 
-    if (ownerId) {
+    if (id) {
       fetchData();
     }
-  }, [ownerId]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -133,7 +147,6 @@ export default function SellerProfile() {
 
   // Calculate shop stats
   const activeProducts = products.filter(p => p.status === 'active');
-  const totalViews = products.reduce((sum, p) => sum + (p.viewCount || 0), 0);
 
   // Format last active time
   const getLastActiveTime = () => {
@@ -159,13 +172,12 @@ export default function SellerProfile() {
         <Card className="mb-8 bg-white items-center md:items-start">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start gap-6">
-              <div className="w-40 h-40 flex items-center justify-center">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
                 <Image
                   src={shop.logoUrl || "/landscape-placeholder-svgrepo-com.svg"}
                   alt={shop.shopName}
-                  width={400}
-                  height={200}
-                  className="object-contain rounded-full shadow-xl"
+                  fill
+                  className="object-cover rounded-full shadow-xl border-4 border-white"
                 />
               </div>
 

@@ -39,7 +39,6 @@ export function CartContent() {
   const [groupedCarts, setGroupedCarts] = useState<GroupedCart[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [selectAll, setSelectAll] = useState(false)
 
   // Load cart items from Firestore
   // extract loadCart so other effects can call it (for refresh after checkout)
@@ -59,7 +58,7 @@ export function CartContent() {
 
       for (const cartDoc of cartDocs) {
         const itemId = cartDoc.itemId
-        const itemType = cartDoc.itemType || 'product'
+        // const itemType = cartDoc.itemType || 'product'
 
         // Query products collection
         const productsRef = collection(db, "products")
@@ -218,14 +217,14 @@ export function CartContent() {
     return groupedCarts.flatMap(group => group.items)
   }
 
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(getAllItems().map((item) => item.id))
-    }
-    setSelectAll(!selectAll)
-  }
+  // const toggleSelectAll = () => {
+  //   if (selectAll) {
+  //     setSelectedItems([])
+  //   } else {
+  //     setSelectedItems(getAllItems().map((item) => item.id))
+  //   }
+  //   setSelectAll(!selectAll)
+  // }
 
   const toggleSelectShop = (shopId: string) => {
     const shop = groupedCarts.find(g => g.shopId === shopId)

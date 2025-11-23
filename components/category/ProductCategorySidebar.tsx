@@ -3,49 +3,32 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useCategories } from '@/hooks/useFirestore';
-
-interface Game {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl: string;
-  categories: string[];
-  isPopular: boolean;
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { Game } from '@/lib/game-service';
 
 interface ProductCategorySidebarProps {
   onGameSelect?: (gameId: string | null) => void;
   selectedGameId?: string | null;
+  games: Game[];
+  loading?: boolean;
 }
 
-const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategorySidebarProps) => {
+const ProductCategorySidebar = ({ onGameSelect, selectedGameId, games, loading = false }: ProductCategorySidebarProps) => {
   const { categories, loading: categoriesLoading } = useCategories();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [games, setGames] = useState<Game[]>([]);
-  const [gamesLoading, setGamesLoading] = useState(true);
 
-  // Fetch all games via API
+  // Auto-expand category when selectedGameId changes
   useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        const response = await fetch('/api/games');
-        if (!response.ok) throw new Error('Failed to fetch games');
-        const data = await response.json();
-        // API returns array directly
-        setGames(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Error fetching games:', error);
-        setGames([]);
-      } finally {
-        setGamesLoading(false);
+    if (selectedGameId && games.length > 0) {
+      const game = games.find(g => g.id === selectedGameId);
+      if (game && game.categories) {
+        setExpandedCategories(prev => {
+          const newSet = new Set(prev);
+          game.categories.forEach(cat => newSet.add(cat));
+          return newSet;
+        });
       }
-    };
-
-    fetchGames();
-  }, []);
+    }
+  }, [selectedGameId, games]);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -82,7 +65,7 @@ const ProductCategorySidebar = ({ onGameSelect, selectedGameId }: ProductCategor
     }
   };
 
-  if (categoriesLoading || gamesLoading) {
+  if (categoriesLoading || loading) {
     return (
       <div className="w-full bg-white rounded-lg shadow-md p-6">
         <div className="animate-pulse">

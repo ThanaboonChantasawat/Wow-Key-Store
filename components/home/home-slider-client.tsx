@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 
 interface SliderImage {
@@ -30,18 +29,6 @@ export function HomeSliderClient({ images: initialImages }: HomeSliderClientProp
 
     return () => clearInterval(interval)
   }, [validImages.length])
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + validImages.length) % validImages.length)
-  }
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % validImages.length)
-  }
-
-  const goToSlide = (index: number) => {
-    setCurrentIndex(index)
-  }
 
   const handleImageError = (imageId: string) => {
     console.error('Failed to load slider image:', imageId)

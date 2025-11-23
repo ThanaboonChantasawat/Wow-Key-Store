@@ -1,13 +1,24 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { useAuth } from "@/components/auth-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loading } from "@/components/ui/loading"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { 
   Package, 
   ShoppingBag, 
@@ -29,10 +40,10 @@ import {
   Filter,
   ChevronsLeft,
   ChevronsRight,
-  RefreshCw,
   Star
 } from "lucide-react"
 import { ReviewFormComponent } from "@/components/review/ReviewFormComponent"
+import { getShopById } from "@/lib/shop-client"
 
 type StatusFilter = 'all' | 'processing' | 'completed' | 'cancelled'
 
@@ -69,8 +80,11 @@ interface Order {
   updatedAt: string
 }
 
+// Simple in-memory cache for shop details
+const shopCache = new Map<string, any>();
+
 export function MyOrdersContent() {
-  const { user, isInitialized } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,6 +95,7 @@ export function MyOrdersContent() {
   const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<Order | null>(null)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<Order | null>(null)
+  const [selectedShop, setSelectedShop] = useState<any>(null) // Add state for shop details
   const [selectedOrderReviews, setSelectedOrderReviews] = useState<{
     shopReview: { id: string; rating: number; comment: string } | null
     productReview: { id: string; rating: number; comment: string } | null
@@ -99,9 +114,11 @@ export function MyOrdersContent() {
   
   // Confirm receipt states
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [selectedOrderToConfirm, setSelectedOrderToConfirm] = useState<Order | null>(null)
+  const [hasCheckedCode, setHasCheckedCode] = useState(false)
   
-  // Sync payment status states
-  const [syncingOrderId, setSyncingOrderId] = useState<string | null>(null)
+
 
   useEffect(() => {
     if (user) {
@@ -242,6 +259,13 @@ export function MyOrdersContent() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+            <Clock className="w-3 h-3 mr-1" />
+            กำลังจัดส่ง
+          </Badge>
+        )
       case 'processing':
         return (
           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
@@ -543,7 +567,7 @@ export function MyOrdersContent() {
         } else {
           setSelectedOrderReviews(null)
         }
-      } catch (e) {
+      } catch {
         setSelectedOrderReviews(null)
       }
     }
@@ -555,13 +579,19 @@ export function MyOrdersContent() {
     setSelectedOrderReviews(null)
   }
 
-  const confirmReceipt = async (order: Order) => {
-    if (!user) return
+  const openConfirmDialog = (order: Order) => {
+    setSelectedOrderToConfirm(order)
+    setHasCheckedCode(false)
+    setShowConfirmDialog(true)
+  }
+
+  const confirmReceipt = async () => {
+    if (!user || !selectedOrderToConfirm) return
 
     try {
-      setConfirmingOrderId(order.id)
+      setConfirmingOrderId(selectedOrderToConfirm.id)
 
-      const response = await fetch(`/api/orders/${order.id}/confirm`, {
+      const response = await fetch(`/api/orders/${selectedOrderToConfirm.id}/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -581,11 +611,16 @@ export function MyOrdersContent() {
           duration: 3000,
         })
         
+        // Close dialog
+        setShowConfirmDialog(false)
+        setSelectedOrderToConfirm(null)
+        setHasCheckedCode(false)
+        
         // Refresh orders
         await fetchOrders()
         
         // Close modal if it's the selected order
-        if (selectedOrderDetail?.id === order.id) {
+        if (selectedOrderDetail?.id === selectedOrderToConfirm.id) {
           closeOrderDetail()
         }
       } else {
@@ -601,49 +636,6 @@ export function MyOrdersContent() {
       })
     } finally {
       setConfirmingOrderId(null)
-    }
-  }
-
-  const syncPaymentStatus = async (order: Order) => {
-    if (!user) return
-
-    try {
-      setSyncingOrderId(order.id)
-      console.log('🔄 Syncing payment status for order:', order.id)
-
-      const response = await fetch('/api/admin/sync-payment-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.id,
-          userId: user.uid,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        toast({
-          title: "✅ ซิงค์สถานะสำเร็จ",
-          description: `สถานะการชำระเงิน: ${data.paymentStatus === 'completed' ? 'ชำระเงินแล้ว' : data.paymentStatus === 'failed' ? 'ล้มเหลว' : 'รอชำระเงิน'}`,
-          duration: 3000,
-        })
-
-        // Refresh orders to show updated status
-        await fetchOrders()
-      } else {
-        throw new Error(data.error || 'ไม่สามารถซิงค์สถานะได้')
-      }
-    } catch (err: any) {
-      console.error('Error syncing payment status:', err)
-      toast({
-        title: "❌ เกิดข้อผิดพลาด",
-        description: err.message || 'ไม่สามารถซิงค์สถานะได้ กรุณาลองใหม่อีกครั้ง',
-        variant: "destructive",
-        duration: 4000,
-      })
-    } finally {
-      setSyncingOrderId(null)
     }
   }
 
@@ -711,6 +703,68 @@ export function MyOrdersContent() {
     
     return 'ไม่ระบุร้าน'
   }
+
+  // Prefetch shop details in background when orders are loaded
+  useEffect(() => {
+    const prefetchShops = async () => {
+      if (orders.length === 0) return
+      
+      const uniqueShopIds = Array.from(new Set(orders.map(o => o.shopId).filter(Boolean)))
+      
+      // Filter out IDs that are already cached
+      const idsToFetch = uniqueShopIds.filter(id => !shopCache.has(id))
+      
+      if (idsToFetch.length === 0) return
+      
+      console.log(`Prefetching details for ${idsToFetch.length} shops...`)
+      
+      // Fetch in parallel (limit concurrency if needed, but for now simple Promise.all)
+      await Promise.all(idsToFetch.map(async (shopId) => {
+        try {
+          const shop = await getShopById(shopId)
+          if (shop) {
+            shopCache.set(shopId, shop)
+          }
+        } catch (error) {
+          console.error(`Error prefetching shop ${shopId}:`, error)
+        }
+      }))
+    }
+    
+    prefetchShops()
+  }, [orders])
+
+  // Fetch shop details when opening order detail modal
+  useEffect(() => {
+    const fetchShopDetails = async () => {
+      if (selectedOrderDetail?.shopId) {
+        // Check cache first
+        if (shopCache.has(selectedOrderDetail.shopId)) {
+          setSelectedShop(shopCache.get(selectedOrderDetail.shopId))
+          return
+        }
+
+        // Reset to null while fetching (if not in cache) to avoid showing wrong data
+        setSelectedShop(null)
+
+        try {
+          const shop = await getShopById(selectedOrderDetail.shopId)
+          if (shop) {
+            shopCache.set(selectedOrderDetail.shopId, shop)
+            setSelectedShop(shop)
+          }
+        } catch (error) {
+          console.error("Error fetching shop details:", error)
+        }
+      } else {
+        setSelectedShop(null)
+      }
+    }
+
+    if (showOrderDetailModal && selectedOrderDetail) {
+      fetchShopDetails()
+    }
+  }, [showOrderDetailModal, selectedOrderDetail])
 
   if (!user) {
     return (
@@ -1107,7 +1161,7 @@ export function MyOrdersContent() {
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()
-                      confirmReceipt(order)
+                      openConfirmDialog(order)
                     }}
                     disabled={confirmingOrderId === order.id}
                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
@@ -1504,10 +1558,47 @@ export function MyOrdersContent() {
                   {/* Shop & Date Info */}
                   <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Store className="w-5 h-5 text-gray-600" />
-                        <span className="font-semibold text-gray-900">{selectedOrderDetail.shopName}</span>
-                      </div>
+                      {selectedOrderDetail.shopId ? (
+                        <Link 
+                          href={`/sellerprofile/${selectedOrderDetail.shopId}`}
+                          className="flex items-center gap-3 hover:bg-white p-2 -ml-2 rounded-xl transition-all group border border-transparent hover:border-gray-200 hover:shadow-sm"
+                        >
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 group-hover:border-[#ff9800]/30 transition-colors flex-shrink-0">
+                            {selectedShop?.logoUrl ? (
+                              <img 
+                                src={selectedShop.logoUrl} 
+                                alt={selectedShop.shopName || selectedOrderDetail.shopName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                                <Store className="w-5 h-5 text-gray-400 group-hover:text-[#ff9800] transition-colors" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-medium">ร้านค้า</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-bold text-gray-900 group-hover:text-[#ff9800] transition-colors">
+                                {selectedShop?.shopName || selectedOrderDetail.shopName || 'ไม่ระบุชื่อร้าน'}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#ff9800] transition-transform group-hover:translate-x-0.5" />
+                            </div>
+                          </div>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-3 p-2 -ml-2 rounded-xl border border-transparent">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 flex-shrink-0 flex items-center justify-center">
+                            <Store className="w-5 h-5 text-gray-400" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-medium">ร้านค้า</span>
+                            <span className="font-bold text-gray-900">
+                              {selectedOrderDetail.shopName || 'ไม่ระบุชื่อร้าน'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         {getStatusBadge(selectedOrderDetail.status)}
                         {selectedOrderDetail.status !== 'pending' && selectedOrderDetail.status !== 'cancelled' && 
@@ -1673,7 +1764,7 @@ export function MyOrdersContent() {
                                     </div>
                                   </div>
                                   <Button
-                                    onClick={() => confirmReceipt(selectedOrderDetail)}
+                                    onClick={() => openConfirmDialog(selectedOrderDetail)}
                                     disabled={confirmingOrderId === selectedOrderDetail.id}
                                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
                                   >
@@ -1730,7 +1821,7 @@ export function MyOrdersContent() {
                   {/* Order Summary */}
                   <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">ยอดรวม</span>
+                                           <span className="text-gray-600">ยอดรวม</span>
                       <span className="font-medium">฿{selectedOrderDetail.totalAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -1843,6 +1934,87 @@ export function MyOrdersContent() {
           </div>
         </div>
       )}
+
+      {/* Confirm Receipt Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              ยืนยันการรับสินค้า
+            </DialogTitle>
+            <DialogDescription>
+              กรุณาตรวจสอบรหัสเกมก่อนยืนยัน
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Warning */}
+            <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-semibold mb-1">ข้อควรระวัง</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>ตรวจสอบว่าได้รับรหัสเกมครบถ้วนแล้ว</li>
+                  <li>ทดสอบล็อกอินเข้าเกมเพื่อยืนยันว่ารหัสใช้งานได้</li>
+                  <li>เมื่อยืนยันแล้ว <strong>ไม่สามารถยกเลิกได้</strong></li>
+                  <li>ผู้ขายจะสามารถถอนเงินได้ทันที</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Checkbox */}
+            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <Checkbox
+                id="checked-code"
+                checked={hasCheckedCode}
+                onCheckedChange={(checked) => setHasCheckedCode(checked === true)}
+                className="mt-1"
+              />
+              <div>
+                <Label
+                  htmlFor="checked-code"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  ✅ ฉันได้ตรวจสอบรหัสเกมเรียบร้อยแล้ว
+                </Label>
+                <p className="text-xs text-blue-700 mt-1">
+                  กรุณาทดสอบล็อกอินเข้าเกมก่อนกดยืนยัน
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConfirmDialog(false)
+                setHasCheckedCode(false)
+              }}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={confirmReceipt}
+              disabled={!hasCheckedCode || confirmingOrderId !== null}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            >
+              {confirmingOrderId ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  กำลังยืนยัน...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  ยืนยันรับสินค้า
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

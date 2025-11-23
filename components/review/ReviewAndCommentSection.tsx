@@ -24,11 +24,6 @@ export function ReviewAndCommentSection({
 }: ReviewAndCommentSectionProps) {
   const { user } = useAuth()
 
-  const targetLabel =
-    type === "shop"
-      ? shopName || "ร้านค้า"
-      : productName || "สินค้า"
-
   return (
     <Card className="bg-white">
       <CardContent className="p-6">

@@ -261,38 +261,31 @@ export function SliderManagement() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#ff9800] mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลด...</p>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#ff9800]"></div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ImageIcon className="w-6 h-6 text-[#ff9800]" />
-          จัดการรูปหน้าแรก
-        </CardTitle>
-        <p className="text-sm text-gray-600 mt-2">
-          อัปโหลดและจัดการรูปภาพสำหรับหน้าแรก (สูงสุด 5 รูป) • ขนาดไฟล์ไม่เกิน 50MB
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Upload Button */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-sm">
-              {images.length} / 5 รูป
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <ImageIcon className="w-6 h-6 text-[#ff9800]" />
+            จัดการรูปหน้าแรก
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">
+            อัปโหลดและจัดการรูปภาพสำหรับหน้าแรก (สูงสุด 5 รูป) • ขนาดไฟล์ไม่เกิน 50MB
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+            <span className="text-sm text-gray-500">จำนวนรูป:</span>
+            <Badge variant="secondary" className="font-mono">
+              {images.length}/5
             </Badge>
-            {images.filter(img => img.active).length > 0 && (
-              <Badge className="bg-green-600 text-sm">
-                ✅ แสดง {images.filter(img => img.active).length} รูป
-              </Badge>
-            )}
           </div>
           
           <label className={images.length >= 5 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}>
@@ -306,7 +299,7 @@ export function SliderManagement() {
             <Button
               type="button"
               disabled={isUploading || images.length >= 5}
-              className="pointer-events-none"
+              className="pointer-events-none bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white shadow-md transition-all hover:scale-105"
               asChild
             >
               <span>
@@ -316,104 +309,131 @@ export function SliderManagement() {
             </Button>
           </label>
         </div>
+      </div>
 
-        {/* Images Grid */}
-        {images.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-            <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">ยังไม่มีรูปหน้าแรก</p>
-            <p className="text-sm text-gray-500">อัปโหลดรูปเพื่อแสดงบนหน้าแรก</p>
+      {/* Images List */}
+      {images.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-gray-300 shadow-sm">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+            <ImageIcon className="w-10 h-10 text-gray-400" />
           </div>
-        ) : (
-          <div className="space-y-3">
-            {images.map((image, index) => (
-              <div
-                key={image.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`border rounded-xl p-4 transition-all ${
-                  draggedIndex === index ? 'opacity-50' : 'opacity-100'
-                } hover:shadow-lg cursor-move ${
-                  image.active ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Drag Handle */}
-                  <div className="flex-shrink-0">
-                    <GripVertical className="w-5 h-5 text-gray-400" />
-                  </div>
+          <h3 className="text-lg font-medium text-gray-900">ยังไม่มีรูปหน้าแรก</h3>
+          <p className="text-sm text-gray-500 mt-1">อัปโหลดรูปภาพเพื่อแสดงในสไลด์หน้าแรก</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {images.map((image, index) => (
+            <div
+              key={image.id}
+              draggable
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`group relative bg-white rounded-xl border transition-all duration-200 ${
+                draggedIndex === index ? 'opacity-50 scale-[0.98]' : 'opacity-100 hover:shadow-md hover:border-orange-200'
+              } ${
+                !image.active && 'bg-gray-50'
+              }`}
+            >
+              <div className="p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                {/* Drag Handle & Order */}
+                <div className="flex items-center gap-3 sm:flex-col sm:gap-1 text-gray-400 cursor-move hover:text-gray-600">
+                  <GripVertical className="w-5 h-5" />
+                  <span className="text-xs font-mono font-medium">#{index + 1}</span>
+                </div>
 
-                  {/* Order Badge */}
-                  <div className="flex-shrink-0">
-                    <Badge variant="outline" className="font-bold">
-                      #{image.order}
-                    </Badge>
-                  </div>
-
-                  {/* Image Preview */}
-                  <div className="relative w-32 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-300">
-                    <Image
-                      src={image.url}
-                      alt={`Slider ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {image.active ? (
-                        <Badge className="bg-green-600">✅ แสดง</Badge>
-                      ) : (
-                        <Badge variant="outline">❌ ซ่อน</Badge>
-                      )}
+                {/* Image Preview */}
+                <div className="relative w-full sm:w-64 aspect-video rounded-lg overflow-hidden bg-gray-100 border shadow-sm group-hover:shadow-md transition-shadow">
+                  <Image
+                    src={image.url}
+                    alt={`Slider ${index + 1}`}
+                    fill
+                    className={`object-cover transition-opacity ${!image.active ? 'opacity-60 grayscale' : ''}`}
+                  />
+                  {!image.active && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                      <Badge variant="secondary" className="bg-black/50 text-white border-none backdrop-blur-sm">
+                        ซ่อนอยู่
+                      </Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      อัปโหลดเมื่อ: {new Date(image.createdAt).toLocaleDateString('th-TH')}
-                    </p>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleActive(image.id, image.active)}
-                    >
-                      {image.active ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(image.id, image.url)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                {/* Info */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-gray-900">รูปภาพลำดับที่ {image.order}</h4>
+                    {image.active ? (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">
+                        กำลังแสดง
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-gray-500 border-gray-300">
+                        ซ่อน
+                      </Badge>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-500">
+                    อัปโหลดเมื่อ: {new Date(image.createdAt).toLocaleDateString('th-TH', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 mt-2 sm:mt-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleActive(image.id, image.active)}
+                    className={image.active ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50" : "text-green-600 hover:text-green-700 hover:bg-green-50"}
+                  >
+                    {image.active ? (
+                      <>
+                        <EyeOff className="w-4 h-4 mr-2" />
+                        ซ่อน
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 mr-2" />
+                        แสดง
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(image.id, image.url)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm text-blue-900 font-semibold mb-2">💡 คำแนะนำ:</p>
-          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-            <li>ลากและวางเพื่อเรียงลำดับรูป</li>
-            <li>กดปุ่ม 👁️ เพื่อแสดง/ซ่อนรูปในหน้าแรก</li>
-            <li>รูปจะเปลี่ยนอัตโนมัติทุก 5 วินาที</li>
-            <li>แนะนำขนาดรูป 1920x1080 หรือ 16:9</li>
+      {/* Instructions */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <ImageIcon className="w-5 h-5 text-blue-600" />
+        </div>
+        <div>
+          <h4 className="text-sm font-semibold text-blue-900 mb-1">คำแนะนำการใช้งาน</h4>
+          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside opacity-80">
+            <li>ลากและวางที่แถบด้านซ้ายเพื่อเรียงลำดับรูปภาพ</li>
+            <li>รูปภาพจะแสดงตามลำดับที่กำหนด</li>
+            <li>แนะนำให้ใช้รูปภาพขนาด 1920x1080 พิกเซล หรืออัตราส่วน 16:9 เพื่อความสวยงาม</li>
           </ul>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
+

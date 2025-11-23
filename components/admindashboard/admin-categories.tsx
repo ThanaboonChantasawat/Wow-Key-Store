@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, Image as ImageIcon, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card } from "@/components/ui/card"
 import { getAllCategories, createCategory, updateCategory, deleteCategory, type Category } from "@/lib/category-service"
 
 export function AdminCategories() {
@@ -135,10 +134,6 @@ export function AdminCategories() {
     }
   }
 
-  const handleCancel = () => {
-    closeModal()
-  }
-
   return (
     <div className="space-y-6">
       {/* Header - Orange Gradient */}
@@ -213,7 +208,7 @@ export function AdminCategories() {
                 <tbody>
                   {(() => {
                     // Pagination calculations
-                    const totalPages = Math.ceil(categories.length / itemsPerPage)
+                    // const totalPages = Math.ceil(categories.length / itemsPerPage)
                     const startIndex = (currentPage - 1) * itemsPerPage
                     const endIndex = startIndex + itemsPerPage
                     const paginatedCategories = categories.slice(startIndex, endIndex)

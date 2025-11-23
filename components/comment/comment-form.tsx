@@ -54,6 +54,34 @@ export function CommentForm({
       })
       return
     }
+
+    // Validate required fields based on type
+    if (type === 'shop') {
+      if (!shopId || !shopName) {
+        console.error('Missing shop info:', { shopId, shopName })
+        toast({
+          variant: 'destructive',
+          title: 'ข้อมูลไม่ครบถ้วน',
+          description: 'ไม่พบข้อมูลร้านค้า กรุณาลองใหม่อีกครั้ง'
+        })
+        return
+      }
+    } else if (type === 'product') {
+      if (!productId || !productName || !shopId || !shopName) {
+        console.error('Missing product/shop info:', { 
+          productId: productId || 'MISSING', 
+          productName: productName || 'MISSING', 
+          shopId: shopId || 'MISSING', 
+          shopName: shopName || 'MISSING' 
+        })
+        toast({
+          variant: 'destructive',
+          title: 'ข้อมูลไม่ครบถ้วน',
+          description: 'ไม่พบข้อมูลสินค้าหรือร้านค้า กรุณาลองใหม่อีกครั้ง'
+        })
+        return
+      }
+    }
     
     setLoading(true)
     

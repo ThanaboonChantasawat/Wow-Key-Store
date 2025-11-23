@@ -53,11 +53,15 @@ async function getPopularGames() {
         imageUrl: data.imageUrl || '',
         categories: Array.isArray(data.categories) ? data.categories : [],
         isPopular: Boolean(data.isPopular),
+        popularOrder: data.popularOrder || 999,
         status: data.status || 'active',
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       }
     })
+    
+    // Sort by popularOrder
+    games.sort((a: any, b: any) => (a.popularOrder || 999) - (b.popularOrder || 999))
     
     return games
   } catch (error) {

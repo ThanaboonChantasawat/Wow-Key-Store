@@ -8,6 +8,17 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ShopComment, ProductComment } from '@/lib/comment-types'
+import { useAuth } from '@/components/auth-context'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface CommentListProps {
   type: 'shop' | 'product'
@@ -33,7 +44,10 @@ export function CommentList({
   const [comments, setComments] = useState<(ShopComment | ProductComment)[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
   const { toast } = useToast()
+  const { user } = useAuth()
   
   const fetchComments = async () => {
     try {
@@ -64,18 +78,23 @@ export function CommentList({
     fetchComments()
   }, [type, shopId, productId])
   
-  const handleDelete = async (commentId: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบคอมเมนต์นี้?')) {
-      return
-    }
-    
+  const handleDelete = (commentId: string) => {
+    setCommentToDelete(commentId)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!commentToDelete || !user) return
+
     try {
+      const token = await user.getIdToken()
       const res = await fetch('/api/comments', {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ commentId, type })
+        body: JSON.stringify({ commentId: commentToDelete, type })
       })
       
       if (res.ok) {
@@ -94,6 +113,9 @@ export function CommentList({
         title: 'เกิดข้อผิดพลาด',
         description: error.message || 'ไม่สามารถลบคอมเมนต์ได้'
       })
+    } finally {
+      setDeleteDialogOpen(false)
+      setCommentToDelete(null)
     }
   }
 
@@ -244,6 +266,29 @@ export function CommentList({
           </>
         )}
       </div>
+
+      {/* Delete Comment Alert Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการลบคอมเมนต์</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณแน่ใจหรือไม่ว่าต้องการลบคอมเมนต์นี้? การกระทำนี้ไม่สามารถย้อนคืนได้
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+              ยกเลิก
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              ลบคอมเมนต์
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

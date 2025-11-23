@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useAuth } from "@/components/auth-context"
 import { getUserProfile } from "@/lib/user-client"
 import { AdminDashboard } from "@/components/admindashboard/admin-dashboard"
@@ -95,5 +95,15 @@ export default function AdminPage() {
   }
 
   // Is admin - show dashboard
-  return <AdminDashboard userId={user.uid} />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#ff9800]"></div>
+        </div>
+      }>
+        <AdminDashboard userId={user.uid} />
+      </Suspense>
+    </div>
+  )
 }

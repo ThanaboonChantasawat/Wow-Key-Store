@@ -1,17 +1,43 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Menu, X, Loader2 } from 'lucide-react';
 import ProductCategorySidebar from '@/components/category/ProductCategorySidebar';
 import ProductList from '@/components/product/ProductList';
 import { useProducts, useSearchProducts } from '@/hooks/useProducts';
+import type { Game } from "@/lib/game-service";
 
 function ProductsContentInner() {
   const searchParams = useSearchParams();
   const q = searchParams ? searchParams.get('q') ?? '' : '';
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const gameParam = searchParams ? searchParams.get('game') : null;
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(gameParam);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [games, setGames] = useState<Game[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        const response = await fetch('/api/games');
+        if (!response.ok) throw new Error('Failed to fetch games');
+        const data = await response.json();
+        setGames(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error fetching games:', error);
+        setGames([]);
+      } finally {
+        setGamesLoading(false);
+      }
+    };
+
+    fetchGames();
+  }, []);
+
+  useEffect(() => {
+    setSelectedGameId(gameParam);
+  }, [gameParam]);
   
   // Use search hook if there's a query, otherwise use game filter
   const searchResult = useSearchProducts(q || null);
@@ -76,6 +102,8 @@ function ProductsContentInner() {
             <ProductCategorySidebar 
               onGameSelect={handleGameSelect}
               selectedGameId={selectedGameId}
+              games={games}
+              loading={gamesLoading}
             />
           </div>
         </aside>
@@ -87,7 +115,7 @@ function ProductsContentInner() {
             <div className="flex items-center justify-between">
               <h1 className="text-xl sm:text-2xl font-bold">
                 {selectedGameId 
-                  ? 'สินค้าตามเกมที่เลือก' 
+                  ? games.find(g => g.id === selectedGameId)?.name || 'สินค้าตามเกมที่เลือก'
                   : q 
                     ? 'ผลการค้นหา' 
                     : 'สินค้าทั้งหมด'

@@ -43,7 +43,7 @@ export function WishlistContent() {
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h2 className="text-2xl font-semibold text-[#292d32] mb-6">
-            ชื่นชอบ
+            รายการที่ชอบ
           </h2>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-[#ff9800]" />
@@ -58,7 +58,7 @@ export function WishlistContent() {
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h2 className="text-2xl font-semibold text-[#292d32] mb-6">
-            ชื่นชอบ
+            รายการที่ชอบ
           </h2>
           <div className="text-center py-12 text-red-600">{error}</div>
         </div>
@@ -70,7 +70,7 @@ export function WishlistContent() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-8">
         <h2 className="text-2xl font-semibold text-[#292d32] mb-6">
-          ชื่นชอบ
+          รายการที่ชอบ
         </h2>
 
         {games.length === 0 ? (

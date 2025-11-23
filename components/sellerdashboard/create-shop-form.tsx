@@ -25,7 +25,6 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
   const [facebookUrl, setFacebookUrl] = useState("")
-  const [lineId, setLineId] = useState("")
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState("")
   const [loading, setLoading] = useState(false)
@@ -39,7 +38,6 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
       setContactEmail(existingShop.contactEmail || "")
       setContactPhone(existingShop.contactPhone || "")
       setFacebookUrl(existingShop.facebookUrl || "")
-      setLineId(existingShop.lineId || "")
       if (existingShop.logoUrl) {
         setLogoPreview(existingShop.logoUrl)
       }
@@ -351,10 +349,10 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
           </div>
 
           {/* Submit Button */}
-          <div className="pt-4">
+          <div className="pt-4 flex justify-center">
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+              className="w-full max-w-md bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
               disabled={loading}
             >
               {loading ? (

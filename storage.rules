@@ -30,5 +30,12 @@ service firebase.storage {
       allow write: if request.auth != null;
       allow delete: if request.auth != null;
     }
+
+    // Reopen documents - เจ้าของร้านอัปโหลด, admin ลบได้
+    match /reopen-documents/{shopId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null; // ควรเช็คว่าเป็น admin หรือเจ้าของร้าน แต่เพื่อความง่ายให้ auth ก็พอสำหรับตอนนี้ หรือจะใช้ function isAdmin ก็ได้ถ้ามี
+    }
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from "react"
-import { Store, Star, Package, ShoppingBag, Search, TrendingUp, Filter } from "lucide-react"
+import { Store, Star, Package, ShoppingBag, Search, TrendingUp } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -265,7 +265,7 @@ export default function ShopsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredAndSortedShops.map((shop, index) => (
+              {filteredAndSortedShops.map((shop) => (
                 <Link 
                   key={shop.shopId} 
                   href={`/sellerprofile/${shop.ownerId}`}

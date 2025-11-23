@@ -1,6 +1,7 @@
 // Client-side wrapper for user service
 // Calls API routes instead of directly accessing Firestore
 import type { UserProfile } from "./user-types";
+import { auth } from "@/components/firebase-config";
 
 export type { UserProfile };
 
@@ -58,10 +59,14 @@ export async function updateUserProfile(
   userId: string,
   updates: Partial<Omit<UserProfile, 'createdAt' | 'lastLoginAt'>>
 ): Promise<void> {
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : '';
+
   const response = await fetch(`/api/users/${userId}/update`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(updates)
   });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { SidebarNav } from "@/components/profile/SidebarNav";
 import { AccountContent } from "@/components/profile/Account";
 import { WishlistContent } from "@/components/profile/Wishlist";
@@ -12,7 +11,6 @@ import { ViolationHistoryContent } from "@/components/profile/ViolationHistory";
 import { SupportMessagesContent } from "@/components/profile/SupportMessages";
 
 export default function AccountPage() {
-  const router = useRouter()
   const [activeItem, setActiveItem] = useState("account");
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -78,7 +76,7 @@ export default function AccountPage() {
   return (
     <div className="flex flex-col">
       <main className="container mx-auto px-4 py-8">
-        <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 transition-opacity duration-150 ${!isInitialized ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-6 transition-opacity duration-150 ${!isInitialized ? 'opacity-0' : 'opacity-100'}`}>
           <SidebarNav activeItem={activeItem} onItemChange={setActiveItem} />
 
           {renderContent()}

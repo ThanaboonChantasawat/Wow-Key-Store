@@ -20,7 +20,7 @@ export default function UpdateStatsPage() {
       
       const data = await response.json()
       setResult(data)
-    } catch (error) {
+    } catch {
       setResult({ 
         success: false, 
         error: 'Failed to update stats' 

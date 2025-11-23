@@ -5,9 +5,10 @@ import { useAuth } from '@/components/auth-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
-import { MessageSquare, Mail, User, Clock, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { MessageSquare, Search, CheckCircle, XCircle, Clock, Send, User, Mail, FileText, AlertCircle } from "lucide-react"
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 
@@ -46,7 +47,8 @@ export function SupportMessagesContent() {
   const [messages, setMessages] = useState<SupportMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMessage, setSelectedMessage] = useState<SupportMessage | null>(null)
-  const [filter, setFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [replyText, setReplyText] = useState('')
   const [isSendingReply, setIsSendingReply] = useState(false)
   const [replies, setReplies] = useState<Reply[]>([])
@@ -56,7 +58,7 @@ export function SupportMessagesContent() {
     if (user) {
       fetchMessages()
     }
-  }, [user, filter])
+  }, [user])
 
   useEffect(() => {
     if (selectedMessage) {
@@ -73,12 +75,7 @@ export function SupportMessagesContent() {
       setIsLoading(true)
       const token = await user.getIdToken()
       
-      let url = '/api/support?limit=100'
-      if (filter !== 'all') {
-        url += `&status=${filter}`
-      }
-
-      const response = await fetch(url, {
+      const response = await fetch('/api/support?limit=100', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -94,6 +91,28 @@ export function SupportMessagesContent() {
       setIsLoading(false)
     }
   }
+
+  // Filter messages based on statusFilter and searchQuery
+  const filteredMessages = messages.filter((message) => {
+    // Status filter
+    if (statusFilter !== 'all' && message.status !== statusFilter) {
+      return false
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      return (
+        message.name.toLowerCase().includes(query) ||
+        message.email.toLowerCase().includes(query) ||
+        message.subject.toLowerCase().includes(query) ||
+        message.message.toLowerCase().includes(query) ||
+        getCategoryLabel(message.category).toLowerCase().includes(query)
+      )
+    }
+
+    return true
+  })
 
   const fetchReplies = async (messageId: string) => {
     if (!user) return
@@ -296,53 +315,104 @@ export function SupportMessagesContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-[#292d32] mb-2">ข้อความจากลูกค้า</h2>
-        <p className="text-gray-600">จัดการข้อความและคำถามจากลูกค้า</p>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl p-6 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-white/20 rounded-xl">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">ข้อความจากลูกค้า</h2>
+            <p className="text-orange-50">จัดการข้อความและคำถามจากลูกค้า</p>
+          </div>
+        </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          variant={filter === 'all' ? 'default' : 'outline'}
-          onClick={() => setFilter('all')}
-          className={filter === 'all' ? 'bg-[#ff9800] hover:bg-[#e08800]' : ''}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
         >
-          ทั้งหมด ({messages.length})
-        </Button>
-        <Button
-          variant={filter === 'pending' ? 'default' : 'outline'}
-          onClick={() => setFilter('pending')}
-          className={filter === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{messages.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'pending' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
+          onClick={() => setStatusFilter('pending')}
         >
-          🕐 รอดำเนินการ
-        </Button>
-        <Button
-          variant={filter === 'in-progress' ? 'default' : 'outline'}
-          onClick={() => setFilter('in-progress')}
-          className={filter === 'in-progress' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'pending' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'pending' ? 'text-yellow-900' : 'text-gray-900'}`}>{messages.filter(m => m.status === 'pending').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'pending' ? 'text-yellow-700' : 'text-gray-500'}`}>รอดำเนินการ</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'in-progress' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
+          onClick={() => setStatusFilter('in-progress')}
         >
-          🔄 กำลังดำเนินการ
-        </Button>
-        <Button
-          variant={filter === 'resolved' ? 'default' : 'outline'}
-          onClick={() => setFilter('resolved')}
-          className={filter === 'resolved' ? 'bg-green-500 hover:bg-green-600' : ''}
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'in-progress' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Send className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'in-progress' ? 'text-blue-900' : 'text-gray-900'}`}>{messages.filter(m => m.status === 'in-progress').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'in-progress' ? 'text-blue-700' : 'text-gray-500'}`}>กำลังดำเนินการ</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'resolved' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('resolved')}
         >
-          ✅ แก้ไขแล้ว
-        </Button>
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'resolved' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'resolved' ? 'text-green-900' : 'text-gray-900'}`}>{messages.filter(m => m.status === 'resolved').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'resolved' ? 'text-green-700' : 'text-gray-500'}`}>แก้ไขแล้ว</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="ค้นหา (ชื่อ, อีเมล, หัวข้อ, เนื้อหา)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 sm:pl-10 text-sm sm:text-base bg-white"
+        />
       </div>
 
       {/* Messages List */}
       <div className="space-y-4">
-        {messages.length === 0 ? (
+        {filteredMessages.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-gray-500">
-              ไม่มีข้อความ
+              {searchQuery ? 'ไม่พบข้อความที่ตรงกับการค้นหา' : 'ไม่มีข้อความ'}
             </CardContent>
           </Card>
         ) : (
-          messages.map((message) => (
+          filteredMessages.map((message) => (
             <Card 
               key={message.id}
               className="hover:shadow-lg transition-all cursor-pointer border-l-4"

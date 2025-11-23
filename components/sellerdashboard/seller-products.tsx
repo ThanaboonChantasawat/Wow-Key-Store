@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Search, Package } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { LoadingScreen, Loading } from "@/components/ui/loading"
 import { useUserProfile } from "@/hooks/useUserProfile"
 import {
@@ -66,7 +64,7 @@ const deleteImageFromStorage = async (imageUrl: string) => {
 };
 
 export function SellerProducts() {
-  const { profile, loading: profileLoading } = useUserProfile()
+  const { profile } = useUserProfile()
   const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [games, setGames] = useState<Game[]>([])
@@ -495,7 +493,7 @@ export function SellerProducts() {
           <>
             {/* Mobile, Tablet & Laptop Card Layout */}
             <div className="block xl:hidden space-y-4">
-              {products.map((product, index) => (
+              {products.map((product) => (
                 <div 
                   key={product.id}
                   className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-200"

@@ -1,7 +1,7 @@
 'use client'
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Heart, ShoppingCart, Loader2, Star, Eye, TrendingUp } from "lucide-react";
+import { Heart, ShoppingCart, Loader2, Eye, TrendingUp } from "lucide-react";
 import { Game, GameImage } from "@/lib/types";
 import { ReviewAndCommentSection } from "@/components/review/ReviewAndCommentSection";
 import { ShopCard } from "@/components/product/shop-card";
@@ -388,7 +388,8 @@ const ProductCard = ({ game }: { game: Game }) => {
         type="product"
         productId={game.id}
         productName={game.name}
-        shopId={(game as any).shopId || ""}
+        shopId={(game as any).shopId || stats?.shopId || ""}
+        shopName={(game as any).shopName || stats?.shopName || ""}
       />
     </div>
 

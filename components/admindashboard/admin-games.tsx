@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Star } from "lucide-react"
+import { Gamepad2, Search, Plus, Edit2, Trash2, X, Check, AlertCircle, Filter, CheckCircle, XCircle, AlertTriangle, Star, Image as ImageIcon, Pencil, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getAllGames, createGame, updateGame, deleteGame, type Game } from "@/lib/game-service"
 import { getAllCategories, type Category } from "@/lib/category-service"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
@@ -60,6 +62,8 @@ export function AdminGames() {
   })
   
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
 
   useEffect(() => {
     loadData()
@@ -264,10 +268,18 @@ export function AdminGames() {
   }
 
   // Pagination calculations
-  const totalPages = Math.ceil(games.length / itemsPerPage)
+  const filteredGames = games.filter(game => {
+    const matchesSearch = game.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === "all" || 
+                          (statusFilter === "popular" && game.isPopular) ||
+                          game.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  const totalPages = Math.ceil(filteredGames.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentGames = games.slice(startIndex, endIndex)
+  const currentGames = filteredGames.slice(startIndex, endIndex)
 
   const goToPage = (page: number) => {
     setCurrentPage(page)
@@ -287,6 +299,81 @@ export function AdminGames() {
           </h2>
           <p className="text-white/90 text-lg">เพิ่มและจัดการเกมสำหรับผู้ขายในระบบ</p>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Input 
+          type="search" 
+          placeholder="ค้นหาเกม..." 
+          className="pl-10 bg-white"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{games.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'active' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('active')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'active' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'active' ? 'text-green-900' : 'text-gray-900'}`}>{games.filter(g => g.status === 'active').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'active' ? 'text-green-700' : 'text-gray-500'}`}>ใช้งานอยู่</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'inactive' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('inactive')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'inactive' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'inactive' ? 'text-red-900' : 'text-gray-900'}`}>{games.filter(g => g.status === 'inactive').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'inactive' ? 'text-red-700' : 'text-gray-500'}`}>ระงับ</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'popular' ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-500 ring-offset-2' : 'bg-white border-transparent hover:border-purple-200'}`}
+          onClick={() => setStatusFilter('popular')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'popular' ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Star className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'popular' ? 'text-purple-900' : 'text-gray-900'}`}>{games.filter(g => g.isPopular).length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'popular' ? 'text-purple-700' : 'text-gray-500'}`}>ยอดนิยม</div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Message */}
@@ -348,7 +435,6 @@ export function AdminGames() {
                   <th className="px-3 sm:px-6 py-3 sm:py-4 text-left font-bold text-gray-800 text-xs sm:text-sm">ชื่อเกม</th>
                   <th className="hidden lg:table-cell px-6 py-4 text-left font-bold text-gray-800 text-sm">หมวดหมู่</th>
                   <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm whitespace-nowrap">สถานะ</th>
-                  <th className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm whitespace-nowrap">ยอดนิยม</th>
                   <th className="px-3 sm:px-6 py-3 sm:py-4 text-center font-bold text-gray-800 text-xs sm:text-sm">จัดการ</th>
                 </tr>
               </thead>
@@ -382,9 +468,6 @@ export function AdminGames() {
                       }`}>
                         {game.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
                       </span>
-                    </td>
-                    <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 text-center">
-                      {game.isPopular && <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mx-auto fill-yellow-500" />}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
@@ -662,7 +745,7 @@ export function AdminGames() {
                 )}
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="hidden">
                 <Checkbox
                   id="modal-isPopular"
                   checked={formData.isPopular}

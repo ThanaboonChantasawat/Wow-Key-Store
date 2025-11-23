@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUnreadCount } from "@/lib/notification-service";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
+  console.log("GET /api/notifications/unread-count hit");
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");

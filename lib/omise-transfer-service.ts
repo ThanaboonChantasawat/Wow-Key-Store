@@ -86,39 +86,49 @@ async function getOrCreateRecipient(
 
     // Check for PromptPay first (preferred method)
     if (shop.promptPayId && shop.promptPayType) {
-      console.log('📝 Creating recipient with PromptPay...')
+      console.log('📝 Creating recipient with PromptPay...', {
+        promptPayId: shop.promptPayId.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'),
+        promptPayType: shop.promptPayType,
+      })
       
-      // For PromptPay, we need to find the bank first
-      // PromptPay works with phone number or citizen ID
-      // Omise will route it through PromptPay network automatically
+      // For Omise PromptPay transfers, we need to use a bank that supports PromptPay
+      // Most Thai banks support PromptPay, we'll use SCB as default
+      // The PromptPay ID (phone/citizen ID) will be used as the account number
       
-      const recipient: any = await (omise.recipients as any).create({
-        name: shop.bankAccountName || shop.shopName,
-        email: shop.contactEmail || `shop_${shopId}@example.com`,
-        type: 'individual',
-        bank_account: {
-          brand: 'promptpay', // Special brand for PromptPay
-          number: shop.promptPayId, // Phone or Citizen ID
+      try {
+        const recipient: any = await (omise.recipients as any).create({
           name: shop.bankAccountName || shop.shopName,
-        },
-        description: `Seller (PromptPay): ${shop.shopName}`,
-        metadata: {
-          shopId: shopId,
-          shopName: shop.shopName,
-          paymentMethod: 'promptpay',
-        },
-      })
+          email: shop.contactEmail || `shop_${shopId}@example.com`,
+          type: 'individual',
+          bank_account: {
+            brand: 'scb', // Use SCB for PromptPay (can be any bank that supports it)
+            number: shop.promptPayId, // Phone number or Citizen ID
+            name: shop.bankAccountName || shop.shopName,
+          },
+          description: `Seller (PromptPay): ${shop.shopName}`,
+          metadata: {
+            shopId: shopId,
+            shopName: shop.shopName,
+            paymentMethod: 'promptpay',
+            promptPayType: shop.promptPayType,
+          },
+        })
 
-      console.log('✅ PromptPay recipient created:', recipient.id)
+        console.log('✅ PromptPay recipient created:', recipient.id)
 
-      await adminDb.collection('shops').doc(shopId).update({
-        omiseRecipientId: recipient.id,
-        updatedAt: new Date(),
-      })
+        await adminDb.collection('shops').doc(shopId).update({
+          omiseRecipientId: recipient.id,
+          updatedAt: new Date(),
+        })
 
-      return {
-        success: true,
-        recipientId: recipient.id,
+        return {
+          success: true,
+          recipientId: recipient.id,
+        }
+      } catch (error: any) {
+        console.error('❌ PromptPay recipient creation failed:', error.message)
+        // If PromptPay fails, continue to try bank account if available
+        console.log('⚠️ Falling back to bank account if available...')
       }
     }
 
@@ -253,12 +263,15 @@ export async function processSellerPayoutViaOmise(
 
     const shop = shopDoc.data() as Shop
 
-    // Validate bank information
-    if (!shop.bankAccountNumber || !shop.bankName || !shop.bankAccountName) {
+    // Validate payment information (either bank account OR PromptPay)
+    const hasBankAccount = shop.bankAccountNumber && shop.bankName && shop.bankAccountName
+    const hasPromptPay = shop.promptPayId && shop.promptPayType
+    
+    if (!hasBankAccount && !hasPromptPay) {
       return {
         success: false,
         status: 'failed',
-        message: 'No bank account configured for this shop',
+        message: 'No bank account or PromptPay configured for this shop',
         timestamp: new Date(),
       }
     }

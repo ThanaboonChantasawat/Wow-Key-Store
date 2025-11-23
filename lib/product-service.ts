@@ -3,13 +3,13 @@ import {
   doc,
   getDocs,
   getDoc,
-  addDoc,
   updateDoc,
-  deleteDoc,
   query,
   where,
   serverTimestamp,
   Timestamp,
+  increment,
+  writeBatch,
 } from "firebase/firestore"
 import { db } from "@/components/firebase-config"
 
@@ -116,7 +116,10 @@ export async function createProduct(
   productData: ProductFormData
 ): Promise<string> {
   try {
+    const batch = writeBatch(db)
     const productsRef = collection(db, "products")
+    const newProductRef = doc(productsRef)
+
     const newProduct = {
       shopId,
       ...productData,
@@ -126,8 +129,16 @@ export async function createProduct(
       updatedAt: serverTimestamp(),
     }
 
-    const docRef = await addDoc(productsRef, newProduct)
-    return docRef.id
+    batch.set(newProductRef, newProduct)
+
+    // Increment totalProducts in shop
+    const shopRef = doc(db, "shops", shopId)
+    batch.update(shopRef, {
+      totalProducts: increment(1),
+    })
+
+    await batch.commit()
+    return newProductRef.id
   } catch (error) {
     console.error("Error creating product:", error)
     throw error
@@ -164,7 +175,26 @@ export async function updateProduct(
 export async function deleteProduct(productId: string): Promise<void> {
   try {
     const productRef = doc(db, "products", productId)
-    await deleteDoc(productRef)
+    const productSnap = await getDoc(productRef)
+
+    if (!productSnap.exists()) {
+      throw new Error("Product not found")
+    }
+
+    const productData = productSnap.data()
+    const shopId = productData.shopId
+
+    const batch = writeBatch(db)
+    batch.delete(productRef)
+
+    if (shopId) {
+      const shopRef = doc(db, "shops", shopId)
+      batch.update(shopRef, {
+        totalProducts: increment(-1),
+      })
+    }
+
+    await batch.commit()
   } catch (error) {
     console.error("Error deleting product:", error)
     throw error

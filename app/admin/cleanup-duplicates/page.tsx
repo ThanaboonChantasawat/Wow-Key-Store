@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Trash2, AlertTriangle, CheckCircle } from "lucide-react"
-import { useAuth } from "@/components/auth-context"
 
 export default function CleanupDuplicatesPage() {
-  const { user } = useAuth()
+  // const { user } = useAuth()
   const [userId, setUserId] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)

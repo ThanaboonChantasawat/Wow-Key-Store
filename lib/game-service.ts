@@ -16,6 +16,7 @@ export interface Game {
   imageUrl: string;
   categories: string[]; // Array of category IDs
   isPopular: boolean; // For homepage display
+  popularOrder?: number; // Order for homepage display
   status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;

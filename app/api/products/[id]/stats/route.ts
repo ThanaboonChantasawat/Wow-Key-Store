@@ -39,6 +39,19 @@ export async function GET(
 
     const productData = productDoc.data()!
 
+    // If shopName is missing but shopId exists, fetch it
+    let shopName = productData.shopName || ''
+    if (!shopName && productData.shopId) {
+      try {
+        const shopDoc = await adminDb.collection('shops').doc(productData.shopId).get()
+        if (shopDoc.exists) {
+          shopName = shopDoc.data()?.shopName || ''
+        }
+      } catch (err) {
+        console.error('Error fetching shop name for stats:', err)
+      }
+    }
+
     // Get total sales from orders
     const ordersSnapshot = await adminDb
       .collection('orders')
@@ -78,7 +91,7 @@ export async function GET(
       rating: averageRating,
       reviewCount,
       shopId: productData.shopId || '',
-      shopName: productData.shopName || '',
+      shopName: shopName,
     })
   } catch (error: any) {
     console.error('Error getting product stats:', error)

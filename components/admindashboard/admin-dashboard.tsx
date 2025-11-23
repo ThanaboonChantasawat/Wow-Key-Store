@@ -15,6 +15,7 @@ import { AdminActivityLog } from "./admin-activity-log"
 import { SupportMessagesContent } from "./support-messages"
 import { SliderManagement } from "./slider-management"
 import { Button } from "@/components/ui/button"
+import { PopularGamesManagement } from "./popular-games-management"
 
 interface AdminDashboardProps {
   userId: string
@@ -96,6 +97,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
               {activeSection === "slider" && <SliderManagement />}
               {activeSection === "categories" && <AdminCategories />}
               {activeSection === "games" && <AdminGames />}
+              {activeSection === "popular-games" && <PopularGamesManagement />}
             </div>
           </div>
         </div>

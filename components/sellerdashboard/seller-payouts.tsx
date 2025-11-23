@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { 
   ArrowDownToLine, 
   RefreshCw,
@@ -24,7 +25,9 @@ import {
   Building2,
   TrendingUp,
   Wallet,
-  AlertCircle
+  AlertCircle,
+  Smartphone,
+  CreditCard
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-context"
@@ -53,11 +56,13 @@ interface BalanceData {
 export default function SellerPayouts() {
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [balance, setBalance] = useState<BalanceData | null>(null)
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false)
+  const [withdrawStep, setWithdrawStep] = useState<1 | 2>(1) // Step 1: Select method, Step 2: Enter amount
   const [withdrawAmount, setWithdrawAmount] = useState("")
+  const [withdrawMethod, setWithdrawMethod] = useState<'promptpay' | 'bank'>('promptpay')
   const [withdrawing, setWithdrawing] = useState(false)
+  const [shopData, setShopData] = useState<any>(null)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -68,7 +73,18 @@ export default function SellerPayouts() {
     }
 
     try {
-      setRefreshing(true)
+      // Fetch shop data for payment methods
+      const shopRes = await fetch(`/api/shops/owner/${user.uid}`)
+      if (shopRes.ok) {
+        const shopData = await shopRes.json()
+        setShopData(shopData.shop)
+        // Set default method based on what's available
+        if (shopData.shop?.promptPayId) {
+          setWithdrawMethod('promptpay')
+        } else if (shopData.shop?.bankAccountNumber) {
+          setWithdrawMethod('bank')
+        }
+      }
       
       // Fetch balance
       const balanceRes = await fetch(`/api/seller/balance?userId=${user.uid}`)
@@ -142,15 +158,17 @@ export default function SellerPayouts() {
         body: JSON.stringify({
           userId: user.uid,
           amount,
+          method: withdrawMethod, // Add selected method
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
+        const methodText = withdrawMethod === 'promptpay' ? 'พร้อมเพย์' : 'บัญชีธนาคาร'
         toast({
           title: "✅ ขอถอนเงินสำเร็จ",
-          description: `กำลังโอนเงิน ฿${amount.toFixed(2)} เข้าบัญชีธนาคารของคุณ`,
+          description: `กำลังโอนเงิน ฿${amount.toFixed(2)} เข้า${methodText}ของคุณ`,
         })
         setWithdrawDialogOpen(false)
         setWithdrawAmount("")
@@ -187,6 +205,13 @@ export default function SellerPayouts() {
 
   useEffect(() => {
     fetchPayouts()
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchPayouts()
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const formatAmount = (amount: number) => {
@@ -286,21 +311,11 @@ export default function SellerPayouts() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold">💸 การโอนเงิน</h2>
-          <p className="text-muted-foreground mt-1">
-            ถอนเงินเข้าบัญชีธนาคาร
-          </p>
-        </div>
-        <Button 
-          onClick={fetchPayouts} 
-          disabled={refreshing}
-          variant="outline"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          รีเฟรช
-        </Button>
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold">💸 การโอนเงิน</h2>
+        <p className="text-muted-foreground mt-1">
+          จัดการการถอนเงินและตรวจสอบประวัติการโอน (อัปเดตอัตโนมัติทุก 30 วินาที)
+        </p>
       </div>
 
       {/* Withdraw Card */}
@@ -525,105 +540,206 @@ export default function SellerPayouts() {
       </Card>
 
       {/* Withdraw Dialog */}
-      <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
+      <Dialog open={withdrawDialogOpen} onOpenChange={(open) => {
+        setWithdrawDialogOpen(open)
+        if (!open) {
+          setWithdrawStep(1)
+          setWithdrawAmount("")
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>ถอนเงินเข้าบัญชีธนาคาร</DialogTitle>
+            <DialogTitle>
+              {withdrawStep === 1 ? 'เลือกบัญชีที่ต้องการถอนเงิน' : 'ระบุจำนวนเงินที่ต้องการถอน'}
+            </DialogTitle>
             <DialogDescription>
-              ระบุจำนวนเงินที่ต้องการถอน (สูงสุด ฿{balance?.available.toFixed(2) || '0.00'})
+              {withdrawStep === 1 
+                ? 'กรุณาเลือกบัญชีปลายทางสำหรับการรับเงิน' 
+                : `สูงสุด ฿${balance?.available.toFixed(2) || '0.00'}`
+              }
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">จำนวนเงิน (บาท)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  ฿
-                </span>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="0.00"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="pl-8"
-                  min="0"
-                  step="0.01"
-                  max={balance?.available || 0}
-                />
+          {withdrawStep === 1 ? (
+            /* Step 1: Select Account */
+            <div className="space-y-4 py-4">
+              {shopData && (shopData.promptPayId || shopData.bankAccountNumber) ? (
+                <RadioGroup value={withdrawMethod} onValueChange={(value: 'promptpay' | 'bank') => setWithdrawMethod(value)}>
+                  {shopData.promptPayId && (
+                    <div className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+                      <RadioGroupItem value="promptpay" id="promptpay" className="mt-1" />
+                      <Label htmlFor="promptpay" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Smartphone className="w-5 h-5 text-blue-600" />
+                          <span className="font-medium text-base">พร้อมเพย์</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {shopData.promptPayType === 'phone' ? '📱 ' : '🆔 '}
+                          {shopData.promptPayId.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                        </p>
+                      </Label>
+                    </div>
+                  )}
+                  
+                  {shopData.bankAccountNumber && (
+                    <div className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+                      <RadioGroupItem value="bank" id="bank" className="mt-1" />
+                      <Label htmlFor="bank" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CreditCard className="w-5 h-5 text-green-600" />
+                          <span className="font-medium text-base">บัญชีธนาคาร</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          🏦 {shopData.bankName || 'ธนาคาร'} - {shopData.bankAccountNumber.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4')}
+                        </p>
+                      </Label>
+                    </div>
+                  )}
+                </RadioGroup>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-orange-500" />
+                  <p>ยังไม่มีบัญชีสำหรับรับเงิน</p>
+                  <p className="text-sm mt-1">กรุณาตั้งค่าบัญชีธนาคารหรือพร้อมเพย์</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Step 2: Enter Amount */
+            <div className="space-y-4 py-4">
+              <div className="bg-accent/50 border rounded-lg p-3 mb-4">
+                <p className="text-sm text-muted-foreground mb-1">จะโอนเงินเข้า:</p>
+                <div className="flex items-center gap-2">
+                  {withdrawMethod === 'promptpay' ? (
+                    <>
+                      <Smartphone className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">พร้อมเพย์</span>
+                      <span className="text-sm text-muted-foreground">
+                        {shopData?.promptPayId?.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 text-green-600" />
+                      <span className="font-medium">บัญชีธนาคาร</span>
+                      <span className="text-sm text-muted-foreground">
+                        {shopData?.bankName} - {shopData?.bankAccountNumber?.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4')}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">จำนวนเงิน (บาท)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    ฿
+                  </span>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="0.00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="pl-8"
+                    min="0"
+                    step="0.01"
+                    max={balance?.available || 0}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.25).toFixed(2))}
+                >
+                  25%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.5).toFixed(2))}
+                >
+                  50%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.75).toFixed(2))}
+                >
+                  75%
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWithdrawAmount((balance?.available || 0).toFixed(2))}
+                >
+                  ทั้งหมด
+                </Button>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <p className="font-medium mb-1">ข้อมูลการถอนเงิน:</p>
+                <ul className="space-y-1 text-blue-700">
+                  <li>• เงินจะโอนเข้า{withdrawMethod === 'promptpay' ? 'พร้อมเพย์' : 'บัญชีธนาคาร'}ที่คุณเลือก</li>
+                  <li>• ระบบจะดำเนินการโอนภายใน 2-3 วันทำการ</li>
+                  <li>• คุณสามารถตรวจสอบสถานะได้ในหน้านี้</li>
+                </ul>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.25).toFixed(2))}
-              >
-                25%
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.5).toFixed(2))}
-              >
-                50%
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.75).toFixed(2))}
-              >
-                75%
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWithdrawAmount((balance?.available || 0).toFixed(2))}
-              >
-                ทั้งหมด
-              </Button>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              <p className="font-medium mb-1">ข้อมูลการถอนเงิน:</p>
-              <ul className="space-y-1 text-blue-700">
-                <li>• เงินจะโอนเข้าบัญชีธนาคารที่คุณตั้งค่าไว้</li>
-                <li>• ระบบจะดำเนินการโอนภายใน 2-3 วันทำการ</li>
-                <li>• คุณสามารถตรวจสอบสถานะได้ในหน้านี้</li>
-              </ul>
-            </div>
-          </div>
+          )}
 
           <DialogFooter>
+            {withdrawStep === 2 && (
+              <Button
+                variant="outline"
+                onClick={() => setWithdrawStep(1)}
+                disabled={withdrawing}
+              >
+                ย้อนกลับ
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => {
                 setWithdrawDialogOpen(false)
+                setWithdrawStep(1)
                 setWithdrawAmount("")
               }}
               disabled={withdrawing}
             >
               ยกเลิก
             </Button>
-            <Button
-              onClick={handleWithdraw}
-              disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {withdrawing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  กำลังดำเนินการ...
-                </>
-              ) : (
-                <>
-                  <ArrowDownToLine className="w-4 h-4 mr-2" />
-                  ยืนยันถอนเงิน
-                </>
-              )}
-            </Button>
+            {withdrawStep === 1 ? (
+              <Button
+                onClick={() => setWithdrawStep(2)}
+                disabled={!shopData?.promptPayId && !shopData?.bankAccountNumber}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                ถัดไป
+              </Button>
+            ) : (
+              <Button
+                onClick={handleWithdraw}
+                disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {withdrawing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    กำลังดำเนินการ...
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownToLine className="w-4 h-4 mr-2" />
+                    ยืนยันถอนเงิน
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

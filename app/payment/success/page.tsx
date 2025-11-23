@@ -131,7 +131,7 @@ function PaymentSuccessContent() {
     }
   }
 
-  const verifyPayment = async (paymentIntentId: string, type: string, currentUserId: string) => {
+  const verifyPayment = async (paymentIntentId: string, type: string) => {
     try {
       // For legacy Stripe payments - this API might not exist anymore
       // Just show success without verifying

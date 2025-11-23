@@ -20,7 +20,6 @@ interface ShopWithOwner extends Shop {
 }
 
 export function AdminShops({ adminId }: AdminShopsProps) {
-  const { user } = useAuth()
   const [shops, setShops] = useState<ShopWithOwner[]>([])
   const [filteredShops, setFilteredShops] = useState<ShopWithOwner[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,7 +36,6 @@ export function AdminShops({ adminId }: AdminShopsProps) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [verifierProfile, setVerifierProfile] = useState<UserProfile | null>(null)
   const [suspenderProfile, setSuspenderProfile] = useState<UserProfile | null>(null)
-  const [adminProfile, setAdminProfile] = useState<UserProfile | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -45,23 +43,10 @@ export function AdminShops({ adminId }: AdminShopsProps) {
 
   useEffect(() => {
     loadShops()
-    loadAdminProfile()
   }, [])
-
   useEffect(() => {
     filterShops()
   }, [shops, searchQuery, statusFilter])
-
-  const loadAdminProfile = async () => {
-    if (user) {
-      try {
-        const profile = await getUserProfile(user.uid)
-        setAdminProfile(profile)
-      } catch (error) {
-        console.error("Error loading admin profile:", error)
-      }
-    }
-  }
 
   const loadShops = async () => {
     try {
@@ -276,21 +261,7 @@ export function AdminShops({ adminId }: AdminShopsProps) {
     }
   }
 
-  const openReviewDialog = async (shop: Shop) => {
-    setSelectedShop(shop)
-    setShowReviewDialog(true)
-    setMessage(null)
-    
-    // Load verifier and suspender profiles
-    if (shop.verifiedBy) {
-      const profile = await getUserProfile(shop.verifiedBy)
-      setVerifierProfile(profile)
-    }
-    if (shop.suspendedBy) {
-      const profile = await getUserProfile(shop.suspendedBy)
-      setSuspenderProfile(profile)
-    }
-  }
+
 
   const pendingCount = shops.filter(s => s.status === 'pending').length
   const activeCount = shops.filter(s => s.status === 'active').length
@@ -338,112 +309,99 @@ export function AdminShops({ adminId }: AdminShopsProps) {
         </div>
       )}
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Input
+          type="text"
+          placeholder="ค้นหาร้านค้า, อีเมล, เบอร์โทร..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-white"
+        />
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {/* Total */}
-        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <Store className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Store className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
             <div className="min-w-0">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900">{shops.length}</div>
-              <div className="text-xs sm:text-sm text-blue-700 font-medium truncate">ร้านค้าทั้งหมด</div>
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-blue-900' : 'text-gray-900'}`}>{shops.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-blue-700' : 'text-gray-500'}`}>ร้านค้าทั้งหมด</div>
             </div>
           </div>
         </Card>
 
         {/* Pending */}
-        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'pending' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
+          onClick={() => setStatusFilter('pending')}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg animate-pulse flex-shrink-0">
-              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'pending' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white animate-pulse' : 'bg-gray-100 text-gray-500'}`}>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
             <div className="min-w-0">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-yellow-900">{pendingCount}</div>
-              <div className="text-xs sm:text-sm text-yellow-700 font-medium truncate">รออนุมัติ</div>
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'pending' ? 'text-yellow-900' : 'text-gray-900'}`}>{pendingCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'pending' ? 'text-yellow-700' : 'text-gray-500'}`}>รออนุมัติ</div>
             </div>
           </div>
         </Card>
 
         {/* Active */}
-        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'active' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('active')}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'active' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
             <div className="min-w-0">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-900">{activeCount}</div>
-              <div className="text-xs sm:text-sm text-green-700 font-medium truncate">เปิดแล้ว</div>
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'active' ? 'text-green-900' : 'text-gray-900'}`}>{activeCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'active' ? 'text-green-700' : 'text-gray-500'}`}>เปิดใช้งาน</div>
             </div>
           </div>
         </Card>
 
-        {/* Rejected/Suspended */}
-        <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+        {/* Rejected */}
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'rejected' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('rejected')}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'rejected' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </div>
             <div className="min-w-0">
-              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-900">{rejectedCount + suspendedCount}</div>
-              <div className="text-xs sm:text-sm text-red-700 font-medium truncate">ปิด/ระงับ</div>
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'rejected' ? 'text-red-900' : 'text-gray-900'}`}>{rejectedCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'rejected' ? 'text-red-700' : 'text-gray-500'}`}>ปฏิเสธ</div>
             </div>
           </div>
         </Card>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 border border-gray-200">
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-            <Input
-              type="text"
-              placeholder="ค้นหาร้านค้า, อีเมล, เบอร์โทร..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 sm:pl-10 border-2 focus:border-[#ff9800] text-sm sm:text-base"
-            />
+        {/* Suspended */}
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'suspended' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('suspended')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'suspended' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'suspended' ? 'text-orange-900' : 'text-gray-900'}`}>{suspendedCount}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'suspended' ? 'text-orange-700' : 'text-gray-500'}`}>ระงับ</div>
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            <Button
-              variant={statusFilter === 'all' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('all')}
-              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'all' ? 'bg-[#ff9800] hover:bg-[#e08800]' : ''}`}
-            >
-              ทั้งหมด ({shops.length})
-            </Button>
-            <Button
-              variant={statusFilter === 'pending' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('pending')}
-              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'pending' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
-            >
-              รอตรวจสอบ ({pendingCount})
-            </Button>
-            <Button
-              variant={statusFilter === 'active' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('active')}
-              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-            >
-              เปิดใช้งาน ({activeCount})
-            </Button>
-            <Button
-              variant={statusFilter === 'rejected' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('rejected')}
-              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}`}
-            >
-              ปฏิเสธ ({rejectedCount})
-            </Button>
-            <Button
-              variant={statusFilter === 'suspended' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('suspended')}
-              className={`whitespace-nowrap text-xs sm:text-sm ${statusFilter === 'suspended' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
-            >
-              ระงับ ({suspendedCount})
-            </Button>
-          </div>
-        </div>
+        </Card>
       </div>
 
       {/* Shops Cards */}
@@ -458,7 +416,6 @@ export function AdminShops({ adminId }: AdminShopsProps) {
           <>
             {(() => {
               // Pagination calculations
-              const totalPages = Math.ceil(filteredShops.length / itemsPerPage)
               const startIndex = (currentPage - 1) * itemsPerPage
               const endIndex = startIndex + itemsPerPage
               const paginatedShops = filteredShops.slice(startIndex, endIndex)
@@ -468,8 +425,7 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                   {paginatedShops.map((shop) => (
             <Card 
               key={shop.shopId}
-              onClick={() => openReviewDialog(shop)}
-              className="p-3 sm:p-4 lg:p-5 hover:shadow-xl transition-all duration-300 border-2 hover:border-[#ff9800] group cursor-pointer"
+              className="p-3 sm:p-4 lg:p-6 border-2 border-gray-100 hover:border-[#ff9800] hover:shadow-lg transition-all duration-300 group bg-white"
             >
               <div className="flex items-start gap-3 sm:gap-4">
                 {/* Shop Logo */}

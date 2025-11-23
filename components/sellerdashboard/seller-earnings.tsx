@@ -163,7 +163,7 @@ export default function SellerEarnings() {
       </div>
 
       {/* Balance Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {/* Available Balance */}
         <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
           <CardHeader className="pb-3">
@@ -218,6 +218,52 @@ export default function SellerEarnings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Platform Fee Info */}
+      <Card className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-green-900 mb-2">💰 โครงสร้างรายได้ของคุณ</h3>
+              <div className="space-y-3 text-sm">
+                <div className="bg-white rounded-lg p-3 border border-green-200">
+                  <p className="font-semibold text-green-800 mb-2">✨ คุณได้รับ <strong className="text-green-700">97%</strong> จากยอดขายทุกช่องทาง!</p>
+                  <p className="text-green-700">
+                    แพลตฟอร์มหักเพียง <strong>3%</strong> สำหรับค่าใช้จ่ายระบบ
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="font-semibold text-gray-700">📊 ตัวอย่างการคำนวณ:</p>
+                  
+                  <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                    <p className="text-blue-900">
+                      <strong>• PromptPay:</strong> ลูกค้าจ่าย ฿1,000 → คุณได้รับ <strong className="text-green-600">฿970</strong>
+                    </p>
+                    <p className="text-xs text-blue-700 ml-4">
+                      (ลูกค้าไม่ต้องจ่ายค่าธรรมเนียมเพิ่ม)
+                    </p>
+                  </div>
+                  
+                  <div className="bg-purple-50 rounded p-2 border border-purple-200">
+                    <p className="text-purple-900">
+                      <strong>• บัตรเครดิต/โอนธนาคาร:</strong> ลูกค้าจ่าย ฿1,050 (บวก 5%) → คุณได้รับ <strong className="text-green-600">฿970</strong>
+                    </p>
+                    <p className="text-xs text-purple-700 ml-4">
+                      (ลูกค้าจ่ายค่าธรรมเนียมเพิ่ม 5%)
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-green-700 italic bg-green-100 p-2 rounded">
+                  💡 <strong>คุณได้รับเท่ากันทุกช่องทาง!</strong> ลูกค้าที่เลือก PromptPay จะช่วยประหยัดค่าธรรมเนียม
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Next Payout */}
       {nextPayout && (

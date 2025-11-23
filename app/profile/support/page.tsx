@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth-context'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { MessageSquare, Mail, Clock, ArrowLeft, Send } from 'lucide-react'
+import { MessageSquare, Clock, ArrowLeft, Send } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'

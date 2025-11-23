@@ -3,7 +3,6 @@ import {
   addDoc, 
   getDocs, 
   doc, 
-  updateDoc, 
   getDoc,
   query,
   where,
@@ -11,9 +10,9 @@ import {
   Timestamp,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '@/components/firebase-config';
+import { db, storage } from '@/components/firebase-config';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from '@/components/firebase-config';
+import { auth } from '@/components/firebase-config';
 
 export interface ReopenRequest {
   id?: string;
@@ -205,71 +204,26 @@ export async function approveReopenRequest(
   reviewNote?: string
 ): Promise<void> {
   try {
-    const requestRef = doc(db, REQUESTS_COLLECTION, requestId);
-    const requestSnap = await getDoc(requestRef);
-    
-    if (!requestSnap.exists()) {
-      throw new Error('Request not found');
-    }
-    
-    const requestData = requestSnap.data() as ReopenRequest;
-    
-    // อัปเดตสถานะคำขอ
-    await updateDoc(requestRef, {
-      status: 'approved',
-      reviewedBy: adminId,
-      reviewedAt: Timestamp.now(),
-      reviewNote: reviewNote || '',
-      updatedAt: Timestamp.now(),
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error('Unauthorized');
+
+    const response = await fetch('/api/admin/reopen-requests', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        requestId,
+        action: 'approve',
+        reviewNote
+      })
     });
-    
-    // ยกเลิกการระงับร้านค้า - เรียกผ่าน API แทน
-    try {
-      await fetch(`/api/shops/${requestData.shopId}/unsuspend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminId })
-      });
-    } catch (error) {
-      console.error('Error unsuspending shop:', error);
-      throw error;
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to approve request');
     }
-    
-    // ลบคำขอที่เหลือของร้านนี้ (ยกเว้นคำขอที่เพิ่งอนุมัติ)
-    try {
-      const q = query(
-        collection(db, REQUESTS_COLLECTION),
-        where('shopId', '==', requestData.shopId)
-      );
-      const querySnapshot = await getDocs(q);
-      
-      const deletePromises = querySnapshot.docs
-        .filter(docSnapshot => docSnapshot.id !== requestId) // ไม่ลบคำขอที่เพิ่งอนุมัติ
-        .map(async (docSnapshot) => {
-          const otherRequestData = docSnapshot.data() as ReopenRequest;
-          
-          // ลบเอกสารที่อัปโหลด
-          if (otherRequestData.documentUrls && otherRequestData.documentUrls.length > 0) {
-            for (const url of otherRequestData.documentUrls) {
-              try {
-                const fileRef = ref(storage, url);
-                await deleteObject(fileRef);
-              } catch (error) {
-                console.warn('Error deleting document file:', error);
-              }
-            }
-          }
-          
-          // ลบคำขอ
-          await deleteDoc(doc(db, REQUESTS_COLLECTION, docSnapshot.id));
-        });
-      
-      await Promise.all(deletePromises);
-    } catch (error) {
-      console.warn('Error deleting other reopen requests:', error);
-      // ไม่ throw error เพราะการอนุมัติสำเร็จแล้ว
-    }
-    
   } catch (error) {
     console.error('Error approving reopen request:', error);
     throw error;
@@ -285,15 +239,26 @@ export async function rejectReopenRequest(
   reviewNote: string
 ): Promise<void> {
   try {
-    const requestRef = doc(db, REQUESTS_COLLECTION, requestId);
-    
-    await updateDoc(requestRef, {
-      status: 'rejected',
-      reviewedBy: adminId,
-      reviewedAt: Timestamp.now(),
-      reviewNote,
-      updatedAt: Timestamp.now(),
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) throw new Error('Unauthorized');
+
+    const response = await fetch('/api/admin/reopen-requests', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        requestId,
+        action: 'reject',
+        reviewNote
+      })
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to reject request');
+    }
   } catch (error) {
     console.error('Error rejecting reopen request:', error);
     throw error;

@@ -5,7 +5,7 @@ import { useAuth } from '@/components/auth-context';
 import ReopenShopForm from '@/components/seller/reopen-shop-form';
 
 export default function ReopenShopPage() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

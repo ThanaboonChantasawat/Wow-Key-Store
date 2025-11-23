@@ -213,7 +213,7 @@ export function SupportMessagesContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#292d32] mb-2">ข้อความของฉัน</h2>
+        <h2 className="text-2xl font-bold text-[#292d32] mb-2">ข้อความ</h2>
         <p className="text-gray-600">ดูประวัติและติดตามสถานะข้อความที่ส่งไปยังทีมงาน</p>
       </div>
 

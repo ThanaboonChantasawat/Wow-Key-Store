@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { GameWithCategories, Category } from '@/lib/types';
 import { getGamesWithCategories, getCategories, getGamesByCategory } from '@/lib/firestore-client';
+import { getAllProducts } from '@/lib/product-service';
 
 // Hook สำหรับดึงข้อมูลเกมทั้งหมดพร้อม categories
 export const useGames = () => {
@@ -135,11 +136,28 @@ export const useSearchGames = (queryText: string | null, categoryId?: string | n
       setLoading(true);
       setError(null);
       try {
-        const allGames = await getGamesWithCategories();
-        let filtered = allGames;
+        // Fetch products instead of gamesList to search for actual items
+        const allProducts = await getAllProducts();
+        
+        // Map products to GameWithCategories structure
+        const mappedGames: GameWithCategories[] = allProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          gameId: p.gameId,
+          description: p.description,
+          price: p.price,
+          gameImages: p.images && p.images.length > 0 ? [{
+            images: p.images.map((url, idx) => ({ url, isCover: idx === 0 }))
+          }] : [],
+          categoryIds: [],
+          categories: []
+        }));
+
+        let filtered = mappedGames;
 
         if (categoryId) {
-          filtered = filtered.filter(g => Array.isArray(g.categoryIds) && g.categoryIds.includes(categoryId));
+          // Note: Products use 'category' field (string), while Game uses categoryIds (string[])
+          // For now, we skip category filtering for products as it's not primarily used in search bar
         }
 
         if (queryText && queryText.trim() !== '') {

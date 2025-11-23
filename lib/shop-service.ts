@@ -562,7 +562,6 @@ export async function updateShopProductCount(shopId: string): Promise<void> {
     const productsSnapshot = await adminDb
       .collection("products")
       .where("shopId", "==", shopId)
-      .where("status", "==", "active")
       .get();
     
     const totalProducts = productsSnapshot.size;

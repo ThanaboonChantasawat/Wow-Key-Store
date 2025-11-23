@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSliderImages, uploadSliderImage, updateSliderImage, deleteSliderImage, reorderSliderImages } from '@/lib/slider-service'
+import { getSliderImages, uploadSliderImage, updateSliderImage, deleteSliderImage } from '@/lib/slider-service'
 import { verifyAdmin } from '@/lib/auth-helpers'
 
 // GET - Get all slider images

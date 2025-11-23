@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth-context';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   getAllReopenRequests, 
@@ -14,10 +14,14 @@ import {
 import { getUserProfile } from '@/lib/user-client';
 import { getShopById, type Shop } from '@/lib/shop-client';
 import { Input } from '@/components/ui/input';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Mail, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from '@/components/ui/label';
 
 export default function AdminReopenRequests() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<ReopenRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ReopenRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,12 +162,26 @@ export default function AdminReopenRequests() {
     try {
       if (reviewAction === 'approve') {
         await approveReopenRequest(selectedRequest.id!, user.uid, reviewNote);
+        toast({
+          title: "อนุมัติคำขอสำเร็จ",
+          description: "ร้านค้าได้รับการปลดระงับเรียบร้อยแล้ว",
+          variant: "default"
+        });
       } else {
         if (!reviewNote.trim()) {
-          alert('กรุณาระบุเหตุผลในการปฏิเสธ');
+          toast({
+            title: "กรุณาระบุเหตุผล",
+            description: "ต้องระบุเหตุผลในการปฏิเสธคำขอ",
+            variant: "destructive"
+          });
           return;
         }
         await rejectReopenRequest(selectedRequest.id!, user.uid, reviewNote);
+        toast({
+          title: "ปฏิเสธคำขอสำเร็จ",
+          description: "บันทึกผลการพิจารณาเรียบร้อยแล้ว",
+          variant: "default"
+        });
       }
       
       await loadRequests();
@@ -171,7 +189,11 @@ export default function AdminReopenRequests() {
       
     } catch (error) {
       console.error('Error reviewing request:', error);
-      alert('เกิดข้อผิดพลาดในการดำเนินการ');
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive"
+      });
     } finally {
       setProcessing(null);
     }
@@ -244,138 +266,84 @@ export default function AdminReopenRequests() {
             <p className="text-white/90 text-sm sm:text-base lg:text-lg">จัดการคำขอเปิดร้านค้าใหม่จากผู้ใช้ที่ถูกระงับ</p>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <Card className="p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+
+        {/* Stats Cards / Filters */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <Card 
+            className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+            onClick={() => setStatusFilter('all')}
+          >
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-xl lg:text-2xl">📊</span>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                <Mail className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
               </div>
               <div className="min-w-0">
-                <div className="text-2xl sm:text-3xl font-bold text-gray-800">{requests.length}</div>
-                <div className="text-xs sm:text-sm text-gray-600 font-medium truncate">คำขอทั้งหมด</div>
+                <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{requests.length}</div>
+                <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
               </div>
             </div>
           </Card>
-          
-          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+
+          <Card 
+            className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'pending' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
+            onClick={() => setStatusFilter('pending')}
+          >
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-pulse flex-shrink-0">
-                <span className="text-lg sm:text-xl lg:text-2xl">⏳</span>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'pending' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
               </div>
               <div className="min-w-0">
-                <div className="text-2xl sm:text-3xl font-bold text-yellow-800">{pendingCount}</div>
-                <div className="text-xs sm:text-sm text-yellow-700 font-medium truncate">รอตรวจสอบ</div>
+                <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'pending' ? 'text-yellow-900' : 'text-gray-900'}`}>{pendingCount}</div>
+                <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'pending' ? 'text-yellow-700' : 'text-gray-500'}`}>รอตรวจสอบ</div>
               </div>
             </div>
           </Card>
-          
-          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+
+          <Card 
+            className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'approved' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+            onClick={() => setStatusFilter('approved')}
+          >
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-xl lg:text-2xl">✅</span>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'approved' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
               </div>
               <div className="min-w-0">
-                <div className="text-2xl sm:text-3xl font-bold text-green-800">{approvedCount}</div>
-                <div className="text-xs sm:text-sm text-green-700 font-medium truncate">อนุมัติแล้ว</div>
+                <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'approved' ? 'text-green-900' : 'text-gray-900'}`}>{approvedCount}</div>
+                <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'approved' ? 'text-green-700' : 'text-gray-500'}`}>อนุมัติแล้ว</div>
               </div>
             </div>
           </Card>
-          
-          <Card className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+
+          <Card 
+            className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'rejected' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+            onClick={() => setStatusFilter('rejected')}
+          >
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-xl lg:text-2xl">❌</span>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'rejected' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
               </div>
               <div className="min-w-0">
-                <div className="text-2xl sm:text-3xl font-bold text-red-800">{rejectedCount}</div>
-                <div className="text-xs sm:text-sm text-red-700 font-medium truncate">ปฏิเสธแล้ว</div>
+                <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'rejected' ? 'text-red-900' : 'text-gray-900'}`}>{rejectedCount}</div>
+                <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'rejected' ? 'text-red-700' : 'text-gray-500'}`}>ปฏิเสธแล้ว</div>
               </div>
             </div>
           </Card>
         </div>
+
+        {/* Search */}
+        <div className="relative mb-4 sm:mb-6">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="ค้นหา ชื่อร้าน, เจ้าของร้าน, อีเมล..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 sm:pl-10 border-2 focus:border-[#ff9800] h-10 sm:h-11 text-sm sm:text-base bg-white"
+          />
+        </div>
+        
+
       </div>
-
-      {/* Filters */}
-      <Card className="p-3 sm:p-4 lg:p-6 border-2 border-gray-200">
-        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800]" />
-          <h3 className="text-base sm:text-lg font-bold text-gray-800">ตัวกรองและค้นหา</h3>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="ค้นหา ชื่อร้าน, เจ้าของร้าน, อีเมล..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 sm:pl-10 border-2 focus:border-[#ff9800] h-10 sm:h-11 text-sm sm:text-base"
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            <Button
-              onClick={() => setStatusFilter('all')}
-              variant={statusFilter === 'all' ? 'default' : 'outline'}
-              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
-                statusFilter === 'all' 
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md' 
-                  : 'hover:bg-blue-50 border-2'
-              }`}
-            >
-              📊 ทั้งหมด ({requests.length})
-            </Button>
-            <Button
-              onClick={() => setStatusFilter('pending')}
-              variant={statusFilter === 'pending' ? 'default' : 'outline'}
-              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
-                statusFilter === 'pending' 
-                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-md' 
-                  : 'hover:bg-yellow-50 border-2'
-              }`}
-            >
-              ⏳ รอตรวจสอบ ({pendingCount})
-            </Button>
-            <Button
-              onClick={() => setStatusFilter('approved')}
-              variant={statusFilter === 'approved' ? 'default' : 'outline'}
-              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
-                statusFilter === 'approved' 
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md' 
-                  : 'hover:bg-green-50 border-2'
-              }`}
-            >
-              ✅ อนุมัติ ({approvedCount})
-            </Button>
-            <Button
-              onClick={() => setStatusFilter('rejected')}
-              variant={statusFilter === 'rejected' ? 'default' : 'outline'}
-              className={`whitespace-nowrap font-semibold transition-all text-xs sm:text-sm ${
-                statusFilter === 'rejected' 
-                  ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-md' 
-                  : 'hover:bg-red-50 border-2'
-              }`}
-            >
-              ❌ ปฏิเสธ ({rejectedCount})
-            </Button>
-          </div>
-        </div>
-        
-        {/* Results Count */}
-        {(searchQuery || statusFilter !== 'all') && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              แสดง <span className="font-bold text-[#ff9800]">{filteredRequests.length}</span> รายการ
-              {searchQuery && ` จากการค้นหา "${searchQuery}"`}
-              {statusFilter !== 'all' && ` (สถานะ: ${getStatusLabel(statusFilter)})`}
-            </p>
-          </div>
-        )}
-      </Card>
 
       {/* Requests List */}
       {filteredRequests.length === 0 ? (

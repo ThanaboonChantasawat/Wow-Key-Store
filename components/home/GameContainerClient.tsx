@@ -52,7 +52,7 @@ export function GameContainerClient({ games }: GameContainerClientProps) {
           {validGames.map((game) => (
             <Link
               key={game.id}
-              href={`/products/${game.id}`}
+              href={`/products?game=${game.id}`}
               className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100"
             >
               <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">

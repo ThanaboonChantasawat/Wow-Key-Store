@@ -18,6 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AuthModal } from "../auth-modal";
 import { useAuthModal } from "../use-auth-modal";
 import { useAuth } from "../auth-context";
+import { useCart } from "../cart-context";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { NotificationBell } from "./notification-bell";
@@ -34,6 +35,7 @@ function NavbarContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isOpen, defaultTab, openLogin, close } = useAuthModal();
   const { user, logout, isInitialized } = useAuth();
+  const { itemCount } = useCart();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -176,10 +178,15 @@ function NavbarContent() {
           <div className="flex md:hidden items-center gap-2">
             <Link
               href="/cart"
-              className="p-2 rounded-lg bg-white/20 hover:bg-white hover:text-[#ff9800] transition-all duration-200"
+              className="relative p-2 rounded-lg bg-white/20 hover:bg-white hover:text-[#ff9800] transition-all duration-200"
               aria-label="ตะกร้าสินค้า"
             >
               <ShoppingBag className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/notifications"
@@ -204,10 +211,15 @@ function NavbarContent() {
           <div className="hidden md:flex items-center space-x-2">
             <Link
               href="/cart"
-              className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
+              className="relative p-2 rounded-full bg-white/20 hover:bg-white hover:text-[#ff9800] transition-colors duration-200"
               aria-label="ตะกร้าสินค้า"
             >
               <ShoppingBag className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
             </Link>
             
             {/* Notification Bell with real-time updates */}

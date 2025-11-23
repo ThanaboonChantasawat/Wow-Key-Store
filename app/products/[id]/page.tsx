@@ -14,6 +14,7 @@ interface Product {
   images: string[]
   gameId?: string
   shopId?: string
+  shopName?: string
 }
 
 export default function ProductDetailPage() {
@@ -67,7 +68,7 @@ export default function ProductDetailPage() {
     : []
 
   // Build GameWithCategories-like object for ProductDetail
-  const gameData: GameWithCategories & { shopId?: string } = {
+  const gameData: GameWithCategories & { shopId?: string; shopName?: string } = {
     id: product.id,
     gameId: product.gameId || product.id,
     name: product.name,
@@ -77,6 +78,7 @@ export default function ProductDetailPage() {
     categoryIds: [],
     categories: [],
     shopId: product.shopId,
+    shopName: product.shopName,
   }
 
   return (

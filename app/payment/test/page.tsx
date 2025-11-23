@@ -163,14 +163,16 @@ export default function TestPaymentPage() {
             </div>
 
             {/* Start Button */}
-            <Button
-              onClick={handleStartPayment}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              size="lg"
-            >
-              <CreditCard className="w-5 h-5 mr-2" />
-              เริ่มทดสอบการชำระเงิน
-            </Button>
+            <div className="flex justify-center">
+              <Button
+                onClick={handleStartPayment}
+                className="w-full max-w-md bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                size="lg"
+              >
+                <CreditCard className="w-5 h-5 mr-2" />
+                เริ่มทดสอบการชำระเงิน
+              </Button>
+            </div>
 
             {/* Warning */}
             <p className="text-xs text-center text-muted-foreground">

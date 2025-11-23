@@ -18,6 +18,8 @@ import {
   Copy,
   Check,
   RotateCcw,
+  Clock,
+  AlertCircle
 } from 'lucide-react'
 import { useAuth } from '@/components/auth-context'
 import { Card, CardContent } from '@/components/ui/card'
@@ -57,7 +59,7 @@ interface Report {
   reporterName: string
   reason: string
   description: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'resolved' | 'rejected'
   createdAt: string
   updatedAt: string
   reviewedBy: string | null
@@ -371,7 +373,7 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
     switch (status) {
       case 'pending':
         return <Badge className="bg-yellow-500">รอดำเนินการ</Badge>
-      case 'approved':
+      case 'resolved':
         return <Badge className="bg-green-500">ดำเนินการแล้ว</Badge>
       case 'rejected':
         return <Badge className="bg-red-500">ปฏิเสธรายงาน</Badge>
@@ -392,7 +394,7 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
   const stats = {
     total: reports.length,
     pending: reports.filter((r) => r.status === 'pending').length,
-    approved: reports.filter((r) => r.status === 'approved').length,
+    resolved: reports.filter((r) => r.status === 'resolved').length,
     rejected: reports.filter((r) => r.status === 'rejected').length,
   }
 
@@ -428,30 +430,65 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600">ทั้งหมด</div>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{stats.total}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-yellow-600">รอดำเนินการ</div>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'pending' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
+          onClick={() => setStatusFilter('pending')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'pending' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'pending' ? 'text-yellow-900' : 'text-gray-900'}`}>{stats.pending}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'pending' ? 'text-yellow-700' : 'text-gray-500'}`}>รอดำเนินการ</div>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-green-600">ดำเนินการแล้ว</div>
-            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'resolved' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('resolved')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'resolved' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'resolved' ? 'text-green-900' : 'text-gray-900'}`}>{stats.resolved}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'resolved' ? 'text-green-700' : 'text-gray-500'}`}>ดำเนินการแล้ว</div>
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-red-600">ปฏิเสธรายงาน</div>
-            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'rejected' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('rejected')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'rejected' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'rejected' ? 'text-red-900' : 'text-gray-900'}`}>{stats.rejected}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'rejected' ? 'text-red-700' : 'text-gray-500'}`}>ปฏิเสธรายงาน</div>
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -461,20 +498,6 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
           <div className="flex items-center gap-4 flex-wrap">
             <Filter className="w-5 h-5 text-gray-500" />
             <div className="flex gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Label>สถานะ:</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    <SelectItem value="pending">รอดำเนินการ</SelectItem>
-                    <SelectItem value="approved">ดำเนินการแล้ว</SelectItem>
-                    <SelectItem value="rejected">ปฏิเสธรายงาน</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="flex items-center gap-2">
                 <Label>ประเภท:</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -605,8 +628,8 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
                       <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
                         <span>รายงานโดย: <strong>{report.reporterName}</strong></span>
                         {report.reviewedBy && report.reviewedAt && !isNaN(new Date(report.reviewedAt).getTime()) && (
-                          <span className={report.status === 'approved' ? 'text-green-600' : 'text-red-600'}>
-                            {report.status === 'approved' ? '✓' : '✗'} ดำเนินการโดย: <strong>{report.reviewedByName || 'Admin'}</strong>
+                          <span className={report.status === 'resolved' ? 'text-green-600' : 'text-red-600'}>
+                            {report.status === 'resolved' ? '✓' : '✗'} ดำเนินการโดย: <strong>{report.reviewedByName || 'ผู้ดูแลระบบ'}</strong>
                             {' '}เมื่อ {format(new Date(report.reviewedAt), 'Pp', { locale: th })}
                           </span>
                         )}
@@ -885,7 +908,7 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
                         การยกเลิกการตัดสินจะทำให้:
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-yellow-700 ml-2">
-                        {selectedReport.status === 'approved' && (
+                        {selectedReport.status === 'resolved' && (
                           <>
                             <li>ลดจำนวนการละเมิดของผู้ใช้ลง 1 ครั้ง</li>
                             {selectedReport.targetUserBanned && (
@@ -906,14 +929,14 @@ export function AdminReports({ reportId }: AdminReportsProps = {}) {
                   <div className="space-y-2">
                     <div>
                       <span className="font-medium">สถานะปัจจุบัน:</span>{' '}
-                      {selectedReport.status === 'approved' ? (
+                      {selectedReport.status === 'resolved' ? (
                         <Badge className="bg-green-600">ดำเนินการแล้ว</Badge>
                       ) : (
                         <Badge className="bg-red-600">ปฏิเสธรายงาน</Badge>
                       )}
                     </div>
                     <div>
-                      <span className="font-medium">ดำเนินการโดย:</span> {selectedReport.reviewedByName || 'Admin'}
+                      <span className="font-medium">ดำเนินการโดย:</span> {selectedReport.reviewedByName || 'ผู้ดูแลระบบ'}
                     </div>
                     {selectedReport.reviewedAt && !isNaN(new Date(selectedReport.reviewedAt).getTime()) && (
                       <div>

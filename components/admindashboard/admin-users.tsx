@@ -1,14 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, Shield, Crown, Ban, Check, Search, UserCircle2, Mail, Calendar, Activity, XCircle, CheckCircle, X, Edit2, Trash2, AlertCircle } from "lucide-react"
+import { User, Shield, Crown, Ban, Check, Search, UserCircle2, Mail, Calendar, Activity, XCircle, CheckCircle, X, Edit2, Trash2, AlertCircle, Filter, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getAllUsers, updateUserRole, updateAccountStatus, deleteUserAccount, UserProfile } from "@/lib/user-client"
 import { useAuth } from "@/components/auth-context"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
 
 interface UserWithId extends UserProfile {
   id: string;
@@ -16,9 +19,12 @@ interface UserWithId extends UserProfile {
 
 export function AdminUsers() {
   const { user: currentUser } = useAuth()
+  const { toast } = useToast()
   const [users, setUsers] = useState<UserWithId[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [roleFilter, setRoleFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<UserWithId | null>(null)
   const [showUserModal, setShowUserModal] = useState(false)
@@ -83,10 +89,17 @@ export function AdminUsers() {
       await loadUsers()
       // Update selected user
       setSelectedUser({ ...selectedUser, role: newRole })
-      alert("เปลี่ยนบทบาทสำเร็จ")
+      toast({
+        title: "สำเร็จ",
+        description: "เปลี่ยนบทบาทสำเร็จ",
+      })
     } catch (error) {
       console.error("Error updating role:", error)
-      alert("เกิดข้อผิดพลาดในการเปลี่ยนบทบาท")
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดในการเปลี่ยนบทบาท",
+      })
     } finally {
       setIsUpdating(false)
     }
@@ -101,10 +114,17 @@ export function AdminUsers() {
       await loadUsers()
       // Update selected user
       setSelectedUser({ ...selectedUser, accountStatus: newStatus })
-      alert("เปลี่ยนสถานะสำเร็จ")
+      toast({
+        title: "สำเร็จ",
+        description: "เปลี่ยนสถานะสำเร็จ",
+      })
     } catch (error) {
       console.error("Error updating status:", error)
-      alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ")
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดในการเปลี่ยนสถานะ",
+      })
     } finally {
       setIsUpdating(false)
     }
@@ -119,7 +139,11 @@ export function AdminUsers() {
   const handleDeleteUser = async () => {
     if (!selectedUser) return
     if (deleteConfirmText !== "ลบบัญชี") {
-      alert("กรุณาพิมพ์ข้อความยืนยันให้ถูกต้อง")
+      toast({
+        variant: "destructive",
+        title: "ข้อผิดพลาด",
+        description: "กรุณาพิมพ์ข้อความยืนยันให้ถูกต้อง",
+      })
       return
     }
 
@@ -130,10 +154,17 @@ export function AdminUsers() {
       setShowDeleteDialog(false)
       setSelectedUser(null)
       setDeleteConfirmText("")
-      alert("ลบบัญชีผู้ใช้สำเร็จ")
+      toast({
+        title: "สำเร็จ",
+        description: "ลบบัญชีผู้ใช้สำเร็จ",
+      })
     } catch (error) {
       console.error("Error deleting user:", error)
-      alert("เกิดข้อผิดพลาดในการลบบัญชี")
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดในการลบบัญชี",
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -209,10 +240,13 @@ export function AdminUsers() {
     }
   }
 
-  const filteredUsers = users.filter(user => 
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesRole = roleFilter === "all" || user.role === roleFilter
+    const matchesStatus = statusFilter === "all" || user.accountStatus === statusFilter
+    return matchesSearch && matchesRole && matchesStatus
+  })
 
   const totalPages = Math.ceil(filteredUsers.length / 10)
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * 10, currentPage * 10)
@@ -232,17 +266,134 @@ export function AdminUsers() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <Card className="p-4">
-        <div className="w-full">
-          <Input 
-            type="search" 
-            placeholder="🔍 ค้นหาผู้ใช้..." 
-            className="w-full border-2 focus:border-[#ff9800]"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Input 
+          type="search" 
+          placeholder="ค้นหาผู้ใช้ (ชื่อ, อีเมล)..." 
+          className="pl-10 bg-white"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <User className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{users.length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'active' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('active')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'active' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'active' ? 'text-green-900' : 'text-gray-900'}`}>{users.filter(u => u.accountStatus === 'active').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'active' ? 'text-green-700' : 'text-gray-500'}`}>ใช้งานปกติ</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'suspended' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
+          onClick={() => setStatusFilter('suspended')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'suspended' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'suspended' ? 'text-yellow-900' : 'text-gray-900'}`}>{users.filter(u => u.accountStatus === 'suspended').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'suspended' ? 'text-yellow-700' : 'text-gray-500'}`}>พักการใช้งาน</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'banned' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('banned')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'banned' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Ban className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'banned' ? 'text-red-900' : 'text-gray-900'}`}>{users.filter(u => u.accountStatus === 'banned').length}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'banned' ? 'text-red-700' : 'text-gray-500'}`}>ถูกแบน</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          {/* Role Filter */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <Label className="text-sm font-medium">บทบาท:</Label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={roleFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRoleFilter('all')}
+                className={roleFilter === 'all' ? 'bg-[#ff9800] hover:bg-[#ff9800]/90' : ''}
+              >
+                ทุกบทบาท
+              </Button>
+              <Button
+                variant={roleFilter === 'buyer' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRoleFilter('buyer')}
+                className={roleFilter === 'buyer' ? 'bg-gray-600 hover:bg-gray-700' : ''}
+              >
+                ผู้ซื้อ
+              </Button>
+              <Button
+                variant={roleFilter === 'seller' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRoleFilter('seller')}
+                className={roleFilter === 'seller' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                ผู้ขาย
+              </Button>
+              <Button
+                variant={roleFilter === 'admin' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRoleFilter('admin')}
+                className={roleFilter === 'admin' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                Admin
+              </Button>
+              <Button
+                variant={roleFilter === 'superadmin' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRoleFilter('superadmin')}
+                className={roleFilter === 'superadmin' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+              >
+                Super Admin
+              </Button>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {loading ? (
@@ -490,13 +641,13 @@ export function AdminUsers() {
 
               {/* Action Buttons */}
               {canEditRole(selectedUser) && (selectedUser.role !== newRole || selectedUser.accountStatus !== newStatus) && (
-                <div className="pt-2">
+                <div className="flex justify-center">
                   <Button
                     onClick={() => {
                       if (selectedUser.role !== newRole) handleRoleChange()
                       if (selectedUser.accountStatus !== newStatus) handleStatusChange()
                     }}
-                    className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-2"
+                    className="w-full max-w-sm bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-2"
                     disabled={isUpdating}
                   >
                     {isUpdating ? 'กำลังบันทึก...' : '💾 บันทึกการเปลี่ยนแปลง'}

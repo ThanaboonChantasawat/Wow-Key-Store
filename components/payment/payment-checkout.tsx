@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, CheckCircle2, XCircle, CreditCard, Lock } from "lucide-react"
+import { Loader2, XCircle, CreditCard, Lock } from "lucide-react"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -23,7 +23,7 @@ interface CheckoutFormProps {
   onCancel: () => void
 }
 
-function CheckoutForm({ clientSecret, amount, productName, onSuccess, onCancel }: CheckoutFormProps) {
+function CheckoutForm({ amount, productName, onSuccess, onCancel }: CheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -169,7 +169,6 @@ export default function PaymentCheckout({
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [platformFee, setPlatformFee] = useState<number>(0)
   const { toast } = useToast()
 
   useEffect(() => {

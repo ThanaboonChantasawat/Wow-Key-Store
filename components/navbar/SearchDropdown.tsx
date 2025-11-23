@@ -11,7 +11,7 @@ interface Props {
   onViewAll: () => void;
 }
 
-export default function SearchDropdown({ query, suggestionGames, suggestionLoading, onSelectProduct, onViewAll }: Props) {
+export default function SearchDropdown({ suggestionGames, suggestionLoading, onSelectProduct, onViewAll }: Props) {
   return (
     <div className="absolute left-0 right-0 mt-2 bg-white shadow-lg rounded-lg z-50">
       <div className="p-3">

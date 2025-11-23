@@ -111,9 +111,9 @@ async function getSCBAccessToken(): Promise<string> {
  * Validate bank account (PromptPay or regular account)
  */
 export async function validateBankAccount(
-  accountNumber: string,
-  bankCode?: string,
-  promptPayId?: string
+  // accountNumber: string,
+  // bankCode?: string,
+  // promptPayId?: string
 ): Promise<{ valid: boolean; accountName?: string; error?: string }> {
   if (MOCK_MODE) {
     // Mock validation - always return valid
