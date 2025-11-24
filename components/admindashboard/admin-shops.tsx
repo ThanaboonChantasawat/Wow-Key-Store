@@ -425,7 +425,11 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                   {paginatedShops.map((shop) => (
             <Card 
               key={shop.shopId}
-              className="p-3 sm:p-4 lg:p-6 border-2 border-gray-100 hover:border-[#ff9800] hover:shadow-lg transition-all duration-300 group bg-white"
+              onClick={() => {
+                setSelectedShop(shop)
+                setShowReviewDialog(true)
+              }}
+              className="p-3 sm:p-4 lg:p-6 border-2 border-gray-100 hover:border-[#ff9800] hover:shadow-lg transition-all duration-300 group bg-white cursor-pointer"
             >
               <div className="flex items-start gap-3 sm:gap-4">
                 {/* Shop Logo */}
