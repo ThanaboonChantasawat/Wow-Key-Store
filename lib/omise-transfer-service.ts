@@ -7,13 +7,16 @@
 import Omise from 'omise'
 import { adminDb } from './firebase-admin-config'
 import type { Shop } from './shop-types'
+import { getOmiseKeys } from './omise-keys'
 
 // Lazy initializer to avoid build-time errors when env vars are absent
-const getOmise = () =>
-  Omise({
-    publicKey: process.env.OMISE_PUBLIC_KEY || '',
-    secretKey: process.env.OMISE_SECRET_KEY || '',
+const getOmise = async () => {
+  const keys = await getOmiseKeys()
+  return Omise({
+    publicKey: keys.publicKey,
+    secretKey: keys.secretKey,
   })
+}
 
 // Transfer status types
 export type OmiseTransferStatus = 
@@ -74,7 +77,7 @@ async function getOrCreateRecipient(
   shop: Shop
 ): Promise<{ success: boolean; recipientId?: string; error?: string }> {
   try {
-    const omise = getOmise()
+    const omise = await getOmise()
     // Check if recipient already exists in shop data
     if ((shop as any).omiseRecipientId) {
       console.log('✅ Using existing recipient:', (shop as any).omiseRecipientId)
@@ -198,7 +201,7 @@ async function createTransfer(
   metadata?: Record<string, any>
 ): Promise<OmiseTransferResponse> {
   try {
-    const omise = getOmise()
+    const omise = await getOmise()
     console.log('💸 Creating transfer:', {
       recipientId,
       amount,
@@ -327,9 +330,9 @@ export async function processSellerPayoutViaOmise(
 /**
  * Get transfer status
  */
-export async function getOmiseTransferStatus(transferId: string): Promise<OmiseTransferStatus> {
+export async function getTransferStatus(transferId: string): Promise<OmiseTransferResult> {
   try {
-    const omise = getOmise()
+    const omise = await getOmise()
     const transfer: any = await omise.transfers.retrieve(transferId)
     
     if (transfer.paid) return 'paid'
@@ -349,7 +352,7 @@ export async function getOmiseTransferStatus(transferId: string): Promise<OmiseT
  */
 export async function listRecipientTransfers(recipientId: string) {
   try {
-    const omise = getOmise()
+    const omise = await getOmise()
     const transfers: any = await (omise.transfers as any).list({
       recipient: recipientId,
       limit: 100,

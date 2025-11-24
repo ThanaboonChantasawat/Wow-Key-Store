@@ -83,7 +83,7 @@ export default function SellerEarnings() {
       }
 
       // Fetch manual payouts from Firestore for payout history
-      const payoutsRes = await fetch(`/api/seller/manual-payouts?userId=${user.uid}`)
+      const payoutsRes = await fetch(`/api/seller/payouts?userId=${user.uid}`)
       if (payoutsRes.ok) {
         const payoutsData = await payoutsRes.json()
         if (payoutsData.payouts && payoutsData.payouts.length > 0) {

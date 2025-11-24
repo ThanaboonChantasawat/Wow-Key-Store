@@ -27,11 +27,14 @@ import {
   Wallet,
   AlertCircle,
   Smartphone,
-  CreditCard
+  CreditCard,
+  Star,
+  Loader2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-context"
 import { Loading } from "@/components/ui/loading"
+import { BankAccount } from "@/lib/bank-account-types"
 
 interface Payout {
   id: string
@@ -59,11 +62,12 @@ export default function SellerPayouts() {
   const [refreshing, setRefreshing] = useState(false)
   const [balance, setBalance] = useState<BalanceData | null>(null)
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false)
-  const [withdrawStep, setWithdrawStep] = useState<1 | 2>(1) // Step 1: Select method, Step 2: Enter amount
+  const [withdrawStep, setWithdrawStep] = useState<1 | 2>(1) // Step 1: Select account, Step 2: Enter amount
   const [withdrawAmount, setWithdrawAmount] = useState("")
-  const [withdrawMethod, setWithdrawMethod] = useState<'promptpay' | 'bank'>('promptpay')
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("")
   const [withdrawing, setWithdrawing] = useState(false)
   const [shopData, setShopData] = useState<any>(null)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -78,13 +82,29 @@ export default function SellerPayouts() {
       const shopRes = await fetch(`/api/shops/owner/${user.uid}`)
       if (shopRes.ok) {
         const shopData = await shopRes.json()
+        console.log('🏪 Shop data loaded:', shopData.shop)
         setShopData(shopData.shop)
-        // Set default method based on what's available
-        if (shopData.shop?.promptPayId) {
-          setWithdrawMethod('promptpay')
-        } else if (shopData.shop?.bankAccountNumber) {
-          setWithdrawMethod('bank')
+        
+        // Fetch bank accounts (new multi-account system)
+        if (shopData.shop?.shopId) {
+          const accountsRes = await fetch(`/api/seller/bank-accounts?shopId=${shopData.shop.shopId}`)
+          if (accountsRes.ok) {
+            const accountsData = await accountsRes.json()
+            const enabledAccounts = (accountsData.accounts || []).filter((acc: BankAccount) => acc.isEnabled)
+            setBankAccounts(enabledAccounts)
+            console.log('💳 Loaded enabled accounts:', enabledAccounts.length)
+            
+            // Set default account as selected
+            const defaultAccount = enabledAccounts.find((acc: BankAccount) => acc.isDefault)
+            if (defaultAccount) {
+              setSelectedAccountId(defaultAccount.id)
+            } else if (enabledAccounts.length > 0) {
+              setSelectedAccountId(enabledAccounts[0].id)
+            }
+          }
         }
+      } else {
+        console.error('Failed to fetch shop data:', await shopRes.text())
       }
       
       // Fetch balance
@@ -126,7 +146,7 @@ export default function SellerPayouts() {
   }
 
   const handleWithdraw = async () => {
-    if (!user || !withdrawAmount) return
+    if (!user || !withdrawAmount || !selectedAccountId) return
 
     const amount = parseFloat(withdrawAmount)
     
@@ -148,6 +168,27 @@ export default function SellerPayouts() {
       return
     }
 
+    const selectedAccount = bankAccounts.find(acc => acc.id === selectedAccountId)
+    if (!selectedAccount) {
+      toast({
+        title: "กรุณาเลือกบัญชี",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if account is verified
+    if (selectedAccount.verificationStatus !== 'verified') {
+      toast({
+        title: "บัญชียังไม่ได้รับการยืนยัน",
+        description: selectedAccount.verificationStatus === 'pending' 
+          ? "กรุณารอการยืนยันบัญชีให้เสร็จสิ้น (ประมาณ 1-2 นาที)"
+          : "บัญชีนี้ยังไม่ได้รับการยืนยัน กรุณาตรวจสอบข้อมูลบัญชี หรือเพิ่มบัญชีใหม่",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setWithdrawing(true)
       
@@ -159,20 +200,24 @@ export default function SellerPayouts() {
         body: JSON.stringify({
           userId: user.uid,
           amount,
-          method: withdrawMethod, // Add selected method
+          accountId: selectedAccountId, // Send account ID instead of method
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        const methodText = withdrawMethod === 'promptpay' ? 'พร้อมเพย์' : 'บัญชีธนาคาร'
+        const accountInfo = selectedAccount.accountType === 'promptpay' 
+          ? `พร้อมเพย์: ${selectedAccount.promptPayId}`
+          : `${selectedAccount.bankName} ${selectedAccount.bankAccountNumber}`
+        
         toast({
           title: "✅ ขอถอนเงินสำเร็จ",
-          description: `กำลังโอนเงิน ฿${amount.toFixed(2)} เข้า${methodText}ของคุณ`,
+          description: `กำลังโอนเงิน ฿${amount.toFixed(2)} เข้า${accountInfo}`,
         })
         setWithdrawDialogOpen(false)
         setWithdrawAmount("")
+        setWithdrawStep(1)
         fetchPayouts() // Refresh data
       } else {
         // Specific error messages
@@ -564,38 +609,80 @@ export default function SellerPayouts() {
           {withdrawStep === 1 ? (
             /* Step 1: Select Account */
             <div className="space-y-4 py-4">
-              {shopData && (shopData.promptPayId || shopData.bankAccountNumber) ? (
-                <RadioGroup value={withdrawMethod} onValueChange={(value: 'promptpay' | 'bank') => setWithdrawMethod(value)}>
-                  {shopData.promptPayId && (
-                    <div className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors">
-                      <RadioGroupItem value="promptpay" id="promptpay" className="mt-1" />
-                      <Label htmlFor="promptpay" className="flex-1 cursor-pointer">
+              {bankAccounts.length > 0 ? (
+                <RadioGroup 
+                  value={selectedAccountId} 
+                  onValueChange={(value: string) => {
+                    console.log('Selected account:', value)
+                    setSelectedAccountId(value)
+                  }}
+                >
+                  {bankAccounts.map((account) => (
+                    <div 
+                      key={account.id}
+                      className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (account.verificationStatus === 'verified') {
+                          setSelectedAccountId(account.id)
+                        }
+                      }}
+                    >
+                      <RadioGroupItem 
+                        value={account.id} 
+                        id={account.id} 
+                        className="mt-1"
+                        disabled={account.verificationStatus !== 'verified'}
+                      />
+                      <Label htmlFor={account.id} className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2 mb-1">
-                          <Smartphone className="w-5 h-5 text-blue-600" />
-                          <span className="font-medium text-base">พร้อมเพย์</span>
+                          {account.accountType === 'promptpay' ? (
+                            <Smartphone className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <CreditCard className="w-5 h-5 text-green-600" />
+                          )}
+                          <span className="font-medium text-base">{account.displayName}</span>
+                          {account.isDefault && (
+                            <Badge variant="default" className="text-xs">
+                              <Star className="h-3 w-3 mr-1" />
+                              บัญชีหลัก
+                            </Badge>
+                          )}
+                          {/* Verification Badge */}
+                          {account.verificationStatus === 'verified' && (
+                            <Badge variant="default" className="text-xs bg-green-500">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              ยืนยันแล้ว
+                            </Badge>
+                          )}
+                          {account.verificationStatus === 'pending' && (
+                            <Badge variant="secondary" className="text-xs bg-yellow-500 text-white">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              รอยืนยัน
+                            </Badge>
+                          )}
+                          {account.verificationStatus === 'failed' && (
+                            <Badge variant="destructive" className="text-xs">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              ล้มเหลว
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {shopData.promptPayType === 'phone' ? '📱 ' : '🆔 '}
-                          {shopData.promptPayId.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
-                        </p>
+                        
+                        {account.accountType === 'promptpay' ? (
+                          <p className="text-sm text-muted-foreground">
+                            {account.promptPayType === 'mobile' ? '📱 ' : '🆔 '}
+                            {account.promptPayId}
+                          </p>
+                        ) : (
+                          <div className="text-sm text-muted-foreground space-y-0.5">
+                            <p>🏦 {account.bankName}</p>
+                            <p>เลขบัญชี: {account.bankAccountNumber}</p>
+                            <p>ชื่อบัญชี: {account.bankAccountName}</p>
+                          </div>
+                        )}
                       </Label>
                     </div>
-                  )}
-                  
-                  {shopData.bankAccountNumber && (
-                    <div className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors">
-                      <RadioGroupItem value="bank" id="bank" className="mt-1" />
-                      <Label htmlFor="bank" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CreditCard className="w-5 h-5 text-green-600" />
-                          <span className="font-medium text-base">บัญชีธนาคาร</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          🏦 {shopData.bankName || 'ธนาคาร'} - {shopData.bankAccountNumber.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4')}
-                        </p>
-                      </Label>
-                    </div>
-                  )}
+                  ))}
                 </RadioGroup>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -610,25 +697,32 @@ export default function SellerPayouts() {
             <div className="space-y-4 py-4">
               <div className="bg-accent/50 border rounded-lg p-3 mb-4">
                 <p className="text-sm text-muted-foreground mb-1">จะโอนเงินเข้า:</p>
-                <div className="flex items-center gap-2">
-                  {withdrawMethod === 'promptpay' ? (
-                    <>
-                      <Smartphone className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">พร้อมเพย์</span>
-                      <span className="text-sm text-muted-foreground">
-                        {shopData?.promptPayId?.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4 text-green-600" />
-                      <span className="font-medium">บัญชีธนาคาร</span>
-                      <span className="text-sm text-muted-foreground">
-                        {shopData?.bankName} - {shopData?.bankAccountNumber?.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4')}
-                      </span>
-                    </>
-                  )}
-                </div>
+                {(() => {
+                  const selectedAccount = bankAccounts.find(acc => acc.id === selectedAccountId)
+                  if (!selectedAccount) return null
+                  
+                  return (
+                    <div className="flex items-center gap-2">
+                      {selectedAccount.accountType === 'promptpay' ? (
+                        <>
+                          <Smartphone className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium">{selectedAccount.displayName}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedAccount.promptPayId}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4 text-green-600" />
+                          <span className="font-medium">{selectedAccount.displayName}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedAccount.bankName} - {selectedAccount.bankAccountNumber}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
               <div className="space-y-2">
@@ -685,7 +779,7 @@ export default function SellerPayouts() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
                 <p className="font-medium mb-1">ข้อมูลการถอนเงิน:</p>
                 <ul className="space-y-1 text-blue-700">
-                  <li>• เงินจะโอนเข้า{withdrawMethod === 'promptpay' ? 'พร้อมเพย์' : 'บัญชีธนาคาร'}ที่คุณเลือก</li>
+                  <li>• เงินจะโอนเข้าบัญชีที่คุณเลือก</li>
                   <li>• ระบบจะดำเนินการโอนภายใน 2-3 วันทำการ</li>
                   <li>• คุณสามารถตรวจสอบสถานะได้ในหน้านี้</li>
                 </ul>
@@ -716,8 +810,21 @@ export default function SellerPayouts() {
             </Button>
             {withdrawStep === 1 ? (
               <Button
-                onClick={() => setWithdrawStep(2)}
-                disabled={!shopData?.promptPayId && !shopData?.bankAccountNumber}
+                onClick={() => {
+                  const selectedAccount = bankAccounts.find(acc => acc.id === selectedAccountId)
+                  if (selectedAccount?.verificationStatus !== 'verified') {
+                    toast({
+                      title: "บัญชียังไม่ได้รับการยืนยัน",
+                      description: selectedAccount?.verificationStatus === 'pending'
+                        ? "กรุณารอการยืนยันบัญชีให้เสร็จสิ้น (ประมาณ 1-2 นาที)"
+                        : "กรุณาเลือกบัญชีที่ได้รับการยืนยันแล้ว",
+                      variant: "destructive",
+                    })
+                    return
+                  }
+                  setWithdrawStep(2)
+                }}
+                disabled={!selectedAccountId || bankAccounts.length === 0}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 ถัดไป
@@ -726,19 +833,10 @@ export default function SellerPayouts() {
               <Button
                 onClick={handleWithdraw}
                 disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                {withdrawing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    กำลังดำเนินการ...
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownToLine className="w-4 h-4 mr-2" />
-                    ยืนยันถอนเงิน
-                  </>
-                )}
+                {withdrawing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {withdrawing ? 'กำลังดำเนินการ...' : 'ยืนยันถอนเงิน'}
               </Button>
             )}
           </DialogFooter>

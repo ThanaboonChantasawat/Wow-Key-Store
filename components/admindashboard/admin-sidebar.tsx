@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart3, Users, Store, Mail, Tag, Gamepad2, Shield, AlertTriangle, Activity, MessageSquare, Image, Star } from "lucide-react"
+import { BarChart3, Users, Store, Mail, Tag, Gamepad2, Shield, AlertTriangle, Activity, MessageSquare, Image, Star, Settings } from "lucide-react"
 
 interface AdminSidebarProps {
   activeSection: string
@@ -20,6 +20,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
     { id: "categories", label: "จัดการหมวดหมู่", icon: Tag },
     { id: "games", label: "จัดการเกม", icon: Gamepad2 },
     { id: "popular-games", label: "เกมยอดนิยม", icon: Star },
+    { id: "omise-settings", label: "ตั้งค่า Omise Mode", icon: Settings },
   ]
 
   return (

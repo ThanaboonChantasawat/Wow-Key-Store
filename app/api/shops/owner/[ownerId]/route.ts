@@ -43,6 +43,16 @@ export async function GET(
       totalSales: shop.totalSales || 0,
       totalRevenue: shop.totalRevenue || 0,
       rating: shop.rating || 0,
+      // Bank account information
+      bankName: shop.bankName || null,
+      bankAccountNumber: shop.bankAccountNumber || null,
+      bankAccountName: shop.bankAccountName || null,
+      bankBranch: shop.bankBranch || null,
+      enableBank: shop.enableBank || false,
+      // PromptPay information
+      promptPayId: shop.promptPayId || null,
+      promptPayType: shop.promptPayType || null,
+      enablePromptPay: shop.enablePromptPay || false,
       createdAt: shop.createdAt ? shop.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: shop.updatedAt ? shop.updatedAt.toISOString() : new Date().toISOString(),
     };

@@ -47,8 +47,10 @@ export function OmiseCreditCardPayment({
   }
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\s/g, '')
-    if (value.length <= 16 && /^\d*$/.test(value)) {
+    // Remove all non-digit characters first
+    const value = e.target.value.replace(/\D/g, '')
+    // Only allow up to 16 digits
+    if (value.length <= 16) {
       setCardNumber(formatCardNumber(value))
       setError(null) // Clear error when user types
     }

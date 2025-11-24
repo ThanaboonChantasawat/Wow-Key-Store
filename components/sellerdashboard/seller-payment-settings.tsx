@@ -5,7 +5,7 @@ import { Wallet } from "lucide-react"
 import { getShopByOwnerId } from "@/lib/shop-client"
 import { useAuth } from "@/components/auth-context"
 import { LoadingScreen } from "@/components/ui/loading"
-import { BankAccountSettings } from "./bank-account-settings"
+import { BankAccountsManager } from "./bank-accounts-manager"
 
 export function SellerPaymentSettings() {
   const { user } = useAuth()
@@ -55,9 +55,9 @@ export function SellerPaymentSettings() {
         <p className="text-white/90">ตั้งค่าบัญชีธนาคาร/PromptPay เพื่อรับเงินจากการขายผ่าน Omise</p>
       </div>
 
-      {/* Bank Account Settings - Omise Only */}
+      {/* Bank Account Settings - Multi-account support like Shopee */}
       <div className="w-full">
-        <BankAccountSettings userId={user!.uid} shopId={shopId} />
+        <BankAccountsManager shopId={shopId} />
       </div>
     </div>
   )

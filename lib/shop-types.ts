@@ -1,4 +1,7 @@
 // Shop type definition (separate from service to avoid importing firebase-admin in client components)
+
+import { BankAccount } from './bank-account-types'
+
 export interface Shop {
   shopId: string;
   ownerId: string;
@@ -32,12 +35,17 @@ export interface Shop {
   stripeChargesEnabled?: boolean;
   stripePayoutsEnabled?: boolean;
   
-  // Bank account information for payouts
+  // Multi-account bank information for payouts (NEW - Shopee style)
+  bankAccounts?: BankAccount[];
+  
+  // Legacy single account fields (kept for backward compatibility, will be deprecated)
   bankAccountNumber?: string;
   bankName?: string;
   bankAccountName?: string;
   bankBranch?: string;
-  promptPayId?: string; // เบอร์โทร หรือ เลขบัตรประชาชน สำหรับ PromptPay
-  promptPayType?: 'mobile' | 'citizen_id' | 'ewallet'; // ประเภท PromptPay
+  promptPayId?: string;
+  promptPayType?: 'mobile' | 'citizen_id' | 'ewallet';
+  enableBank?: boolean;
+  enablePromptPay?: boolean;
   taxId?: string; // เลขประจำตัวผู้เสียภาษี (สำหรับนิติบุคคล)
 }

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const ordersSnapshot = await ordersQuery.get()
 
     let availableBalance = 0
-    const ordersToPayout: any[] = []
+    const allAvailableOrders: any[] = []
 
     ordersSnapshot.docs.forEach(doc => {
       const order = doc.data()
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       // Only include orders that haven't been paid out AND are confirmed by buyer
       if (order.payoutStatus !== 'paid' && order.payoutStatus !== 'completed' && order.buyerConfirmed === true) {
         availableBalance += sellerAmount
-        ordersToPayout.push({
+        allAvailableOrders.push({
           id: doc.id,
           amount: sellerAmount,
         })
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     console.log('💰 Available balance calculated:', {
       availableBalance,
-      ordersToPayout: ordersToPayout.length,
+      allAvailableOrders: allAvailableOrders.length,
       requestedAmount: amount,
     })
 
@@ -105,6 +105,23 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Select orders to fulfill the requested amount (not all available orders)
+    const ordersToPayout: any[] = []
+    let selectedAmount = 0
+
+    for (const order of allAvailableOrders) {
+      if (selectedAmount >= amount) break
+      
+      ordersToPayout.push(order)
+      selectedAmount += order.amount
+    }
+
+    console.log('📦 Selected orders for payout:', {
+      selectedOrders: ordersToPayout.length,
+      selectedAmount,
+      requestedAmount: amount,
+    })
 
     // Create payout to seller's bank account
     try {

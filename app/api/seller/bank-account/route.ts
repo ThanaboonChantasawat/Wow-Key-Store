@@ -30,8 +30,10 @@ export async function GET(request: NextRequest) {
       bankAccountNumber: shopData?.bankAccountNumber || null,
       bankAccountName: shopData?.bankAccountName || null,
       bankBranch: shopData?.bankBranch || null,
+      enableBank: shopData?.enableBank || false,
       promptPayId: shopData?.promptPayId || null,
       promptPayType: shopData?.promptPayType || null,
+      enablePromptPay: shopData?.enablePromptPay || false,
     })
   } catch (error: any) {
     console.error('Error getting bank account:', error)
@@ -47,13 +49,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { 
       shopId, 
-      payoutMethod,
       bankName,
       bankAccountNumber,
       bankAccountName,
       bankBranch,
+      enableBank,
       promptPayId,
       promptPayType,
+      enablePromptPay,
     } = body
 
     if (!shopId) {
@@ -73,8 +76,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate based on payout method
-    if (payoutMethod === 'bank') {
+    const updateData: any = {
+      updatedAt: new Date(),
+    }
+
+    // Handle bank account
+    if (enableBank) {
       if (!bankName || !bankAccountNumber || !bankAccountName) {
         return NextResponse.json(
           { error: 'Bank account information is incomplete' },
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Validate bank account (optional real-time validation)
+      // Validate bank account
       const validation = await validateBankAccount(bankAccountNumber, bankName)
       if (!validation.valid) {
         return NextResponse.json(
@@ -91,23 +98,21 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Update shop with bank account info
-      await shopRef.update({
-        bankName,
-        bankAccountNumber,
-        bankAccountName,
-        bankBranch: bankBranch || null,
-        // Clear PromptPay when switching to bank
-        promptPayId: null,
-        promptPayType: null,
-        updatedAt: new Date(),
-      })
+      updateData.bankName = bankName
+      updateData.bankAccountNumber = bankAccountNumber
+      updateData.bankAccountName = bankAccountName
+      updateData.bankBranch = bankBranch || null
+      updateData.enableBank = true
+    } else {
+      updateData.bankName = null
+      updateData.bankAccountNumber = null
+      updateData.bankAccountName = null
+      updateData.bankBranch = null
+      updateData.enableBank = false
+    }
 
-      return NextResponse.json({
-        success: true,
-        message: 'Bank account saved successfully',
-      })
-    } else if (payoutMethod === 'promptpay') {
+    // Handle PromptPay
+    if (enablePromptPay) {
       if (!promptPayId || !promptPayType) {
         return NextResponse.json(
           { error: 'PromptPay information is incomplete' },
@@ -130,28 +135,22 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Update shop with PromptPay info
-      await shopRef.update({
-        promptPayId,
-        promptPayType,
-        // Clear bank account when switching to PromptPay
-        bankName: null,
-        bankAccountNumber: null,
-        bankAccountName: null,
-        bankBranch: null,
-        updatedAt: new Date(),
-      })
-
-      return NextResponse.json({
-        success: true,
-        message: 'PromptPay saved successfully',
-      })
+      updateData.promptPayId = promptPayId
+      updateData.promptPayType = promptPayType
+      updateData.enablePromptPay = true
     } else {
-      return NextResponse.json(
-        { error: 'Invalid payout method' },
-        { status: 400 }
-      )
+      updateData.promptPayId = null
+      updateData.promptPayType = null
+      updateData.enablePromptPay = false
     }
+
+    // Update shop
+    await shopRef.update(updateData)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Payment information saved successfully',
+    })
   } catch (error: any) {
     console.error('Error saving bank account:', error)
     return NextResponse.json(

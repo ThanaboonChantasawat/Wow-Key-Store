@@ -16,6 +16,7 @@ import { SupportMessagesContent } from "./support-messages"
 import { SliderManagement } from "./slider-management"
 import { Button } from "@/components/ui/button"
 import { PopularGamesManagement } from "./popular-games-management"
+import { OmiseModeSettings } from "./omise-mode-settings"
 
 interface AdminDashboardProps {
   userId: string
@@ -98,6 +99,7 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
               {activeSection === "categories" && <AdminCategories />}
               {activeSection === "games" && <AdminGames />}
               {activeSection === "popular-games" && <PopularGamesManagement />}
+              {activeSection === "omise-settings" && <OmiseModeSettings />}
             </div>
           </div>
         </div>

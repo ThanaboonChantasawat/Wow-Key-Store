@@ -116,6 +116,16 @@ export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
         stripeOnboardingCompleted: data.stripeOnboardingCompleted || false,
         stripeChargesEnabled: data.stripeChargesEnabled || false,
         stripePayoutsEnabled: data.stripePayoutsEnabled || false,
+        // Bank account fields
+        bankName: data.bankName || null,
+        bankAccountNumber: data.bankAccountNumber || null,
+        bankAccountName: data.bankAccountName || null,
+        bankBranch: data.bankBranch || null,
+        enableBank: data.enableBank || false,
+        // PromptPay fields
+        promptPayId: data.promptPayId || null,
+        promptPayType: data.promptPayType || null,
+        enablePromptPay: data.enablePromptPay || false,
       } as any;
     }
     
