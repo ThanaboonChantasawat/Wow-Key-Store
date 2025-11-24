@@ -58,7 +58,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user]);
 
-  const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const itemCount = cartItems.length;
 
   return (
     <CartContext.Provider value={{ cartItems, itemCount, loading }}>
