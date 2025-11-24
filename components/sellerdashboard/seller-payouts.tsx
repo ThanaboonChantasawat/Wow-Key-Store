@@ -56,6 +56,7 @@ interface BalanceData {
 export default function SellerPayouts() {
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [balance, setBalance] = useState<BalanceData | null>(null)
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false)
   const [withdrawStep, setWithdrawStep] = useState<1 | 2>(1) // Step 1: Select method, Step 2: Enter amount

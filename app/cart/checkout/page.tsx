@@ -25,6 +25,7 @@ export default function CartCheckoutPage() {
   const router = useRouter()
   const [items, setItems] = useState<CheckoutItem[]>([])
   const [grandTotal, setGrandTotal] = useState(0)
+  const [totalPlatformFee, setTotalPlatformFee] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState({

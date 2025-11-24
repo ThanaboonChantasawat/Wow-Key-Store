@@ -27,7 +27,8 @@ export default function SellerPage() {
         // Call API instead of direct service
         const response = await fetch(`/api/shops/owner/${user.uid}`);
         if (response.ok) {
-          const shopData = await response.json();
+          const data = await response.json();
+          const shopData = data.shop || data;
           
           // Convert date strings back to Date objects
           if (shopData.createdAt) shopData.createdAt = new Date(shopData.createdAt);
@@ -66,7 +67,8 @@ export default function SellerPage() {
     if (user) {
       const response = await fetch(`/api/shops/owner/${user.uid}`);
       if (response.ok) {
-        const shopData = await response.json();
+        const data = await response.json();
+        const shopData = data.shop || data;
         
         // Convert date strings back to Date objects
         if (shopData.createdAt) shopData.createdAt = new Date(shopData.createdAt);

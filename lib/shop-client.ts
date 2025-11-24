@@ -4,9 +4,10 @@ import type { Shop } from "./shop-types";
 
 export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
   try {
-    const response = await fetch(`/api/shops/owner/${ownerId}`);
+    const response = await fetch(`/api/shops/get-by-owner/${ownerId}`);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return data.shop || data; // Handle both formats
     }
     if (response.status === 404) {
       return null;
@@ -22,7 +23,8 @@ export async function getShopById(shopId: string): Promise<Shop | null> {
   try {
     const response = await fetch(`/api/shops/${shopId}`);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return data.shop || data;
     }
     if (response.status === 404) {
       return null;
@@ -41,7 +43,8 @@ export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejecte
       : '/api/shops/all';
     const response = await fetch(url);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return data.shops || data;
     }
     throw new Error('Failed to fetch shops');
   } catch (error) {
@@ -54,7 +57,8 @@ export async function getTopShopsBySales(limit: number = 10): Promise<Shop[]> {
   try {
     const response = await fetch(`/api/shops/top-sales?limit=${limit}`);
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return data.shops || data;
     }
     throw new Error('Failed to fetch top shops');
   } catch (error) {

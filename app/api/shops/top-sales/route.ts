@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     const shops = await getTopShopsBySales(limit);
 
-    return NextResponse.json(shops);
+    return NextResponse.json({ shops });
   } catch (error) {
     console.error("Error fetching top shops:", error);
     return NextResponse.json(

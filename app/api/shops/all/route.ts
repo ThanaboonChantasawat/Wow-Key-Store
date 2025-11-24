@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       updatedAt: shop.updatedAt ? shop.updatedAt.toISOString() : new Date().toISOString(),
     }));
 
-    return NextResponse.json(serializedShops);
+    return NextResponse.json({ shops: serializedShops });
   } catch (error) {
     console.error("Error fetching shops:", error);
     return NextResponse.json(

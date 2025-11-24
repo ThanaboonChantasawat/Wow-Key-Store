@@ -5,8 +5,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ ownerId: string }> }
 ) {
+  console.log("API /api/shops/owner/[ownerId] hit");
   try {
     const { ownerId } = await params;
+    console.log("Owner ID:", ownerId);
 
     if (!ownerId) {
       return NextResponse.json(
@@ -45,7 +47,7 @@ export async function GET(
       updatedAt: shop.updatedAt ? shop.updatedAt.toISOString() : new Date().toISOString(),
     };
 
-    return NextResponse.json(serializedShop);
+    return NextResponse.json({ shop: serializedShop });
   } catch (error) {
     console.error("Error fetching shop:", error);
     return NextResponse.json(

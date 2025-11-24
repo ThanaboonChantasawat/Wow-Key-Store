@@ -33,7 +33,8 @@ export default function ShopsPage() {
       try {
         const response = await fetch('/api/shops/all')
         if (!response.ok) throw new Error('Failed to fetch shops')
-        const data = await response.json()
+        const result = await response.json()
+        const data = result.shops || result
         console.log('Fetched shops:', data)
         const activeShops = Array.isArray(data) ? data.filter((s: Shop) => s.status === 'active') : []
         console.log('Active shops:', activeShops)

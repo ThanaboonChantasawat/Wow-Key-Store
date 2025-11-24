@@ -68,13 +68,15 @@ export default function SellerProfile() {
           // Fetch by shopId
           const shopRes = await fetch(`/api/shops/${id}`);
           if (shopRes.ok) {
-            shopData = await shopRes.json();
+            const data = await shopRes.json();
+            shopData = data.shop || data;
           }
         } else {
           // Fetch by ownerId
-          const shopRes = await fetch(`/api/shops/owner/${id}`);
+          const shopRes = await fetch(`/api/shops/get-by-owner/${id}`);
           if (shopRes.ok) {
-            shopData = await shopRes.json();
+            const data = await shopRes.json();
+            shopData = data.shop || data;
           }
         }
 
