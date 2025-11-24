@@ -158,6 +158,11 @@ export function OmiseCreditCardPayment({
         console.log('✅ Payment successful!')
         setStatus('success')
         
+        // Clear checkout items from sessionStorage
+        sessionStorage.removeItem('checkoutItems')
+        sessionStorage.removeItem('cartItemIds')
+        console.log('🧹 Cleared checkout items from sessionStorage')
+
         toast({
           title: "✅ ชำระเงินสำเร็จ!",
           description: "เราได้รับการชำระเงินของคุณแล้ว กำลังนำคุณไปยังหน้าคำสั่งซื้อ...",

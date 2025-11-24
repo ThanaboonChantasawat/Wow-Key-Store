@@ -187,120 +187,96 @@ export function PaymentMethodSelector({
       <CardHeader>
         <CardTitle>เลือกวิธีชำระเงิน</CardTitle>
         <CardDescription>
-          เลือกช่องทางที่สะดวกสำหรับคุณ
+          ชำระเงินรวม {items?.length || 1} รายการ (เงินจะถูกโอนไปยังแพลตฟอร์มก่อนกระจายให้ร้านค้า)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
           {/* PromptPay Option */}
           {availablePaymentMethods.promptpay ? (
-            <div className="flex items-center space-x-2 rounded-lg border-2 border-blue-200 bg-blue-50 p-4 cursor-pointer hover:bg-blue-100 transition-colors">
+            <div className={`flex items-center space-x-2 rounded-lg border-2 p-4 cursor-pointer transition-colors ${paymentMethod === 'promptpay' ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
               <RadioGroupItem value="promptpay" id="promptpay" />
               <Label 
                 htmlFor="promptpay" 
-                className="flex items-center gap-3 cursor-pointer flex-1"
+                className="flex-1 flex items-center justify-between cursor-pointer"
               >
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                  <Smartphone className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-lg">PromptPay QR Code</div>
-                  <div className="text-sm text-muted-foreground">
-                    สแกนจ่ายผ่านแอพธนาคาร • ค่าธรรมเนียมต่ำ • รับเงินทันที
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Smartphone className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="text-xs text-green-600 font-medium mt-1">
-                    ✨ แนะนำ - ค่าธรรมเนียมเพียง 1% + ฿5
+                  <div>
+                    <div className="font-semibold">PromptPay QR Code</div>
+                    <div className="text-sm text-gray-500">สแกนจ่ายได้ทุกธนาคาร (ฟรีค่าธรรมเนียม)</div>
                   </div>
                 </div>
               </Label>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 rounded-lg border-2 border-gray-200 bg-gray-50 p-4 opacity-50 cursor-not-allowed">
-              <RadioGroupItem value="promptpay" id="promptpay" disabled />
-              <Label 
-                htmlFor="promptpay" 
-                className="flex items-center gap-3 flex-1"
-              >
-                <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
-                  <Smartphone className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-lg text-gray-500">PromptPay QR Code</div>
-                  <div className="text-sm text-gray-400">
-                    ร้านค้ายังไม่ได้ตั้งค่า PromptPay
-                  </div>
-                </div>
-              </Label>
+            <div className="opacity-50 pointer-events-none flex items-center space-x-2 rounded-lg border border-gray-200 p-4 bg-gray-50">
+              <Smartphone className="w-6 h-6 text-gray-400" />
+              <div>
+                <div className="font-semibold text-gray-500">PromptPay QR Code</div>
+                <div className="text-xs text-red-500">ไม่รองรับสำหรับรายการนี้</div>
+              </div>
             </div>
           )}
 
           {/* Credit Card Option */}
-          <div className="flex items-center space-x-2 rounded-lg border-2 p-4 cursor-pointer hover:bg-accent transition-colors">
-            <RadioGroupItem value="card" id="card" />
-            <Label 
-              htmlFor="card" 
-              className="flex items-center gap-3 cursor-pointer flex-1"
-            >
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full flex items-center justify-center">
-                <CreditCard className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-lg">บัตรเครดิต/เดบิต</div>
-                <div className="text-sm text-muted-foreground">
-                  Visa, Mastercard, JCB • ปลอดภัย • สะดวกรวดเร็ว
+          {availablePaymentMethods.creditCard ? (
+            <div className={`flex items-center space-x-2 rounded-lg border-2 p-4 cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+              <RadioGroupItem value="card" id="card" />
+              <Label 
+                htmlFor="card" 
+                className="flex-1 flex items-center justify-between cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 p-2 rounded-full">
+                    <CreditCard className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">บัตรเครดิต / เดบิต</div>
+                    <div className="text-sm text-gray-500">Visa, Mastercard, JCB</div>
+                  </div>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  ค่าธรรมเนียม 3.65%
-                </div>
+              </Label>
+            </div>
+          ) : (
+            <div className="opacity-50 pointer-events-none flex items-center space-x-2 rounded-lg border border-gray-200 p-4 bg-gray-50">
+              <CreditCard className="w-6 h-6 text-gray-400" />
+              <div>
+                <div className="font-semibold text-gray-500">บัตรเครดิต / เดบิต</div>
+                <div className="text-xs text-red-500">ไม่รองรับสำหรับรายการนี้</div>
               </div>
-            </Label>
-          </div>
+            </div>
+          )}
         </RadioGroup>
 
         {/* Amount Summary */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-muted-foreground">ยอดรวม</span>
+            <span className="text-muted-foreground">ยอดรวม ({items?.length || 1} รายการ)</span>
             <span className="text-2xl font-bold">฿{amount.toLocaleString()}</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            * ราคานี้รวมค่าธรรมเนียมแล้ว
+            * ราคานี้รวมค่าธรรมเนียมแล้ว (ชำระที่ WowKeyStore Platform)
           </div>
         </div>
 
         {/* Proceed Button */}
         <Button 
           onClick={handleProceed} 
-          className="w-full" 
-          size="lg"
+          className="w-full h-12 text-lg bg-[#ff9800] hover:bg-[#f57c00]"
           disabled={creatingOrder}
         >
           {creatingOrder ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              กำลังสร้างคำสั่งซื้อ...
-            </>
-          ) : paymentMethod === 'promptpay' ? (
-            <>
-              <Smartphone className="mr-2 h-5 w-5" />
-              แสดง QR Code
+              กำลังสร้างรายการ...
             </>
           ) : (
-            <>
-              <CreditCard className="mr-2 h-5 w-5" />
-              ชำระด้วยบัตร
-            </>
+            `ชำระเงิน ฿${amount.toLocaleString()}`
           )}
         </Button>
-
-        {/* Info */}
-        <div className="text-xs text-center text-muted-foreground">
-          {paymentMethod === 'promptpay' ? (
-            <p>💡 PromptPay รวดเร็ว ปลอดภัย และค่าธรรมเนียมต่ำ</p>
-          ) : (
-            <p>🔒 ข้อมูลบัตรของคุณปลอดภัย ผ่านระบบ Omise</p>
-          )}
-        </div>
       </CardContent>
     </Card>
   )
