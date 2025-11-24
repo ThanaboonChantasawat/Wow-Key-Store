@@ -61,56 +61,54 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Check if shop has VALID bank account or PromptPay setup for payouts
-      // Must have proper bank details (account number, name, bank name) OR valid PromptPay ID
-      const hasValidBankAccount = shopData.bankAccountNumber && 
+      // Check if shop has VALID bank account or PromptPay setup for payouts using the new bankAccounts array
+      const bankAccounts = shopData.bankAccounts || []
+      const hasVerifiedAccount = bankAccounts.some((acc: any) => acc.isEnabled && acc.verificationStatus === 'verified')
+      
+      // Fallback to legacy check if no new accounts found (for backward compatibility)
+      const hasLegacyBankAccount = shopData.bankAccountNumber && 
                                   shopData.bankAccountNumber.trim() !== '' &&
                                   shopData.bankName && 
                                   shopData.bankName.trim() !== '' &&
                                   shopData.bankAccountName && 
                                   shopData.bankAccountName.trim() !== ''
       
-      const hasValidPromptPay = shopData.promptPayId && 
+      const hasLegacyPromptPay = shopData.promptPayId && 
                                 shopData.promptPayId.trim() !== '' &&
-                                shopData.promptPayId.length >= 10 // PromptPay must be at least 10 digits
+                                shopData.promptPayId.length >= 10
+
+      const isValidShop = hasVerifiedAccount || hasLegacyBankAccount || hasLegacyPromptPay
       
-      if (!hasValidBankAccount && !hasValidPromptPay) {
+      if (!isValidShop) {
         console.error(`❌ Shop ${shopData.shopName} (${shopId}) has no valid payment method configured`)
-        console.error(`Bank Account: ${hasValidBankAccount ? 'Valid' : 'Invalid/Missing'}`)
-        console.error(`PromptPay: ${hasValidPromptPay ? 'Valid' : 'Invalid/Missing'}`)
         return NextResponse.json(
           { error: `ร้านค้า ${shopData.shopName} ยังไม่ได้ตั้งค่าบัญชีรับเงินที่สมบูรณ์ กรุณาติดต่อผู้ขาย` },
           { status: 400 }
         )
       }
       
-      // Track which payment methods are available across all shops
-      if (!hasValidPromptPay) {
-        hasPromptPayAvailable = false
-      }
-      if (!hasValidBankAccount) {
-        hasBankTransferAvailable = false
-      }
+      // If the shop has a valid payout method (Bank or PromptPay), 
+      // the platform can accept payments via any channel (PromptPay, Credit Card, etc.)
+      // and then transfer to the shop's configured account.
+      // So we don't need to restrict the buyer's payment methods based on the shop's specific account type.
       
       console.log(`✅ Shop ${shopData.shopName} has valid payment method configured`)
-      console.log(`  - Bank Account: ${hasValidBankAccount ? '✓' : '✗'}`)
-      console.log(`  - PromptPay: ${hasValidPromptPay ? '✓' : '✗'}`)
     }
 
     // Calculate totals
     const grandTotal = items.reduce((sum: number, item: CheckoutItem) => sum + item.price, 0)
     const totalPlatformFee = Math.round(grandTotal * 0.03) // 3% platform fee
 
-    console.log('Validation successful:', { grandTotal, totalPlatformFee, hasPromptPayAvailable, hasBankTransferAvailable })
+    console.log('Validation successful:', { grandTotal, totalPlatformFee })
 
     return NextResponse.json({
       success: true,
       grandTotal,
       totalPlatformFee,
       availablePaymentMethods: {
-        promptpay: hasPromptPayAvailable,
-        creditCard: true, // Credit card is always available (Omise)
-        bankTransfer: hasBankTransferAvailable,
+        promptpay: true,
+        creditCard: true,
+        bankTransfer: true,
       }
     })
   } catch (error) {

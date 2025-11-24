@@ -69,6 +69,28 @@ export const OMISE_BANK_CODES: Record<string, string> = {
   LH: 'lhbank',
 }
 
+// Mapping from Thai Bank Names to Omise Codes
+export const THAI_BANK_NAME_TO_CODE: Record<string, string> = {
+  "ธนาคารกรุงเทพ": "bbl",
+  "ธนาคารกสิกรไทย": "kbank",
+  "ธนาคารกรุงไทย": "ktb",
+  "ธนาคารทหารไทยธนชาต": "ttb",
+  "ธนาคารไทยพาณิชย์": "scb",
+  "ธนาคารกรุงศรีอยุธยา": "bay",
+  "ธนาคารเกียรตินาคินภัทร": "kk",
+  "ธนาคารซีไอเอ็มบีไทย": "cimb",
+  "ธนาคารทิสโก้": "tisco",
+  "ธนาคารยูโอบี": "uob",
+  "ธนาคารไทยเครดิตเพื่อรายย่อย": "tcrb",
+  "ธนาคารแลนด์ แอนด์ เฮ้าส์": "lhbank",
+  "ธนาคารไอซีบีซี (ไทย)": "icbc",
+  "ธนาคารพัฒนาวิสาหกิจขนาดกลางและขนาดย่อมแห่งประเทศไทย": "sme",
+  "ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร": "baac",
+  "ธนาคารเพื่อการส่งออกและนำเข้าแห่งประเทศไทย": "exim",
+  "ธนาคารออมสิน": "gsb",
+  "ธนาคารอาคารสงเคราะห์": "ghb",
+}
+
 /**
  * Create or get Omise Recipient
  */
@@ -78,6 +100,72 @@ async function getOrCreateRecipient(
 ): Promise<{ success: boolean; recipientId?: string; error?: string }> {
   try {
     const omise = await getOmise()
+
+    // 1. Check new bankAccounts array first (Priority)
+    if (shop.bankAccounts && shop.bankAccounts.length > 0) {
+      // Find default verified account
+      let targetAccount = shop.bankAccounts.find(acc => acc.isDefault && acc.verificationStatus === 'verified' && acc.isEnabled)
+      
+      // If no default, find any verified enabled account
+      if (!targetAccount) {
+        targetAccount = shop.bankAccounts.find(acc => acc.verificationStatus === 'verified' && acc.isEnabled)
+      }
+      
+      if (targetAccount) {
+        // If account has recipient ID, use it
+        if (targetAccount.omiseRecipientId) {
+          console.log('✅ Using existing recipient from bank account:', targetAccount.omiseRecipientId)
+          return {
+            success: true,
+            recipientId: targetAccount.omiseRecipientId,
+          }
+        }
+        
+        // If verified but no recipient ID (should be rare), try to create one
+        console.log('⚠️ Verified account missing recipient ID, creating new one...')
+        
+        const isPromptPay = targetAccount.type === 'promptpay'
+        // Try to map bank name to code, fallback to direct usage if it's already a code
+        const bankCode = isPromptPay ? 'scb' : (THAI_BANK_NAME_TO_CODE[targetAccount.bankName || ''] || OMISE_BANK_CODES[targetAccount.bankName || ''])
+        
+        if (bankCode || isPromptPay) {
+             try {
+               const recipientPayload: any = {
+                name: targetAccount.accountName,
+                email: shop.contactEmail || `shop_${shopId}@example.com`,
+                type: 'individual',
+                bank_account: {
+                  brand: bankCode || 'scb', // Default to SCB for PromptPay if not specified
+                  number: isPromptPay ? targetAccount.promptPayId : targetAccount.accountNumber,
+                  name: targetAccount.accountName,
+                },
+                description: `Seller (${isPromptPay ? 'PromptPay' : 'Bank'}): ${shop.shopName}`,
+                metadata: {
+                  shopId: shopId,
+                  shopName: shop.shopName,
+                  accountId: targetAccount.id,
+                  paymentMethod: isPromptPay ? 'promptpay' : 'bank_transfer'
+                },
+              }
+
+              const recipient: any = await (omise.recipients as any).create(recipientPayload)
+              
+              console.log('✅ Created new recipient for account:', recipient.id)
+              
+              // Ideally we should update the DB here, but for now just return the ID
+              return {
+                  success: true,
+                  recipientId: recipient.id
+              }
+             } catch (err: any) {
+               console.error('❌ Failed to create recipient for account:', err)
+               // Fallback to legacy check if this fails
+             }
+        }
+      }
+    }
+
+    // 2. Legacy checks (existing code)
     // Check if recipient already exists in shop data
     if ((shop as any).omiseRecipientId) {
       console.log('✅ Using existing recipient:', (shop as any).omiseRecipientId)
