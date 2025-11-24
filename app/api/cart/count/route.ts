@@ -16,11 +16,8 @@ export async function GET(req: Request) {
     const cartQuery = adminDb.collection('cart').where('userId', '==', userId)
     const querySnapshot = await cartQuery.get()
 
-    // Sum up all quantities
-    let totalCount = 0
-    querySnapshot.docs.forEach((doc: any) => {
-      totalCount += doc.data().quantity || 1
-    })
+    // Count number of items (documents), not quantities
+    const totalCount = querySnapshot.size
 
     return NextResponse.json({ count: totalCount })
   } catch (error) {
