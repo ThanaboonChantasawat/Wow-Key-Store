@@ -122,15 +122,22 @@ export function MyOrdersContent() {
 
   useEffect(() => {
     if (user) {
-      fetchOrders()
+      fetchOrders(true)
+
+      // Auto-refresh every 10 seconds to check for status updates
+      const interval = setInterval(() => {
+        fetchOrders(false)
+      }, 10000)
+
+      return () => clearInterval(interval)
     }
   }, [user])
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (showLoading = true) => {
     if (!user) return
 
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       console.log('Fetching orders for user:', user.uid)
       
       const response = await fetch(`/api/orders/user?userId=${user.uid}`)
@@ -144,7 +151,7 @@ export function MyOrdersContent() {
       }
 
       const data = await response.json()
-      console.log('Orders data:', data)
+      // console.log('Orders data:', data)
       
       // Check for duplicates
       const orderIds = data.orders?.map((o: Order) => o.id) || []
@@ -160,42 +167,35 @@ export function MyOrdersContent() {
       setOrders(data.orders || [])
       
       // Debug: Log first order details
-      if (data.orders && data.orders.length > 0) {
+      if (data.orders && data.orders.length > 0 && showLoading) {
         console.log('🔍 First order details:', {
           id: data.orders[0].id?.substring(0, 12),
           status: data.orders[0].status,
           paymentStatus: data.orders[0].paymentStatus,
           shopName: data.orders[0].shopName,
         })
-        
-        // Debug: Log all orders to check for duplicates
-        console.log('🔍 All orders:', data.orders.map((o: Order) => ({
-          id: o.id.substring(0, 12),
-          status: o.status,
-          paymentStatus: o.paymentStatus,
-          createdAt: o.createdAt,
-          type: (o as any).type,
-        })))
       }
       
-      // Check if there are orders waiting for confirmation
-      const pendingConfirmation = (data.orders || []).filter(
-        (order: Order) => order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled'
-      )
-      
-      if (pendingConfirmation.length > 0) {
-        toast({
-          title: "🔔 มีคำสั่งซื้อรอการยืนยัน",
-          description: `คุณมี ${pendingConfirmation.length} คำสั่งซื้อที่ได้รับข้อมูลบัญชีแล้ว กรุณายืนยันรับสินค้า`,
-          variant: "default",
-          duration: 5000,
-        })
+      // Check if there are orders waiting for confirmation (only show toast on initial load)
+      if (showLoading) {
+        const pendingConfirmation = (data.orders || []).filter(
+          (order: Order) => order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled'
+        )
+        
+        if (pendingConfirmation.length > 0) {
+          toast({
+            title: "🔔 มีคำสั่งซื้อรอการยืนยัน",
+            description: `คุณมี ${pendingConfirmation.length} คำสั่งซื้อที่ได้รับข้อมูลบัญชีแล้ว กรุณายืนยันรับสินค้า`,
+            variant: "default",
+            duration: 5000,
+          })
+        }
       }
     } catch (err) {
       console.error('Error fetching orders:', err)
-      setError('ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้')
+      if (showLoading) setError('ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้')
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 

@@ -125,7 +125,6 @@ export function calculatePlatformFee(amount: number): number {
 /**
  * Calculate platform fee based on payment method
  * All payment methods: 3% platform fee (from seller's revenue)
- * But buyer pays surcharge for non-PromptPay methods
  */
 export function calculatePlatformFeeByMethod(
   amount: number,
@@ -137,17 +136,13 @@ export function calculatePlatformFeeByMethod(
 
 /**
  * Calculate payment method surcharge (what buyer pays extra)
- * PromptPay: 0% (no surcharge)
- * Credit Card/Bank: +5% (buyer pays this extra)
+ * Currently NO surcharge for any payment method
  */
 export function calculatePaymentSurcharge(
   amount: number,
   paymentMethod: 'promptpay' | 'card' | 'bank' = 'card'
 ): number {
-  if (paymentMethod === 'promptpay') {
-    return 0 // No surcharge for PromptPay
-  }
-  return Math.round(amount * 0.05) // 5% surcharge for card/bank
+  return 0 // No surcharge
 }
 
 /**

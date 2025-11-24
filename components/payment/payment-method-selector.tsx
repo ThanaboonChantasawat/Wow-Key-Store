@@ -263,16 +263,9 @@ export function PaymentMethodSelector({
             <span className="text-muted-foreground">ยอดรวม</span>
             <span className="text-2xl font-bold">฿{amount.toLocaleString()}</span>
           </div>
-          {paymentMethod === 'promptpay' && (
-            <div className="text-xs text-muted-foreground">
-              ค่าธรรมเนียม: ~฿{Math.round(amount * 0.01 + 5)} (1% + ฿5)
-            </div>
-          )}
-          {paymentMethod === 'card' && (
-            <div className="text-xs text-muted-foreground">
-              ค่าธรรมเนียม: ~฿{Math.round(amount * 0.0365)} (3.65%)
-            </div>
-          )}
+          <div className="text-xs text-muted-foreground">
+            * ราคานี้รวมค่าธรรมเนียมแล้ว
+          </div>
         </div>
 
         {/* Proceed Button */}

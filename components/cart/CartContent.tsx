@@ -80,6 +80,12 @@ export function CartContent() {
             shopId: shopId,
             shopName: "" // Will be filled later
           })
+        } else {
+          // Product not found (deleted?), remove from cart automatically
+          console.log(`Removing orphan cart item: ${itemId}`)
+          if (user) {
+            await removeFromCart(user.uid, itemId)
+          }
         }
       }
 

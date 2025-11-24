@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate fees for each group
     shopGroups.forEach((group) => {
-      // Platform takes 10% fee
+      // Platform takes 3% fee
       group.platformFee = Math.round(group.totalAmount * 0.03)
       group.sellerAmount = group.totalAmount - group.platformFee
     })
