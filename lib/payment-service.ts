@@ -116,10 +116,10 @@ export async function createRefund(
 }
 
 /**
- * Calculate platform fee (10% of transaction)
+ * Calculate platform fee (3% of transaction)
  */
 export function calculatePlatformFee(amount: number): number {
-  return Math.round(amount * 0.1) // 10% fee
+  return Math.round(amount * 0.03) // 3% fee
 }
 
 /**
