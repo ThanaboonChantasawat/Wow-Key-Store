@@ -103,7 +103,7 @@ async function getTopShops() {
     
     // Sort by total sales and limit
     shops.sort((a, b) => (b.totalSales || 0) - (a.totalSales || 0))
-    return shops.slice(0, 5)
+    return shops.slice(0, 4)
   } catch (error) {
     console.error('Error fetching shops:', error)
     return []

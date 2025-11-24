@@ -17,7 +17,7 @@ export function TopShops() {
   const loadTopShops = async () => {
     try {
       setLoading(true)
-      const shops = await getTopShopsBySales(5); // Get top 5 shops
+      const shops = await getTopShopsBySales(4); // Get top 4 shops
       console.log("Top shops loaded:", shops)
       console.log("Shop logos:", shops.map((s: Shop) => ({ name: s.shopName, logo: s.logoUrl })))
       setTopShops(shops)
@@ -40,8 +40,8 @@ export function TopShops() {
             <div className="h-8 w-56 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg mx-auto mb-2"></div>
             <div className="h-4 w-40 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded mx-auto"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl shadow-md p-6 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"></div>
@@ -85,7 +85,7 @@ export function TopShops() {
         </div>
 
         {/* Top Shops Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {topShops.map((shop, index) => (
             <Link
               key={shop.shopId}
