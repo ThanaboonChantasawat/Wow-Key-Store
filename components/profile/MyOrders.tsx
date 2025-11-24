@@ -120,19 +120,6 @@ export function MyOrdersContent() {
   
 
 
-  useEffect(() => {
-    if (user) {
-      fetchOrders(true)
-
-      // Auto-refresh every 10 seconds to check for status updates
-      const interval = setInterval(() => {
-        fetchOrders(false)
-      }, 10000)
-
-      return () => clearInterval(interval)
-    }
-  }, [user])
-
   const fetchOrders = async (showLoading = true) => {
     if (!user) return
 
@@ -198,6 +185,19 @@ export function MyOrdersContent() {
       if (showLoading) setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders(true)
+
+      // Auto-refresh every 10 seconds to check for status updates
+      const interval = setInterval(() => {
+        fetchOrders(false)
+      }, 10000)
+
+      return () => clearInterval(interval)
+    }
+  }, [user])
 
   // Filter and search logic
   const filteredOrders = useMemo(() => {

@@ -507,7 +507,7 @@ export function CartContent() {
             </div>
 
             <Button 
-              className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-medium py-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-medium py-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               onClick={handleCheckout}
               disabled={selectedItems.length === 0}
             >
