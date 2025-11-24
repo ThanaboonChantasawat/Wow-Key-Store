@@ -4,7 +4,7 @@ import type { Shop } from "./shop-types";
 
 export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
   try {
-    const response = await fetch(`/api/shops/get-by-owner/${ownerId}`);
+    const response = await fetch(`/api/shops/owner/${ownerId}`);
     if (response.ok) {
       const data = await response.json();
       return data.shop || data; // Handle both formats

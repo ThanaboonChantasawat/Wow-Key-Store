@@ -73,7 +73,7 @@ export default function SellerProfile() {
           }
         } else {
           // Fetch by ownerId
-          const shopRes = await fetch(`/api/shops/get-by-owner/${id}`);
+          const shopRes = await fetch(`/api/shops/owner/${id}`);
           if (shopRes.ok) {
             const data = await shopRes.json();
             shopData = data.shop || data;
