@@ -22,7 +22,6 @@ import { useCart } from "../cart-context";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { NotificationBell } from "./notification-bell";
-import { VerificationBanner } from "./verification-banner";
 
 const navLinks = [
   { href: "/", label: "หน้าแรก" },
@@ -96,7 +95,6 @@ function NavbarContent() {
 
   return (
     <>
-      <VerificationBanner />
       {/* Header */}
       <header className="bg-[#ff9800] print:hidden">
         <div className="px-4 md:px-6">
@@ -105,7 +103,7 @@ function NavbarContent() {
             {/* Left Side: Logo */}
             <div className="flex items-center">
               {/* Logo */}
-              <Link href={"/"} className="relative h-16 md:h-20 w-32 md:w-40 flex-shrink-0">
+              <Link href={"/"} className="relative h-52 md:h-64 w-52 md:w-64 flex-shrink-0">
                 <Image
                   src={"/images/logo.png"}
                   alt="wowkeystore logo"
