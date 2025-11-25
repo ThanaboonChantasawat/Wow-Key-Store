@@ -7,7 +7,7 @@ import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, XCircle, Loader2, Mail, KeyRound, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Mail, KeyRound, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AuthActionPage() {
@@ -22,6 +22,8 @@ export default function AuthActionPage() {
   // Password Reset State
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetSuccess, setIsResetSuccess] = useState(false);
   const effectRan = useRef(false);
@@ -163,7 +165,7 @@ export default function AuthActionPage() {
 
     if (mode === 'resetPassword' && !isResetSuccess) {
       return (
-        <form onSubmit={handleResetPassword} className="space-y-4">
+        <form onSubmit={handleResetPassword} className="space-y-4" autoComplete="off">
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <KeyRound className="w-8 h-8 text-[#ff9800]" />
@@ -172,25 +174,43 @@ export default function AuthActionPage() {
             <p className="text-sm text-gray-500">สำหรับบัญชี: {resetEmail}</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <Input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="รหัสผ่านใหม่"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
+              className="pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <Input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="ยืนยันรหัสผ่านใหม่"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
+              className="pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
 
           <Button type="submit" className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white">

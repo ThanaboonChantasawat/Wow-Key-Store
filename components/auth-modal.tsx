@@ -354,7 +354,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
                   <button 
                     type="button" 
                     onClick={() => handleTabChange('forgot-password')}
-                    className="text-sm text-[#ff9800] hover:underline"
+                    className="text-sm text-[#ff9800] hover:underline cursor-pointer"
                   >
                     ลืมรหัสผ่าน?
                   </button>

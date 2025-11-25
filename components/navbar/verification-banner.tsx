@@ -5,6 +5,7 @@ import { sendEmailVerification } from "firebase/auth";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { usePathname } from "next/navigation";
+import { ToastAction } from "@/components/ui/toast";
 
 export function VerificationBanner() {
   const { user, isInitialized } = useAuth();

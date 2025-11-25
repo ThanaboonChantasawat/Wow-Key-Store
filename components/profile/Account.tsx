@@ -418,15 +418,15 @@ export function AccountContent() {
   // แสดง "กรุณาเข้าสู่ระบบ" เฉพาะเมื่อ auth initialized แล้วและไม่มี user
   if (isInitialized && !user) {
     return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-lg p-12 text-center border border-orange-100">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#ff9800] to-[#f57c00] rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="h-full flex items-center justify-center min-h-[50vh]">
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-lg p-12 text-center border border-orange-100 max-w-md w-full mx-auto">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#ff9800] to-[#f57c00] rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
             <AlertCircle className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-[#292d32] mb-4">
             กรุณาเข้าสู่ระบบ
           </h2>
-          <p className="text-gray-600 text-lg mb-3 flex items-center gap-2 flex-wrap">
+          <p className="text-gray-600 text-lg">
             คุณต้องเข้าสู่ระบบเพื่อดูข้อมูลบัญชี
           </p>
         </div>
