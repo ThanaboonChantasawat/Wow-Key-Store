@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { 
   updateProfile, 
   updatePassword, 
+  updateEmail,
   deleteUser, 
   reauthenticateWithCredential,
   EmailAuthProvider,
@@ -201,14 +202,8 @@ export function AccountContent() {
       setLoading(true);
       setMessage(null);
 
-      // Validate email for social login users
-      if (!isEmailPasswordProvider) {
-        if (!email || email.trim() === '') {
-          setMessage({ type: "error", text: "กรุณากรอกอีเมล" });
-          setLoading(false);
-          return;
-        }
-        
+      // Validate email for social login users AND email/password users if they change it
+      if (email && email.trim() !== '') {
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
@@ -226,6 +221,15 @@ export function AccountContent() {
             return;
           }
         }
+      } else if (!isEmailPasswordProvider) {
+         // Social login users must provide email if they are editing it (and it was empty)
+         // But wait, if they clear it? Maybe allow clearing? 
+         // The original code required it.
+         if (!email || email.trim() === '') {
+            setMessage({ type: "error", text: "กรุณากรอกอีเมล" });
+            setLoading(false);
+            return;
+         }
       }
 
       // Update Firebase Auth profile (displayName and photoURL)
@@ -236,10 +240,14 @@ export function AccountContent() {
         });
       }
 
-      // Check if email changed (for social login users)
-      // Note: We only update Firestore, not Firebase Auth email for social login
-      // because Firebase requires email verification before changing it
-      const emailChanged = !isEmailPasswordProvider && email && email !== (userProfile?.email || user.email);
+      // Check if email changed
+      const emailChanged = email && email !== (userProfile?.email || user.email);
+
+      // If email changed for Email/Password provider, update Auth email
+      if (emailChanged && isEmailPasswordProvider) {
+        await updateEmail(user, email);
+        await sendEmailVerification(user);
+      }
 
       // Update Firestore profile
       await updateUserProfile(user.uid, {
@@ -291,7 +299,11 @@ export function AccountContent() {
 
       if (error instanceof Error) {
         if (error.message.includes("auth/requires-recent-login")) {
-          errorMessage = "กรุณาเข้าสู่ระบบใหม่เพื่อเปลี่ยนรหัสผ่าน";
+          errorMessage = "กรุณาเข้าสู่ระบบใหม่เพื่อเปลี่ยนรหัสผ่านหรืออีเมล";
+        } else if (error.message.includes("auth/email-already-in-use")) {
+          errorMessage = "อีเมลนี้ถูกใช้งานแล้วในระบบ (Auth)";
+        } else if (error.message.includes("auth/invalid-email")) {
+          errorMessage = "รูปแบบอีเมลไม่ถูกต้อง";
         }
       }
 
@@ -695,7 +707,7 @@ export function AccountContent() {
                 <Mail className="w-4 h-4 text-[#ff9800]" />
                 อีเมล
               </label>
-              {isEditing && !isEmailPasswordProvider ? (
+              {isEditing ? (
                 <div className="space-y-2">
                   <Input
                     type="email"
@@ -705,10 +717,16 @@ export function AccountContent() {
                     className="max-w-md border-2 focus:border-[#ff9800] transition-colors"
                     disabled={loading}
                   />
-                  <p className="text-xs text-gray-500">
-                    💡 คุณ login ด้วย {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} 
-                    {' '}สามารถเพิ่มอีเมลสำหรับการติดต่อได้
-                  </p>
+                  {!isEmailPasswordProvider ? (
+                    <p className="text-xs text-gray-500">
+                      💡 คุณ login ด้วย {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} 
+                      {' '}สามารถเพิ่มอีเมลสำหรับการติดต่อได้
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ การเปลี่ยนอีเมลจะต้องยืนยันอีเมลใหม่อีกครั้ง
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">

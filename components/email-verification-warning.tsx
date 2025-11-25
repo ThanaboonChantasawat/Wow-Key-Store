@@ -106,11 +106,12 @@ export function EmailVerificationWarning({
                   )}
                 </Button>
                 <Button
-                  onClick={() => router.push("/profile")}
+                  onClick={() => router.push("/profile?tab=account")}
                   variant="outline"
+                  className="border-orange-300 text-orange-800 hover:bg-orange-100"
                   size="sm"
                 >
-                  ไปหน้า Profile
+                  ✏️ เปลี่ยนอีเมล
                 </Button>
               </>
             ) : null}
