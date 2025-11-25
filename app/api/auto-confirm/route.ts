@@ -33,5 +33,5 @@ export async function POST(request: NextRequest) {
 }
 
 // สำหรับ Vercel Cron Jobs
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
