@@ -166,6 +166,10 @@ export default function AuthActionPage() {
     if (mode === 'resetPassword' && !isResetSuccess) {
       return (
         <form onSubmit={handleResetPassword} className="space-y-4" autoComplete="off">
+          {/* Dummy inputs to prevent browser autofill */}
+          <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+          <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <KeyRound className="w-8 h-8 text-[#ff9800]" />
@@ -176,13 +180,15 @@ export default function AuthActionPage() {
 
           <div className="space-y-2 relative">
             <Input
+              id="new-password-field"
+              name="new-password-field"
               type={showPassword ? "text" : "password"}
               placeholder="รหัสผ่านใหม่"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={6}
-              autoComplete="new-password"
+              autoComplete="off"
               className="pr-10"
             />
             <button
@@ -195,13 +201,15 @@ export default function AuthActionPage() {
           </div>
           <div className="space-y-2 relative">
             <Input
+              id="confirm-password-field"
+              name="confirm-password-field"
               type={showConfirmPassword ? "text" : "password"}
               placeholder="ยืนยันรหัสผ่านใหม่"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
-              autoComplete="new-password"
+              autoComplete="off"
               className="pr-10"
             />
             <button
@@ -242,7 +250,7 @@ export default function AuthActionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-160px)] bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-t-4 border-t-[#ff9800]">
         <CardContent className="pt-6">
           {renderContent()}
