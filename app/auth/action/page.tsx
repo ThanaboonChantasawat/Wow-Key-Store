@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { auth } from '@/components/firebase-config';
 import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
@@ -24,6 +24,7 @@ export default function AuthActionPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [isResetSuccess, setIsResetSuccess] = useState(false);
+  const effectRan = useRef(false);
 
   useEffect(() => {
     if (!actionCode) {
@@ -32,6 +33,10 @@ export default function AuthActionPage() {
       return;
     }
 
+    // Prevent double execution (React Strict Mode or fast re-renders)
+    if (effectRan.current) return;
+    effectRan.current = true;
+
     // Skip effect if we just successfully reset password
     if (isResetSuccess) return;
 
@@ -39,9 +44,22 @@ export default function AuthActionPage() {
       try {
         switch (mode) {
           case 'verifyEmail':
-            await applyActionCode(auth, actionCode);
-            setStatus('success');
-            setMessage('ยืนยันอีเมลสำเร็จ! คุณสามารถใช้งานฟีเจอร์ทั้งหมดได้แล้ว');
+            try {
+              await applyActionCode(auth, actionCode);
+              setStatus('success');
+              setMessage('ยืนยันอีเมลสำเร็จ! คุณสามารถใช้งานฟีเจอร์ทั้งหมดได้แล้ว');
+            } catch (error: any) {
+              // If code is invalid, check if user is already verified
+              if (error.code === 'auth/invalid-action-code') {
+                await auth.currentUser?.reload();
+                if (auth.currentUser?.emailVerified) {
+                  setStatus('success');
+                  setMessage('อีเมลของคุณได้รับการยืนยันเรียบร้อยแล้ว');
+                  return;
+                }
+              }
+              throw error;
+            }
             break;
             
           case 'resetPassword':
