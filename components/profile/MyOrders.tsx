@@ -208,19 +208,14 @@ export function MyOrdersContent() {
     }
   }, [user])
 
-  // Filter and search logic
-  const filteredOrders = useMemo(() => {
-    let filtered = orders
-
-    // Filter out duplicate cancelled orders
-    // A cancelled order is considered a duplicate if there is a successful order (processing/completed)
-    // with the same items created within 30 minutes
+  // Cleaned orders (remove duplicates)
+  const cleanedOrders = useMemo(() => {
     try {
       const successfulOrders = orders.filter((o: Order) => 
         o.status === 'processing' || o.status === 'completed'
       )
 
-      filtered = filtered.filter((order: Order) => {
+      return orders.filter((order: Order) => {
         if (order.status !== 'cancelled') return true
 
         // Check if this cancelled order is a duplicate of a successful one
@@ -243,7 +238,13 @@ export function MyOrdersContent() {
       })
     } catch (filterError) {
       console.error('Error filtering duplicate orders:', filterError)
+      return orders
     }
+  }, [orders])
+
+  // Filter and search logic
+  const filteredOrders = useMemo(() => {
+    let filtered = cleanedOrders
 
     // Filter by status
     if (statusFilter !== 'all') {
@@ -273,7 +274,7 @@ export function MyOrdersContent() {
     return filtered.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
-  }, [orders, statusFilter, searchQuery])
+  }, [cleanedOrders, statusFilter, searchQuery])
 
   // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
@@ -291,13 +292,13 @@ export function MyOrdersContent() {
   // Status counts for badges
   const statusCounts = useMemo(() => {
     return {
-      all: orders.length,
-      processing: orders.filter(o => o.status === 'processing').length,
-      completed: orders.filter(o => o.status === 'completed').length,
-      cancelled: orders.filter(o => o.status === 'cancelled').length,
-      waitingConfirmation: orders.filter(o => o.gameCodeDeliveredAt && !o.buyerConfirmed && o.status !== 'cancelled').length,
+      all: cleanedOrders.length,
+      processing: cleanedOrders.filter(o => o.status === 'processing').length,
+      completed: cleanedOrders.filter(o => o.status === 'completed').length,
+      cancelled: cleanedOrders.filter(o => o.status === 'cancelled').length,
+      waitingConfirmation: cleanedOrders.filter(o => o.gameCodeDeliveredAt && !o.buyerConfirmed && o.status !== 'cancelled').length,
     }
-  }, [orders])
+  }, [cleanedOrders])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
