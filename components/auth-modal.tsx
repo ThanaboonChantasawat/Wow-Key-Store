@@ -230,8 +230,27 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       const result = await signInWithPopup(auth, googleProvider)
       const user = result.user
       
+      // ✅ ตรวจสอบว่า email นี้เคยสมัครด้วย Email/Password หรือไม่
+      if (user.email) {
+        const { exists, providers } = await checkEmailStatus(user.email)
+        
+        if (exists && providers.includes('password') && !providers.includes('google.com')) {
+          // กรณี: มีบัญชีด้วย Email/Password แล้ว แต่ยังไม่ได้ Link Google
+          setError(
+            `อีเมล ${user.email} ถูกใช้สมัครด้วยรหัสผ่านแล้ว\n` +
+            'กรุณาเข้าสู่ระบบด้วยรหัสผ่านแทน หรือติดต่อแอดมินเพื่อเชื่อมโยงบัญชี'
+          )
+          
+          // ลบ Google User ที่เพิ่งสร้าง (ถ้ามี)
+          await user.delete().catch(() => {})
+          
+          setLoading(false)
+          return
+        }
+      }
+      
       // Check if user profile exists, if not create it
-  const { getUserProfile, updateLastLogin } = await import('@/lib/user-client')
+      const { getUserProfile, updateLastLogin } = await import('@/lib/user-client')
       const existingProfile = await getUserProfile(user.uid)
       
       if (!existingProfile) {
@@ -248,8 +267,15 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       }
       
       handleClose()
-    } catch {
-      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
+    } catch (err: any) {
+      // จัดการ error ต่าง ๆ
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('ยกเลิกการเข้าสู่ระบบ')
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setError('อีเมลนี้ถูกใช้สมัครด้วยวิธีอื่นแล้ว กรุณาใช้วิธีเดิมในการเข้าสู่ระบบ')
+      } else {
+        setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google')
+      }
     } finally {
       setLoading(false)
     }

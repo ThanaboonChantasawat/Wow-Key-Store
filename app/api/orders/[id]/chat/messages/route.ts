@@ -1,14 +1,15 @@
-// API Route: GET /api/orders/[orderId]/chat
+// API Route: GET /api/orders/[id]/chat/messages
 // Get messages for an order
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrderMessages } from '@/lib/order-chat-service'
-import { verifyIdToken, adminDb } from '@/lib/firebase-admin-config'
+import { adminAuth, adminDb } from '@/lib/firebase-admin-config'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization')
@@ -20,11 +21,11 @@ export async function GET(
     }
 
     const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await verifyIdToken(token)
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const userId = decodedToken.uid
 
     // ตรวจสอบ role
-    const orderDoc = await adminDb.collection('orders').doc(params.orderId).get()
+    const orderDoc = await adminDb.collection('orders').doc(params.id).get()
     const orderData = orderDoc.data()
 
     let userRole: 'buyer' | 'seller' = 'buyer'
@@ -38,7 +39,7 @@ export async function GET(
     }
 
     // Get messages
-    const result = await getOrderMessages(params.orderId, userId, userRole)
+    const result = await getOrderMessages(params.id, userId, userRole)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 })
@@ -47,7 +48,7 @@ export async function GET(
     return NextResponse.json(result)
 
   } catch (error: any) {
-    console.error('Error in GET /api/orders/[orderId]/chat:', error)
+    console.error('Error in GET /api/orders/[id]/chat/messages:', error)
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

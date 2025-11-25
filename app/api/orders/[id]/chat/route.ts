@@ -1,14 +1,15 @@
-// API Route: POST /api/orders/[orderId]/chat
+// API Route: POST /api/orders/[id]/chat
 // Send a message in order chat
 
 import { NextRequest, NextResponse } from 'next/server'
 import { sendOrderMessage } from '@/lib/order-chat-service'
-import { verifyIdToken, adminDb } from '@/lib/firebase-admin-config'
+import { adminAuth, adminDb } from '@/lib/firebase-admin-config'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization')
@@ -20,7 +21,7 @@ export async function POST(
     }
 
     const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await verifyIdToken(token)
+    const decodedToken = await adminAuth.verifyIdToken(token)
     const userId = decodedToken.uid
 
     // Parse request body
@@ -35,7 +36,7 @@ export async function POST(
     }
 
     // ตรวจสอบ role
-    const orderDoc = await adminDb.collection('orders').doc(params.orderId).get()
+    const orderDoc = await adminDb.collection('orders').doc(params.id).get()
     const orderData = orderDoc.data()
 
     let userRole: 'buyer' | 'seller' = 'buyer'
@@ -50,7 +51,7 @@ export async function POST(
 
     // Send message
     const result = await sendOrderMessage(userId, userRole, {
-      orderId: params.orderId,
+      orderId: params.id,
       message: message.trim(),
       attachments: attachments || []
     })
@@ -62,7 +63,7 @@ export async function POST(
     return NextResponse.json(result)
 
   } catch (error: any) {
-    console.error('Error in POST /api/orders/[orderId]/chat:', error)
+    console.error('Error in POST /api/orders/[id]/chat:', error)
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

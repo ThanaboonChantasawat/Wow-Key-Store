@@ -85,13 +85,13 @@ export async function createDispute(
 
     // ส่ง Notification ให้ผู้ขาย
     if (dispute.sellerId) {
-      await createNotification({
-        userId: dispute.sellerId,
-        type: 'report',
-        title: 'มีการรายงานปัญหาจากผู้ซื้อ',
-        message: `คำสั่งซื้อ ${dispute.orderNumber} ถูกรายงานปัญหา: ${data.subject}`,
-        link: `/seller/disputes/${disputeRef.id}`
-      })
+      await createNotification(
+        dispute.sellerId,
+        'report',
+        'มีการรายงานปัญหาจากผู้ซื้อ',
+        `คำสั่งซื้อ ${dispute.orderNumber} ถูกรายงานปัญหา: ${data.subject}`,
+        `/seller/disputes/${disputeRef.id}`
+      )
     }
 
     // ส่ง Notification ให้ Admin
@@ -101,13 +101,13 @@ export async function createDispute(
       .get()
 
     for (const adminDoc of adminsSnapshot.docs) {
-      await createNotification({
-        userId: adminDoc.id,
-        type: 'report',
-        title: 'มีการรายงานปัญหาใหม่',
-        message: `คำสั่งซื้อ ${dispute.orderNumber}: ${data.subject}`,
-        link: `/admin/disputes/${disputeRef.id}`
-      })
+      await createNotification(
+        adminDoc.id,
+        'report',
+        'มีการรายงานปัญหาใหม่',
+        `คำสั่งซื้อ ${dispute.orderNumber}: ${data.subject}`,
+        `/admin/disputes/${disputeRef.id}`
+      )
     }
 
     console.log(`✅ Created dispute ${disputeRef.id} for order ${data.orderId}`)
@@ -211,23 +211,23 @@ export async function resolveDispute(
 
     // ส่ง Notification
     if (disputeData?.userId) {
-      await createNotification({
-        userId: disputeData.userId,
-        type: 'info',
-        title: 'ปัญหาของคุณได้รับการแก้ไข',
-        message: `คำสั่งซื้อ ${disputeData.orderNumber}: ${adminResponse}`,
-        link: `/profile?tab=orders`
-      })
+      await createNotification(
+        disputeData.userId,
+        'info',
+        'ปัญหาของคุณได้รับการแก้ไข',
+        `คำสั่งซื้อ ${disputeData.orderNumber}: ${adminResponse}`,
+        `/profile?tab=orders`
+      )
     }
 
     if (disputeData?.sellerId) {
-      await createNotification({
-        userId: disputeData.sellerId,
-        type: 'info',
-        title: 'ปัญหาได้รับการแก้ไขแล้ว',
-        message: `คำสั่งซื้อ ${disputeData.orderNumber}: ${adminResponse}`,
-        link: `/seller/orders`
-      })
+      await createNotification(
+        disputeData.sellerId,
+        'info',
+        'ปัญหาได้รับการแก้ไขแล้ว',
+        `คำสั่งซื้อ ${disputeData.orderNumber}: ${adminResponse}`,
+        `/seller/orders`
+      )
     }
 
     return { success: true }

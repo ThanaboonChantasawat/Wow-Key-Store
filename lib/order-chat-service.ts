@@ -116,13 +116,13 @@ export async function sendOrderMessage(
       orderData.userId
 
     if (recipientId) {
-      await createNotification({
-        userId: recipientId,
-        type: 'info',
-        title: 'ข้อความใหม่ในคำสั่งซื้อ',
-        message: `${userData?.displayName || 'ผู้ใช้'}: ${data.message.substring(0, 50)}${data.message.length > 50 ? '...' : ''}`,
-        link: `/orders/${data.orderId}/chat`
-      })
+      await createNotification(
+        recipientId,
+        'info',
+        'ข้อความใหม่ในคำสั่งซื้อ',
+        `${userData?.displayName || 'ผู้ใช้'}: ${data.message.substring(0, 50)}${data.message.length > 50 ? '...' : ''}`,
+        `/orders/${data.orderId}/chat`
+      )
     }
 
     console.log(`✅ Sent message in order ${data.orderId}`)

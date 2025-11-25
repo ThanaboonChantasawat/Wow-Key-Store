@@ -84,25 +84,25 @@ export async function autoConfirmOrders(): Promise<{
             const shopData = shopDoc.data()
             
             if (shopData?.ownerId) {
-              await createNotification({
-                userId: shopData.ownerId,
-                type: 'order_confirmed',
-                title: 'ยืนยันคำสั่งซื้ออัตโนมัติ',
-                message: `คำสั่งซื้อ #${orderDoc.id.slice(-8)} ได้รับการยืนยันอัตโนมัติแล้ว เนื่องจากเกิน ${AUTO_CONFIRM_DAYS} วันโดยไม่มีปัญหา`,
-                link: `/seller/orders/${orderDoc.id}`
-              })
+              await createNotification(
+                shopData.ownerId,
+                'order_confirmed',
+                'ยืนยันคำสั่งซื้ออัตโนมัติ',
+                `คำสั่งซื้อ #${orderDoc.id.slice(-8)} ได้รับการยืนยันอัตโนมัติแล้ว เนื่องจากเกิน ${AUTO_CONFIRM_DAYS} วันโดยไม่มีปัญหา`,
+                `/seller/orders/${orderDoc.id}`
+              )
             }
           }
 
           // ส่ง Notification ให้ผู้ซื้อ
           if (orderData.userId) {
-            await createNotification({
-              userId: orderData.userId,
-              type: 'order_confirmed',
-              title: 'ยืนยันคำสั่งซื้ออัตโนมัติ',
-              message: `คำสั่งซื้อ #${orderDoc.id.slice(-8)} ได้รับการยืนยันอัตโนมัติเนื่องจากไม่มีการรายงานปัญหาภายใน ${AUTO_CONFIRM_DAYS} วัน`,
-              link: `/profile?tab=orders`
-            })
+            await createNotification(
+              orderData.userId,
+              'order_confirmed',
+              'ยืนยันคำสั่งซื้ออัตโนมัติ',
+              `คำสั่งซื้อ #${orderDoc.id.slice(-8)} ได้รับการยืนยันอัตโนมัติเนื่องจากไม่มีการรายงานปัญหาภายใน ${AUTO_CONFIRM_DAYS} วัน`,
+              `/profile?tab=orders`
+            )
           }
 
         } catch (error: any) {
