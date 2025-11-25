@@ -228,9 +228,9 @@ export default function SellerEarnings() {
               <h3 className="font-semibold text-green-900 mb-2">💰 โครงสร้างรายได้ของคุณ</h3>
               <div className="space-y-3 text-sm">
                 <div className="bg-white rounded-lg p-3 border border-green-200">
-                  <p className="font-semibold text-green-800 mb-2">✨ คุณได้รับ <strong className="text-green-700">97%</strong> จากยอดขายทุกช่องทาง!</p>
+                  <p className="font-semibold text-green-800 mb-2">✨ คุณได้รับ <strong className="text-green-700">95%</strong> จากยอดขายทุกช่องทาง!</p>
                   <p className="text-green-700">
-                    แพลตฟอร์มหักเพียง <strong>3%</strong> สำหรับค่าใช้จ่ายระบบ
+                    แพลตฟอร์มหักเพียง <strong>5%</strong> สำหรับค่าใช้จ่ายระบบ
                   </p>
                 </div>
                 

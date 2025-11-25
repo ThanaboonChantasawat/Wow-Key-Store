@@ -305,3 +305,45 @@ export async function anonymizeUserAccount(userId: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Get user profile by email
+ */
+export async function getUserByEmail(email: string): Promise<UserProfile | null> {
+  try {
+    const usersRef = adminDb.collection("users");
+    const snapshot = await usersRef.where("email", "==", email).limit(1).get();
+    
+    if (!snapshot.empty) {
+      const userDoc = snapshot.docs[0];
+      const data = userDoc.data();
+      
+      return {
+        displayName: data.displayName,
+        email: data.email,
+        photoURL: data.photoURL,
+        phoneNumber: data.phoneNumber || null,
+        role: data.role || 'buyer',
+        isSeller: data.isSeller || false,
+        isVerified: data.isVerified || false,
+        emailVerified: data.emailVerified || false,
+        accountStatus: data.accountStatus || 'active',
+        shopId: data.shopId || null,
+        lastLoginAt: data.lastLoginAt?.toDate() || new Date(),
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        violations: data.violations || 0,
+        lastViolation: data.lastViolation?.toDate() || undefined,
+        banned: data.banned || false,
+        bannedUntil: data.bannedUntil?.toDate() || undefined,
+        bannedReason: data.bannedReason || undefined,
+        bannedBy: data.bannedBy || undefined,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error getting user by email:", error);
+    throw error;
+  }
+}

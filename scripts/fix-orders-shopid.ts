@@ -38,9 +38,9 @@ async function fixOrdersShopId() {
         }
 
         if (foundShopId) {
-          // Calculate sellerAmount (97% of total after 3% platform fee)
+          // Calculate sellerAmount (95% of total after 5% platform fee)
           const totalAmount = Number(order.totalAmount) || 0
-          const platformFee = totalAmount * 0.03
+          const platformFee = totalAmount * 0.05
           const sellerAmount = totalAmount - platformFee
 
           const updateData: any = {

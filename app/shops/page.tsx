@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect, useMemo } from "react"
-import { Store, Star, Package, ShoppingBag, Search, TrendingUp } from "lucide-react"
+import { Store, Star, Package, ShoppingBag, Search, TrendingUp, Heart, DollarSign, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
+import { useAuth } from "@/components/auth-context"
+import { addToFavorites, removeFromFavorites, getUserFavorites } from "@/lib/favorites-client"
+import { useToast } from "@/hooks/use-toast"
+import { useAuthModal } from "@/components/use-auth-modal"
 
 interface Shop {
   shopId: string
@@ -27,6 +31,64 @@ export default function ShopsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<'rating' | 'sales' | 'products' | 'newest'>('rating')
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const { openLogin } = useAuthModal()
+
+  useEffect(() => {
+    if (user) {
+      getUserFavorites(user.uid).then(favs => {
+        setFavorites(new Set(favs))
+      })
+    } else {
+      setFavorites(new Set())
+    }
+  }, [user])
+
+  const handleImageError = (shopId: string) => {
+    console.error('Failed to load shop image:', shopId)
+    setImageErrors(prev => new Set(prev).add(shopId))
+  }
+
+  const toggleFavorite = async (e: React.MouseEvent, shopId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      openLogin()
+      return
+    }
+
+    try {
+      if (favorites.has(shopId)) {
+        await removeFromFavorites(user.uid, shopId)
+        setFavorites(prev => {
+          const next = new Set(prev)
+          next.delete(shopId)
+          return next
+        })
+        toast({
+          title: "ลบจากรายการโปรดแล้ว",
+          description: "ร้านค้าถูกลบออกจากรายการโปรดของคุณแล้ว",
+        })
+      } else {
+        await addToFavorites(user.uid, shopId, 'shop')
+        setFavorites(prev => new Set(prev).add(shopId))
+        toast({
+          title: "เพิ่มในรายการโปรดแล้ว",
+          description: "ร้านค้าถูกเพิ่มในรายการโปรดของคุณแล้ว",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถทำรายการได้ในขณะนี้",
+        variant: "destructive",
+      })
+    }
+  }
 
   useEffect(() => {
     async function fetchShops() {
@@ -81,6 +143,29 @@ export default function ShopsPage() {
 
     return result
   }, [shops, searchQuery, sortBy])
+
+  // Calculate popular shops independently of sorting
+  const popularShops = useMemo(() => {
+    let result = [...shops]
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(shop => 
+        shop.shopName.toLowerCase().includes(query) ||
+        shop.description?.toLowerCase().includes(query)
+      )
+    }
+
+    // Always sort by rating and sales for popular section
+    return result
+      .sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating
+        return b.totalSales - a.totalSales
+      })
+      .filter(shop => shop.rating >= 4.5 || shop.totalSales >= 50)
+      .slice(0, 3)
+  }, [shops, searchQuery])
 
   if (loading) {
     return (
@@ -138,8 +223,8 @@ export default function ShopsPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-12">
-        {filteredAndSortedShops.length === 0 ? (
-          /* Empty State */
+        {shops.length === 0 ? (
+          /* Empty State - No shops in system */
           <Card className="border-2 border-dashed">
             <CardContent className="p-12 text-center">
               <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -183,160 +268,206 @@ export default function ShopsPage() {
               </select>
             </div>
 
-            {/* Top Shops Section */}
-            {filteredAndSortedShops.slice(0, 3).some(shop => shop.rating >= 4.5 || shop.totalSales >= 50) && (
-              <div className="mb-12">
-                <div className="flex items-center gap-2 mb-6">
-                  <TrendingUp className="w-6 h-6 text-[#ff9800]" />
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    ร้านค้ายอดนิยม
+            {filteredAndSortedShops.length === 0 ? (
+              /* Search Empty State */
+              <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
+                <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  ไม่พบร้านค้าที่ค้นหา
+                </h3>
+                <p className="text-gray-600">
+                  ลองใช้คำค้นหาอื่น หรือดูร้านค้าทั้งหมด
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => setSearchQuery('')}
+                >
+                  ล้างคำค้นหา
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Top Shops Section */}
+                {popularShops.length > 0 && (
+                  <div className="mb-12">
+                    <div className="flex items-center gap-2 mb-6">
+                      <TrendingUp className="w-6 h-6 text-[#ff9800]" />
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        ร้านค้ายอดนิยม
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                      {popularShops.map((shop, index) => (
+                          <div key={shop.shopId} className="relative group">
+                            <Link href={`/sellerprofile/${shop.ownerId}`}>
+                              <Card className="group hover:shadow-2xl transition-all duration-300 border-2 border-[#ff9800]/20 hover:border-[#ff9800] relative overflow-hidden">
+                                {/* Badge */}
+                                <div className="absolute top-4 left-4 z-10">
+                                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-white" />
+                                    TOP {index + 1}
+                                  </div>
+                                </div>
+                                
+                                <CardContent className="p-6">
+                                  {/* Logo */}
+                                  <div className="relative w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-[#ff9800] group-hover:scale-110 transition-transform">
+                                    <Image
+                                      src={shop.logoUrl || "/landscape-placeholder-svgrepo-com.svg"}
+                                      alt={shop.shopName}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+
+                                  {/* Shop Info */}
+                                  <div className="text-center">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#ff9800] transition-colors">
+                                      {shop.shopName}
+                                    </h3>
+                                    
+                                    {/* Rating */}
+                                    <div className="flex items-center justify-center gap-1 mb-3">
+                                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                      <span className="font-bold text-lg">{shop.rating.toFixed(1)}</span>
+                                      <span className="text-gray-500 text-sm">({shop.totalSales} ขาย)</span>
+                                    </div>
+
+                                    {/* Description */}
+                                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                                      {shop.description || "ร้านค้าคุณภาพ พร้อมให้บริการ"}
+                                    </p>
+
+                                    {/* Stats */}
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      <div className="bg-orange-50 rounded-lg p-2">
+                                        <Package className="w-4 h-4 text-[#ff9800] mx-auto mb-1" />
+                                        <div className="font-bold text-gray-900">{shop.totalProducts}</div>
+                                        <div className="text-gray-600 text-xs">สินค้า</div>
+                                      </div>
+                                      <div className="bg-green-50 rounded-lg p-2">
+                                        <ShoppingBag className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                                        <div className="font-bold text-gray-900">{shop.totalSales}</div>
+                                        <div className="text-gray-600 text-xs">ขายแล้ว</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </Link>
+                            
+                            {/* Favorite Button */}
+                            <button
+                              onClick={(e) => toggleFavorite(e, shop.shopId)}
+                              className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-lg transition-all duration-200 group/fav cursor-pointer"
+                            >
+                              <Heart 
+                                className={`w-5 h-5 transition-colors ${
+                                  favorites.has(shop.shopId) 
+                                    ? "fill-red-500 text-red-500" 
+                                    : "text-gray-400 group-hover/fav:text-red-500"
+                                }`} 
+                              />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* All Shops Grid */}
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    ร้านค้าทั้งหมด ({filteredAndSortedShops.length})
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  {filteredAndSortedShops
-                    .filter(shop => shop.rating >= 4.5 || shop.totalSales >= 50)
-                    .slice(0, 3)
-                    .map((shop, index) => (
-                      <Link key={shop.shopId} href={`/sellerprofile/${shop.ownerId}`}>
-                        <Card className="group hover:shadow-2xl transition-all duration-300 border-2 border-[#ff9800]/20 hover:border-[#ff9800] relative overflow-hidden">
-                          {/* Badge */}
-                          <div className="absolute top-4 right-4 z-10">
-                            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-white" />
-                              TOP {index + 1}
-                            </div>
-                          </div>
-                          
-                          <CardContent className="p-6">
-                            {/* Logo */}
-                            <div className="relative w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-[#ff9800] group-hover:scale-110 transition-transform">
-                              <Image
-                                src={shop.logoUrl || "/landscape-placeholder-svgrepo-com.svg"}
-                                alt={shop.shopName}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
 
-                            {/* Shop Info */}
-                            <div className="text-center">
-                              <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#ff9800] transition-colors">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredAndSortedShops.map((shop) => (
+                    <div 
+                      key={shop.shopId}
+                      className="group relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 border-gray-100"
+                    >
+                      <Link
+                        href={`/sellerprofile/${shop.ownerId}`}
+                        className="block h-full"
+                      >
+                        {/* Header with gradient */}
+                        <div className="bg-gradient-to-r from-[#ff9800] to-[#f57c00] p-6 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+                          <div className="flex items-center gap-4 relative z-10">
+                            <div className="w-16 h-16 rounded-full bg-white p-1 shadow-lg flex-shrink-0">
+                              {!imageErrors.has(shop.shopId) && shop.logoUrl ? (
+                                <Image
+                                  src={shop.logoUrl}
+                                  alt={shop.shopName}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full rounded-full object-cover"
+                                  onError={() => handleImageError(shop.shopId)}
+                                />
+                              ) : (
+                                <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                                  <Store className="w-8 h-8 text-gray-500" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-white text-lg truncate group-hover:text-yellow-100 transition-colors">
                                 {shop.shopName}
                               </h3>
-                              
-                              {/* Rating */}
-                              <div className="flex items-center justify-center gap-1 mb-3">
-                                <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                                <span className="font-bold text-lg">{shop.rating.toFixed(1)}</span>
-                                <span className="text-gray-500 text-sm">({shop.totalSales} ขาย)</span>
-                              </div>
-
-                              {/* Description */}
-                              <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                                {shop.description || "ร้านค้าคุณภาพ พร้อมให้บริการ"}
-                              </p>
-
-                              {/* Stats */}
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div className="bg-orange-50 rounded-lg p-2">
-                                  <Package className="w-4 h-4 text-[#ff9800] mx-auto mb-1" />
-                                  <div className="font-bold text-gray-900">{shop.totalProducts}</div>
-                                  <div className="text-gray-600 text-xs">สินค้า</div>
-                                </div>
-                                <div className="bg-green-50 rounded-lg p-2">
-                                  <ShoppingBag className="w-4 h-4 text-green-600 mx-auto mb-1" />
-                                  <div className="font-bold text-gray-900">{shop.totalSales}</div>
-                                  <div className="text-gray-600 text-xs">ขายแล้ว</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
+                                  <Star className="w-4 h-4 text-yellow-300 fill-current" />
+                                  <span className="text-white text-sm font-semibold">{shop.rating.toFixed(1)}</span>
                                 </div>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* All Shops Grid */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                ร้านค้าทั้งหมด ({filteredAndSortedShops.length})
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredAndSortedShops.map((shop) => (
-                <Link 
-                  key={shop.shopId} 
-                  href={`/sellerprofile/${shop.ownerId}`}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 border-gray-100"
-                >
-                  {/* Header with gradient */}
-                  <div className="bg-gradient-to-r from-[#ff9800] to-[#f57c00] p-6 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-10"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-16 h-16 rounded-full bg-white p-1 shadow-lg flex-shrink-0">
-                        <Image
-                          src={shop.logoUrl || "/landscape-placeholder-svgrepo-com.svg"}
-                          alt={shop.shopName}
-                          width={64}
-                          height={64}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white text-lg truncate group-hover:text-yellow-100 transition-colors">
-                          {shop.shopName}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
-                            <Star className="w-4 h-4 text-yellow-300 fill-current" />
-                            <span className="text-white text-sm font-semibold">{shop.rating.toFixed(1)}</span>
                           </div>
-                          {shop.verificationStatus === 'verified' && (
-                            <div className="bg-green-500 rounded-full w-6 h-6 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">✓</span>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Stats */}
-                  <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                        <Store className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                        <div className="text-2xl font-bold text-blue-900">{shop.totalProducts}</div>
-                        <div className="text-xs text-blue-600 font-medium">สินค้า</div>
-                      </div>
-                      <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                        <ShoppingBag className="w-5 h-5 text-green-600 mx-auto mb-1" />
-                        <div className="text-2xl font-bold text-green-900">{shop.totalSales}</div>
-                        <div className="text-xs text-green-600 font-medium">ยอดขาย</div>
-                      </div>
-                    </div>
+                        {/* Stats */}
+                        <div className="p-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                              <Store className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                              <div className="text-2xl font-bold text-blue-900">{shop.totalProducts}</div>
+                              <div className="text-xs text-blue-600 font-medium">สินค้า</div>
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
+                              <DollarSign className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                              <div className="text-2xl font-bold text-green-900">{shop.totalSales}</div>
+                              <div className="text-xs text-green-600 font-medium">ยอดขาย</div>
+                            </div>
+                          </div>
 
-                    {/* Description */}
-                    {shop.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                        {shop.description}
-                      </p>
-                    )}
+                          {/* View Button */}
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <span className="text-sm font-medium text-gray-500">ดูร้านค้า</span>
+                            <ArrowRight className="w-5 h-5 text-[#ff9800] group-hover:translate-x-2 transition-transform" />
+                          </div>
+                        </div>
+                      </Link>
 
-                    {/* View Button */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-sm font-medium text-gray-500">ดูร้านค้า</span>
-                      <svg className="w-5 h-5 text-[#ff9800] group-hover:translate-x-2 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      {/* Favorite Button */}
+                      <button
+                        onClick={(e) => toggleFavorite(e, shop.shopId)}
+                        className="absolute top-2 right-2 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-lg transition-all duration-200 group/fav cursor-pointer"
+                      >
+                        <Heart 
+                          className={`w-5 h-5 transition-colors ${
+                            favorites.has(shop.shopId) 
+                              ? "fill-red-500 text-red-500" 
+                              : "text-gray-600 group-hover/fav:text-red-500"
+                          }`} 
+                        />
+                      </button>
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

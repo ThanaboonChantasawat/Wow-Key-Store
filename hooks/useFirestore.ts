@@ -297,3 +297,57 @@ export const useFavoriteGames = (userId: string | null) => {
 
   return { games, loading, error };
 };
+
+// Hook สำหรับดึงข้อมูล favorite shops
+export const useFavoriteShops = (userId: string | null) => {
+  const [shops, setShops] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFavoriteShops = async () => {
+      if (!userId) {
+        setShops([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get user's favorite item IDs
+        const { getUserFavorites } = await import('@/lib/favorites-client');
+        const favoriteItemIds = await getUserFavorites(userId);
+        
+        if (favoriteItemIds.length === 0) {
+          setShops([]);
+          setLoading(false);
+          return;
+        }
+
+        // Import shop client
+        const { getAllShops } = await import('@/lib/shop-client');
+        
+        // Get all active shops
+        const allShops = await getAllShops('active');
+        
+        // Filter favorite shops
+        const favoriteShops = allShops.filter(shop => 
+          favoriteItemIds.includes(shop.shopId)
+        );
+        
+        setShops(favoriteShops);
+      } catch (err) {
+        setError('เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า');
+        console.error('Error fetching favorite shops:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavoriteShops();
+  }, [userId]);
+
+  return { shops, loading, error };
+};

@@ -155,3 +155,49 @@ export async function updateLastLogin(userId: string): Promise<void> {
     throw new Error('Failed to update last login');
   }
 }
+
+// Check email status with details (providers)
+export async function checkEmailStatus(email: string): Promise<{ exists: boolean; providers: string[] }> {
+  try {
+    const response = await fetch('/api/users/check-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to check email');
+    }
+
+    const data = await response.json();
+    return { exists: data.exists, providers: data.providers || [] };
+  } catch (error) {
+    console.error('Error checking email status:', error);
+    return { exists: false, providers: [] };
+  }
+}
+
+// Check if email exists
+export async function checkEmailExists(email: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/users/check-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to check email');
+    }
+
+    const data = await response.json();
+    return data.exists;
+  } catch (error) {
+    console.error('Error checking email:', error);
+    return false;
+  }
+}

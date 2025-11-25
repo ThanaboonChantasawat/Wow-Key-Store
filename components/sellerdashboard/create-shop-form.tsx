@@ -20,6 +20,7 @@ interface CreateShopFormProps {
 
 export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateShopFormProps) {
   const { user } = useAuth()
+  const verification = canProceedWithTransaction(user);
   const [shopName, setShopName] = useState("")
   const [description, setDescription] = useState("")
   const [contactEmail, setContactEmail] = useState("")
@@ -353,13 +354,15 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
             <Button
               type="submit"
               className="w-full max-w-md bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-              disabled={loading}
+              disabled={loading || !verification.canProceed}
             >
               {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   {existingShop ? "กำลังบันทึก..." : "กำลังสร้างร้านค้า..."}
                 </div>
+              ) : !verification.canProceed ? (
+                "กรุณายืนยันอีเมลก่อน"
               ) : (
                 existingShop ? "บันทึกและส่งตรวจสอบใหม่" : "สร้างร้านค้า"
               )}

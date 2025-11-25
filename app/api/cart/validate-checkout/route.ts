@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     const grandTotal = items.reduce((sum: number, item: CheckoutItem) => sum + item.price, 0)
-    const totalPlatformFee = Math.round(grandTotal * 0.03) // 3% platform fee
+    const totalPlatformFee = Math.round(grandTotal * 0.05) // 5% platform fee
 
     console.log('Validation successful:', { grandTotal, totalPlatformFee })
 

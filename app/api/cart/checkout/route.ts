@@ -167,8 +167,8 @@ export async function POST(request: NextRequest) {
 
     // Calculate fees for each group
     shopGroups.forEach((group) => {
-      // Platform takes 3% fee
-      group.platformFee = Math.round(group.totalAmount * 0.03)
+      // Platform takes 5% fee (to cover Credit Card fees ~3.9% and PromptPay ~1.65%)
+      group.platformFee = Math.round(group.totalAmount * 0.05)
       group.sellerAmount = group.totalAmount - group.platformFee
     })
 

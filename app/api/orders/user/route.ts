@@ -39,10 +39,10 @@ export async function GET(request: NextRequest) {
       })
       
       // Exclude cancelled orders
-      if (data.paymentStatus === 'cancelled' || data.status === 'cancelled') {
-        console.log(`  ↳ Excluded: cancelled`)
-        return false
-      }
+      // if (data.paymentStatus === 'cancelled' || data.status === 'cancelled') {
+      //   console.log(`  ↳ Excluded: cancelled`)
+      //   return false
+      // }
       
       // Exclude expired orders
       if (data.paymentStatus === 'expired') {

@@ -116,22 +116,22 @@ export async function createRefund(
 }
 
 /**
- * Calculate platform fee (3% of transaction)
+ * Calculate platform fee (5% of transaction)
  */
 export function calculatePlatformFee(amount: number): number {
-  return Math.round(amount * 0.03) // 3% fee
+  return Math.round(amount * 0.05) // 5% fee
 }
 
 /**
  * Calculate platform fee based on payment method
- * All payment methods: 3% platform fee (from seller's revenue)
+ * All payment methods: 5% platform fee (from seller's revenue)
  */
 export function calculatePlatformFeeByMethod(
   amount: number,
   // paymentMethod: 'promptpay' | 'card' | 'bank' = 'card'
 ): number {
-  // Platform always takes 3% from seller
-  return Math.round(amount * 0.03)
+  // Platform always takes 5% from seller
+  return Math.round(amount * 0.05)
 }
 
 /**

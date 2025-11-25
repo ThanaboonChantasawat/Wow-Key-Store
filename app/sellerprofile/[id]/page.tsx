@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import { Star, ShoppingCart, Loader2 } from "lucide-react";
+import { Star, ShoppingCart, Loader2, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReviewAndCommentSection } from "@/components/review/ReviewAndCommentSection";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/components/auth-context";
+import { addToFavorites, removeFromFavorites, getUserFavorites } from "@/lib/favorites-client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuthModal } from "@/components/use-auth-modal";
 
 interface Shop {
   shopId: string;
@@ -57,6 +61,58 @@ export default function SellerProfile() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { openLogin } = useAuthModal();
+
+  useEffect(() => {
+    if (user) {
+      getUserFavorites(user.uid).then(favs => {
+        setFavorites(new Set(favs));
+      });
+    } else {
+      setFavorites(new Set());
+    }
+  }, [user]);
+
+  const toggleFavorite = async () => {
+    if (!shop) return;
+
+    if (!user) {
+      openLogin();
+      return;
+    }
+
+    try {
+      if (favorites.has(shop.shopId)) {
+        await removeFromFavorites(user.uid, shop.shopId);
+        setFavorites(prev => {
+          const next = new Set(prev);
+          next.delete(shop.shopId);
+          return next;
+        });
+        toast({
+          title: "ลบจากรายการโปรดแล้ว",
+          description: "ร้านค้าถูกลบออกจากรายการโปรดของคุณแล้ว",
+        });
+      } else {
+        await addToFavorites(user.uid, shop.shopId, 'shop');
+        setFavorites(prev => new Set(prev).add(shop.shopId));
+        toast({
+          title: "เพิ่มในรายการโปรดแล้ว",
+          description: "ร้านค้าถูกเพิ่มในรายการโปรดของคุณแล้ว",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถทำรายการได้ในขณะนี้",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -185,15 +241,34 @@ export default function SellerProfile() {
 
               {/* Shop Details */}
               <div className="flex-1 w-full">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-[#000000]">
-                    {shop.shopName}
-                  </h1>
-                  {shop.verificationStatus === 'verified' && (
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                      ✓ ยืนยันแล้ว
-                    </span>
-                  )}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-[#000000]">
+                      {shop.shopName}
+                    </h1>
+                    {shop.verificationStatus === 'verified' && (
+                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                        ✓ ยืนยันแล้ว
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleFavorite}
+                    className={`gap-2 ${
+                      favorites.has(shop.shopId)
+                        ? "text-red-500 border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-600"
+                        : "text-gray-600 hover:text-red-500 hover:border-red-200"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        favorites.has(shop.shopId) ? "fill-current" : ""
+                      }`}
+                    />
+                    {favorites.has(shop.shopId) ? "ติดตามแล้ว" : "ติดตามร้านค้า"}
+                  </Button>
                 </div>
                 <p className="text-[#999999] text-sm mb-4">
                   เข้าสู่ระบบล่าสุดเมื่อ {getLastActiveTime()}

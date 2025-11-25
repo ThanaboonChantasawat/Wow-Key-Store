@@ -40,6 +40,7 @@ import {
   updateUserProfile,
   UserProfile,
   deleteUserAccount,
+  checkEmailExists,
 } from "@/lib/user-client";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,6 +70,7 @@ export function AccountContent() {
   const [reauthPassword, setReauthPassword] = useState("");
   const [showReauthPassword, setShowReauthPassword] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load user profile from Firestore
@@ -108,6 +110,7 @@ export function AccountContent() {
     setNewPassword("");
     setConfirmPassword("");
     setMessage(null);
+    setShowChangePassword(false);
   };
 
   const handleCancel = () => {
@@ -118,6 +121,7 @@ export function AccountContent() {
     setNewPassword("");
     setConfirmPassword("");
     setMessage(null);
+    setShowChangePassword(false);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,6 +216,16 @@ export function AccountContent() {
           setLoading(false);
           return;
         }
+
+        // Check if email is already in use (only if changed)
+        if (email !== (userProfile?.email || user.email)) {
+          const emailExists = await checkEmailExists(email);
+          if (emailExists) {
+            setMessage({ type: "error", text: "อีเมลนี้ถูกใช้งานแล้วในระบบ" });
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       // Update Firebase Auth profile (displayName and photoURL)
@@ -264,6 +278,7 @@ export function AccountContent() {
       }
 
       setIsEditing(false);
+      setShowChangePassword(false);
 
       // Reload profile data
       setTimeout(async () => {
@@ -411,7 +426,9 @@ export function AccountContent() {
           <h2 className="text-3xl font-bold text-[#292d32] mb-4">
             กรุณาเข้าสู่ระบบ
           </h2>
-          <p className="text-gray-600 text-lg">คุณต้องเข้าสู่ระบบเพื่อดูข้อมูลบัญชี</p>
+          <p className="text-gray-600 text-lg mb-3 flex items-center gap-2 flex-wrap">
+            คุณต้องเข้าสู่ระบบเพื่อดูข้อมูลบัญชี
+          </p>
         </div>
       </div>
     );
@@ -724,27 +741,8 @@ export function AccountContent() {
                     )}
                   </div>
                   
-                  {/* Send Verification Email Button */}
-                  {user?.email && !user.emailVerified && (
-                    <Button
-                      onClick={handleSendVerificationEmail}
-                      disabled={sendingVerification}
-                      size="sm"
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-sm"
-                    >
-                      {sendingVerification ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                          กำลังส่ง...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-3 h-3 mr-2" />
-                          ส่งอีเมลยืนยัน
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  {/* Send Verification Email Button - REMOVED DUPLICATE */}
+                  {/* Button moved to the warning box above */}
                 </div>
               )}
             </div>
@@ -864,71 +862,100 @@ export function AccountContent() {
 
           {/* Password Fields (Only for email/password login) */}
           {isEditing && isEmailPasswordProvider && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mt-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Lock className="w-5 h-5 text-blue-600" />
-                <h4 className="text-xl font-bold text-[#292d32]">
-                  เปลี่ยนรหัสผ่าน (ไม่บังคับ)
-                </h4>
-              </div>
-
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200">
-                  <label className="text-[#292d32] font-semibold">
-                    รหัสผ่านใหม่
-                  </label>
-                  <div className="relative max-w-md">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
-                      className="border-2 focus:border-blue-500 transition-colors pr-10"
-                      disabled={loading}
-                    />
-                    <button
+            <div className="mt-6">
+              {!showChangePassword ? (
+                <Button
+                  type="button"
+                  onClick={() => setShowChangePassword(true)}
+                  variant="outline"
+                  className="w-full py-6 border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center gap-2 rounded-xl transition-all duration-200"
+                >
+                  <Lock className="w-5 h-5" />
+                  เปลี่ยนรหัสผ่าน
+                </Button>
+              ) : (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-5 h-5 text-blue-600" />
+                      <h4 className="text-xl font-bold text-[#292d32]">
+                        เปลี่ยนรหัสผ่าน
+                      </h4>
+                    </div>
+                    <Button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowChangePassword(false);
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }}
+                      className="text-gray-500 hover:text-red-600 hover:bg-red-50"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                      ยกเลิก
+                    </Button>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="text-[#292d32] font-semibold">
+                        รหัสผ่านใหม่
+                      </label>
+                      <div className="relative max-w-md">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+                          className="border-2 focus:border-blue-500 transition-colors pr-10"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="text-[#292d32] font-semibold">
+                        ยืนยันรหัสผ่าน
+                      </label>
+                      <div className="relative max-w-md">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="กรอกรหัสผ่านอีกครั้ง"
+                          className="border-2 focus:border-blue-500 transition-colors pr-10"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start sm:items-center bg-white rounded-lg p-4 border border-gray-200">
-                  <label className="text-[#292d32] font-semibold">
-                    ยืนยันรหัสผ่าน
-                  </label>
-                  <div className="relative max-w-md">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="กรอกรหัสผ่านอีกครั้ง"
-                      className="border-2 focus:border-blue-500 transition-colors pr-10"
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 

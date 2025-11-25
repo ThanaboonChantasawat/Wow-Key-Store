@@ -43,7 +43,6 @@ export function GameContainerClient({ games }: GameContainerClientProps) {
             className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#e06c00] text-white px-4 sm:px-6 2xl:px-8 py-2 sm:py-3 2xl:py-4 rounded-full font-medium shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base 2xl:text-xl"
           >
             ดูทั้งหมด
-            <Star className="w-4 h-4 sm:w-5 sm:h-5 2xl:w-6 2xl:h-6" />
           </Link>
         </div>
 

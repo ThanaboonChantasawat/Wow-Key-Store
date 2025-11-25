@@ -39,6 +39,8 @@ export function CartContent() {
   const [groupedCarts, setGroupedCarts] = useState<GroupedCart[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  
+  const verification = canProceedWithTransaction(user);
 
   // Load cart items from Firestore
   // extract loadCart so other effects can call it (for refresh after checkout)
@@ -509,11 +511,13 @@ export function CartContent() {
             <Button 
               className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-medium py-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               onClick={handleCheckout}
-              disabled={selectedItems.length === 0}
+              disabled={selectedItems.length === 0 || !verification.canProceed}
             >
-              {selectedItems.length === 0
-                ? "กรุณาเลือกสินค้า"
-                : `ชำระเงิน (${selectedItems.length} รายการ)`}
+              {!verification.canProceed 
+                ? "กรุณายืนยันอีเมลก่อนชำระเงิน" 
+                : selectedItems.length === 0
+                  ? "กรุณาเลือกสินค้า"
+                  : `ชำระเงิน (${selectedItems.length} รายการ)`}
             </Button>
           </div>
         </div>

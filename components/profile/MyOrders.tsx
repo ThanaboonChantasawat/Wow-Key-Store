@@ -795,7 +795,7 @@ export function MyOrdersContent() {
           <XCircle className="w-12 h-12 md:w-16 md:h-16 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">เกิดข้อผิดพลาด</h3>
           <p className="text-sm md:text-base text-gray-600 mb-4">{error}</p>
-          <Button onClick={fetchOrders} className="bg-[#ff9800] hover:bg-[#ff9800]/90">
+          <Button onClick={() => fetchOrders()} className="bg-[#ff9800] hover:bg-[#ff9800]/90">
             ลองอีกครั้ง
           </Button>
         </CardContent>
@@ -803,23 +803,23 @@ export function MyOrdersContent() {
     )
   }
 
-  if (orders.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 md:p-12 text-center">
-          <ShoppingBag className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">ยังไม่มีคำสั่งซื้อ</h3>
-          <p className="text-sm md:text-base text-gray-600 mb-6">คุณยังไม่มีประวัติการสั่งซื้อ เริ่มช้อปปิ้งกันเลย!</p>
-          <Button 
-            onClick={() => window.location.href = '/products'}
-            className="bg-[#ff9800] hover:bg-[#ff9800]/90"
-          >
-            เลือกซื้อสินค้า
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
+  // if (orders.length === 0) {
+  //   return (
+  //     <Card>
+  //       <CardContent className="p-6 md:p-12 text-center">
+  //         <ShoppingBag className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
+  //         <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">ยังไม่มีคำสั่งซื้อ</h3>
+  //         <p className="text-sm md:text-base text-gray-600 mb-6">คุณยังไม่มีประวัติการสั่งซื้อ เริ่มช้อปปิ้งกันเลย!</p>
+  //         <Button 
+  //           onClick={() => window.location.href = '/products'}
+  //           className="bg-[#ff9800] hover:bg-[#ff9800]/90"
+  //         >
+  //           เลือกซื้อสินค้า
+  //         </Button>
+  //       </CardContent>
+  //     </Card>
+  //   )
+  // }
 
   return (
     <div className="space-y-4 md:space-y-6">

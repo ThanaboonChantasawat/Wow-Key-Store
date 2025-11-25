@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from 'lucide-react'
-import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth'
 import { auth, googleProvider } from '@/components/firebase-config'
-import { createUserProfile } from '@/lib/user-client'
+import { createUserProfile, checkEmailExists, checkEmailStatus } from '@/lib/user-client'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -17,9 +17,10 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalProps) {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab)
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot-password'>(defaultTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -39,10 +40,15 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // Forgot Password state
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+
   const resetForms = () => {
     setLoginData({ email: '', password: '', rememberMe: false })
     setRegisterData({ name: '', email: '', password: '', confirmPassword: '' })
+    setForgotPasswordEmail('')
     setError('')
+    setSuccessMessage('')
     setShowLoginPassword(false)
     setShowRegisterPassword(false)
     setShowConfirmPassword(false)
@@ -53,9 +59,62 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     onClose()
   }
 
-  const handleTabChange = (tab: 'login' | 'register') => {
+  const handleTabChange = (tab: 'login' | 'register' | 'forgot-password') => {
     setActiveTab(tab)
     setError('')
+    setSuccessMessage('')
+  }
+
+  // Forgot Password handler
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    setSuccessMessage('')
+
+    if (!forgotPasswordEmail) {
+      setError('กรุณากรอกอีเมล')
+      setLoading(false)
+      return
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(forgotPasswordEmail)) {
+      setError('รูปแบบอีเมลไม่ถูกต้อง')
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Check if email exists and get provider info
+      const { exists, providers } = await checkEmailStatus(forgotPasswordEmail)
+      
+      if (!exists) {
+        setError('ไม่พบอีเมลนี้ในระบบ')
+        setLoading(false)
+        return
+      }
+
+      // Check if registered with Google
+      if (providers.includes('google.com')) {
+        setError('อีเมลนี้ลงทะเบียนด้วย Google กรุณาเข้าสู่ระบบด้วย Google')
+        setLoading(false)
+        return
+      }
+
+      await sendPasswordResetEmail(auth, forgotPasswordEmail)
+      setSuccessMessage('ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว')
+    } catch (err: any) {
+      console.error('Forgot password error:', err)
+      if (err.code === 'auth/user-not-found') {
+        setError('ไม่พบอีเมลนี้ในระบบ')
+      } else {
+        setError('เกิดข้อผิดพลาดในการส่งอีเมล')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Login handlers
@@ -80,19 +139,47 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
     setLoading(true)
     setError('')
 
+    if (!registerData.name.trim()) {
+      setError('กรุณากรอกชื่อผู้ใช้')
+      setLoading(false)
+      return
+    }
+
+    if (!registerData.email.trim()) {
+      setError('กรุณากรอกอีเมล')
+      setLoading(false)
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(registerData.email)) {
+      setError('รูปแบบอีเมลไม่ถูกต้อง')
+      setLoading(false)
+      return
+    }
+
     if (registerData.password !== registerData.confirmPassword) {
       setError('รหัสผ่านไม่ตรงกัน')
       setLoading(false)
       return
     }
 
-    if (registerData.password.length < 6) {
-      setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
+    if (registerData.password.length < 8) {
+      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')
       setLoading(false)
       return
     }
 
     try {
+      // Check if email exists and get provider info
+      const { exists, providers } = await checkEmailStatus(registerData.email)
+      
+      if (exists && providers.includes('google.com')) {
+        setError('อีเมลนี้เคยเข้าสู่ระบบด้วย Google แล้ว กรุณาเข้าสู่ระบบด้วย Google')
+        setLoading(false)
+        return
+      }
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         registerData.email,
@@ -112,7 +199,14 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
         userCredential.user.emailVerified
       )
 
-      handleClose()
+      // Show success message instead of closing immediately
+      // handleClose() 
+      setSuccessMessage('สมัครสมาชิกสำเร็จ!')
+      // Optional: delay closing or let user close it
+      setTimeout(() => {
+        handleClose()
+      }, 3000)
+
     } catch (err: unknown) {
       const error = err as { code?: string }
       if (error.code === 'auth/email-already-in-use') {
@@ -166,35 +260,40 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
       <DialogContent className="sm:max-w-md p-0 gap-0 bg-white">
         {/* Header with tabs */}
         <DialogHeader className="p-6 pb-0">
+          <DialogDescription className="sr-only">
+            {activeTab === 'login' ? 'แบบฟอร์มเข้าสู่ระบบ' : activeTab === 'register' ? 'แบบฟอร์มสมัครสมาชิก' : 'แบบฟอร์มลืมรหัสผ่าน'}
+          </DialogDescription>
           <div className="flex items-center justify-between mb-4">
             <DialogTitle className="text-2xl font-bold text-[#000000]">
-              {activeTab === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
+              {activeTab === 'login' ? 'เข้าสู่ระบบ' : activeTab === 'register' ? 'สมัครสมาชิก' : 'ลืมรหัสผ่าน'}
             </DialogTitle>
           </div>
           
           {/* Tab buttons */}
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => handleTabChange('login')}
-              className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'login'
-                  ? 'border-[#ff9800] text-[#ff9800]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              เข้าสู่ระบบ
-            </button>
-            <button
-              onClick={() => handleTabChange('register')}
-              className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'register'
-                  ? 'border-[#ff9800] text-[#ff9800]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              สมัครสมาชิก
-            </button>
-          </div>
+          {activeTab !== 'forgot-password' && (
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => handleTabChange('login')}
+                className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'login'
+                    ? 'border-[#ff9800] text-[#ff9800]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                เข้าสู่ระบบ
+              </button>
+              <button
+                onClick={() => handleTabChange('register')}
+                className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'register'
+                    ? 'border-[#ff9800] text-[#ff9800]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                สมัครสมาชิก
+              </button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="p-6">
@@ -203,11 +302,17 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
               {error}
             </div>
           )}
+          
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-md text-sm">
+              {successMessage}
+            </div>
+          )}
 
           {activeTab === 'login' ? (
             // Login Form
             <div>
-              <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
+              <form onSubmit={handleEmailLogin} className="space-y-4 mb-6" noValidate>
                 <Input
                   type="email"
                   placeholder="อีเมล"
@@ -246,7 +351,11 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
                       จำข้อมูลของฉัน
                     </label>
                   </div>
-                  <button type="button" className="text-sm text-[#ff9800] hover:underline">
+                  <button 
+                    type="button" 
+                    onClick={() => handleTabChange('forgot-password')}
+                    className="text-sm text-[#ff9800] hover:underline"
+                  >
                     ลืมรหัสผ่าน?
                   </button>
                 </div>
@@ -260,13 +369,13 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
                 </Button>
               </form>
             </div>
-          ) : (
+          ) : activeTab === 'register' ? (
             // Register Form
             <div>
-              <form onSubmit={handleRegister} className="space-y-4 mb-6">
+              <form onSubmit={handleRegister} className="space-y-4 mb-6" noValidate>
                 <Input
                   type="text"
-                  placeholder="ชื่อ-นามสกุล"
+                  placeholder="ชื่อผู้ใช้"
                   value={registerData.name}
                   onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#ff9800] focus:border-transparent"
@@ -325,6 +434,39 @@ export function AuthModal({ isOpen, onClose, defaultTab = 'login' }: AuthModalPr
                 >
                   {loading ? 'กำลังสมัครสมาชิก...' : 'สมัครสมาชิก'}
                 </Button>
+              </form>
+            </div>
+          ) : (
+            // Forgot Password Form
+            <div>
+              <p className="text-sm text-gray-600 mb-4">
+                กรุณากรอกอีเมลที่คุณใช้สมัครสมาชิก เราจะส่งลิงก์สำหรับตั้งค่ารหัสผ่านใหม่ไปให้ทางอีเมล
+              </p>
+              <form onSubmit={handleForgotPassword} className="space-y-4 mb-6" noValidate>
+                <Input
+                  type="email"
+                  placeholder="อีเมล"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#ff9800] focus:border-transparent"
+                  required
+                />
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white font-semibold py-3 px-4 rounded-md transition-colors duration-200"
+                >
+                  {loading ? 'กำลังส่งอีเมล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('login')}
+                  className="w-full text-sm text-gray-500 hover:text-gray-700 mt-2"
+                >
+                  กลับไปหน้าเข้าสู่ระบบ
+                </button>
               </form>
             </div>
           )}

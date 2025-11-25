@@ -8,7 +8,7 @@ export type { Favorite };
 export const addToFavorites = async (
   userId: string, 
   itemId: string,
-  itemType: 'game' | 'product' = 'game'
+  itemType: 'game' | 'product' | 'shop' = 'game'
 ) => {
   try {
     const favoriteId = `${userId}_${itemId}`;

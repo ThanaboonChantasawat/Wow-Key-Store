@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth, db } from './firebase-config'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 
 interface AuthContextType {
   user: User | null
@@ -39,9 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateLastSeen = async () => {
       try {
         const userRef = doc(db, 'users', user.uid)
-        await updateDoc(userRef, {
+        // Use setDoc with merge: true instead of updateDoc to handle missing documents
+        await setDoc(userRef, {
           lastSeen: serverTimestamp()
-        })
+        }, { merge: true })
         console.log('✅ LastSeen updated for user:', user.uid)
       } catch (error) {
         console.error('Error updating lastSeen:', error)
