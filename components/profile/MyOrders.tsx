@@ -40,10 +40,14 @@ import {
   Filter,
   ChevronsLeft,
   ChevronsRight,
-  Star
+  Star,
+  MessageCircle,
+  Flag
 } from "lucide-react"
 import { ReviewFormComponent } from "@/components/review/ReviewFormComponent"
 import { getShopById } from "@/lib/shop-client"
+import { ReportProblemDialog } from "@/components/order/report-problem-dialog"
+import { OrderChatDialog } from "@/components/order/order-chat-dialog"
 
 type StatusFilter = 'all' | 'processing' | 'completed' | 'cancelled'
 
@@ -118,6 +122,11 @@ export function MyOrdersContent() {
   const [selectedOrderToConfirm, setSelectedOrderToConfirm] = useState<Order | null>(null)
   const [hasCheckedCode, setHasCheckedCode] = useState(false)
   
+  // Dispute & Chat states
+  const [showReportDialog, setShowReportDialog] = useState(false)
+  const [selectedOrderToReport, setSelectedOrderToReport] = useState<Order | null>(null)
+  const [showChatDialog, setShowChatDialog] = useState(false)
+  const [selectedOrderToChat, setSelectedOrderToChat] = useState<Order | null>(null)
 
 
   const fetchOrders = async (showLoading = true) => {
@@ -1144,8 +1153,8 @@ export function MyOrdersContent() {
               
               {/* Confirm Receipt Button - Show if delivered but not confirmed */}
               {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-3">
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
@@ -1158,6 +1167,38 @@ export function MyOrdersContent() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedOrderToChat(order)
+                        setShowChatDialog(true)
+                      }}
+                      variant="outline"
+                      className="w-full border-blue-300 hover:bg-blue-50"
+                      size="sm"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      แชท
+                    </Button>
+                    
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedOrderToReport(order)
+                        setShowReportDialog(true)
+                      }}
+                      variant="outline"
+                      className="w-full border-red-300 hover:bg-red-50 text-red-600"
+                      size="sm"
+                    >
+                      <Flag className="w-4 h-4 mr-2" />
+                      รายงาน
+                    </Button>
+                  </div>
+                  
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -2015,6 +2056,36 @@ export function MyOrdersContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Report Problem Dialog */}
+      {showReportDialog && selectedOrderToReport && (
+        <ReportProblemDialog
+          orderId={selectedOrderToReport.id}
+          orderNumber={`#${selectedOrderToReport.id.slice(-8).toUpperCase()}`}
+          isOpen={showReportDialog}
+          onClose={() => {
+            setShowReportDialog(false)
+            setSelectedOrderToReport(null)
+          }}
+          onSuccess={() => {
+            fetchOrders(false) // Refresh orders
+          }}
+        />
+      )}
+
+      {/* Order Chat Dialog */}
+      {showChatDialog && selectedOrderToChat && (
+        <OrderChatDialog
+          orderId={selectedOrderToChat.id}
+          orderNumber={`#${selectedOrderToChat.id.slice(-8).toUpperCase()}`}
+          isOpen={showChatDialog}
+          onClose={() => {
+            setShowChatDialog(false)
+            setSelectedOrderToChat(null)
+          }}
+          userRole="buyer"
+        />
+      )}
     </div>
   )
 }

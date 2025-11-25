@@ -19,7 +19,12 @@ export type NotificationType =
   | 'report'
   | 'warning'
   | 'info'
-  | 'success';
+  | 'success'
+  | 'dispute_created'        // มีการรายงานปัญหาใหม่
+  | 'dispute_resolved'       // ปัญหาได้รับการแก้ไข
+  | 'auto_confirm_reminder'  // แจ้งเตือนก่อนยืนยันอัตโนมัติ
+  | 'new_message'           // ข้อความใหม่ในแชท
+  | 'review_reminder';      // แจ้งเตือนให้รีวิวสินค้า
 
 export interface Notification {
   id: string;
