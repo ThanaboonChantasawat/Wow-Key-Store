@@ -189,6 +189,8 @@ export default function AuthActionPage() {
               required
               minLength={6}
               autoComplete="off"
+              readOnly
+              onFocus={(e) => e.target.removeAttribute('readonly')}
               className="pr-10"
             />
             <button
@@ -210,6 +212,8 @@ export default function AuthActionPage() {
               required
               minLength={6}
               autoComplete="off"
+              readOnly
+              onFocus={(e) => e.target.removeAttribute('readonly')}
               className="pr-10"
             />
             <button
@@ -250,7 +254,7 @@ export default function AuthActionPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-160px)] bg-gray-50 flex items-center justify-center p-4">
+    <div className="py-12 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-t-4 border-t-[#ff9800]">
         <CardContent className="pt-6">
           {renderContent()}
