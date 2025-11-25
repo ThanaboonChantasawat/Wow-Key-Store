@@ -90,8 +90,8 @@ export default function AuthActionPage() {
     handleAction();
   }, [mode, actionCode, isResetSuccess]);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResetPassword = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
     if (!actionCode) return;
     
     if (newPassword !== confirmPassword) {
@@ -165,14 +165,10 @@ export default function AuthActionPage() {
 
     if (mode === 'resetPassword' && !isResetSuccess) {
       return (
-        <form onSubmit={handleResetPassword} className="space-y-4" autoComplete="off">
-          {/* Dummy inputs to prevent browser autofill */}
-          <input type="text" name="prevent_autofill_email" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
-          <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
-
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <KeyRound className="w-8 h-8 text-[#ff9800]" />
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <KeyRound className="w-6 h-6 text-[#ff9800]" />
             </div>
             <h3 className="text-xl font-bold text-gray-900">ตั้งค่ารหัสผ่านใหม่</h3>
             <p className="text-sm text-gray-500">สำหรับบัญชี: {resetEmail}</p>
@@ -186,9 +182,10 @@ export default function AuthActionPage() {
               placeholder="รหัสผ่านใหม่"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleResetPassword(e)}
               required
               minLength={6}
-              autoComplete="off"
+              autoComplete="new-password"
               readOnly
               onFocus={(e) => e.target.removeAttribute('readonly')}
               className="pr-10"
@@ -209,9 +206,10 @@ export default function AuthActionPage() {
               placeholder="ยืนยันรหัสผ่านใหม่"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleResetPassword(e)}
               required
               minLength={6}
-              autoComplete="off"
+              autoComplete="new-password"
               readOnly
               onFocus={(e) => e.target.removeAttribute('readonly')}
               className="pr-10"
@@ -225,10 +223,14 @@ export default function AuthActionPage() {
             </button>
           </div>
 
-          <Button type="submit" className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white">
+          <Button 
+            type="button" 
+            onClick={handleResetPassword}
+            className="w-full bg-[#ff9800] hover:bg-[#ff9800]/90 text-white"
+          >
             เปลี่ยนรหัสผ่าน
           </Button>
-        </form>
+        </div>
       );
     }
     
@@ -254,7 +256,7 @@ export default function AuthActionPage() {
   };
 
   return (
-    <div className="py-12 flex items-center justify-center p-4">
+    <div className="py-6 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-t-4 border-t-[#ff9800]">
         <CardContent className="pt-6">
           {renderContent()}
