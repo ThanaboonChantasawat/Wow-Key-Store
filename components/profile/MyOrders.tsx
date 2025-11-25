@@ -159,8 +159,49 @@ export function MyOrdersContent() {
           duplicates: orderIds.filter((id: string, index: number) => orderIds.indexOf(id) !== index)
         })
       }
+
+      // Filter out duplicate cancelled orders
+      // A cancelled order is considered a duplicate if there is a successful order (processing/completed)
+      // with the same items created within 30 minutes
+      let fetchedOrders = data.orders || []
       
-      setOrders(data.orders || [])
+      try {
+        const successfulOrders = fetchedOrders.filter((o: Order) => 
+          o.status === 'processing' || o.status === 'completed'
+        )
+
+        fetchedOrders = fetchedOrders.filter((order: Order) => {
+          if (order.status !== 'cancelled') return true
+
+          // Check if this cancelled order is a duplicate of a successful one
+          const isDuplicate = successfulOrders.some((successOrder: Order) => {
+            // Check time difference (within 30 mins)
+            const orderTime = new Date(order.createdAt).getTime()
+            const successTime = new Date(successOrder.createdAt).getTime()
+            const timeDiff = Math.abs(orderTime - successTime)
+            const isCloseTime = timeDiff < 30 * 60 * 1000
+
+            // Check items
+            const orderItems = order.items?.map(i => i.productId).sort().join(',') || ''
+            const successItems = successOrder.items?.map(i => i.productId).sort().join(',') || ''
+            const isSameItems = orderItems === successItems && orderItems !== ''
+
+            return isCloseTime && isSameItems
+          })
+
+          if (isDuplicate) {
+            console.log('👻 Hiding duplicate cancelled order:', order.id)
+          }
+
+          return !isDuplicate
+        })
+      } catch (filterError) {
+        console.error('Error filtering duplicate orders:', filterError)
+        // Fallback to original list if error occurs
+        fetchedOrders = data.orders || []
+      }
+      
+      setOrders(fetchedOrders)
       
       // Debug: Log first order details
       if (data.orders && data.orders.length > 0 && showLoading) {
