@@ -27,6 +27,10 @@ export default function AuthActionPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [isResetSuccess, setIsResetSuccess] = useState(false);
   const effectRan = useRef(false);
+  const [randomId1] = useState(() => `pwd-${Math.random().toString(36).substr(2, 9)}`);
+  const [randomId2] = useState(() => `conf-${Math.random().toString(36).substr(2, 9)}`);
+  const [inputType1, setInputType1] = useState<'text' | 'password'>('text');
+  const [inputType2, setInputType2] = useState<'text' | 'password'>('text');
 
   useEffect(() => {
     if (!actionCode) {
@@ -165,7 +169,7 @@ export default function AuthActionPage() {
 
     if (mode === 'resetPassword' && !isResetSuccess) {
       return (
-        <div className="space-y-4">
+        <div className="space-y-4" data-form-type="other">
           <div className="text-center mb-4">
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
               <KeyRound className="w-6 h-6 text-[#ff9800]" />
@@ -176,18 +180,21 @@ export default function AuthActionPage() {
 
           <div className="space-y-2 relative">
             <Input
-              id="new-password-field"
-              name="new-password-field"
-              type={showPassword ? "text" : "password"}
+              id={randomId1}
+              name={randomId1}
+              type="text"
               placeholder="รหัสผ่านใหม่"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleResetPassword(e)}
               required
               minLength={6}
-              autoComplete="new-password"
-              readOnly
-              onFocus={(e) => e.target.removeAttribute('readonly')}
+              data-lpignore="true"
+              data-form-type="other"
+              style={showPassword ? {} : {
+                WebkitTextSecurity: 'disc',
+                fontFamily: 'text-security-disc'
+              } as React.CSSProperties}
               className="pr-10"
             />
             <button
@@ -200,18 +207,21 @@ export default function AuthActionPage() {
           </div>
           <div className="space-y-2 relative">
             <Input
-              id="confirm-password-field"
-              name="confirm-password-field"
-              type={showConfirmPassword ? "text" : "password"}
+              id={randomId2}
+              name={randomId2}
+              type="text"
               placeholder="ยืนยันรหัสผ่านใหม่"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleResetPassword(e)}
               required
               minLength={6}
-              autoComplete="new-password"
-              readOnly
-              onFocus={(e) => e.target.removeAttribute('readonly')}
+              data-lpignore="true"
+              data-form-type="other"
+              style={showConfirmPassword ? {} : {
+                WebkitTextSecurity: 'disc',
+                fontFamily: 'text-security-disc'
+              } as React.CSSProperties}
               className="pr-10"
             />
             <button
