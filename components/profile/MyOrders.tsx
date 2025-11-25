@@ -208,14 +208,16 @@ export function MyOrdersContent() {
     }
   }, [user])
 
-  // Cleaned orders (remove duplicates)
+  // Memoize cleaned orders to avoid recalculating on every render
+  // Note: Currently unused as we decided to show all orders in 'All' tab
+  // but keeping logic in case we want to implement a 'Hide Duplicates' toggle later
   const cleanedOrders = useMemo(() => {
     try {
       const successfulOrders = orders.filter((o: Order) => 
         o.status === 'processing' || o.status === 'completed'
       )
-
-      return orders.filter((order: Order) => {
+      
+      const cleaned = orders.filter((order: Order) => {
         if (order.status !== 'cancelled') return true
 
         // Check if this cancelled order is a duplicate of a successful one
@@ -236,6 +238,8 @@ export function MyOrdersContent() {
 
         return !isDuplicate
       })
+      
+      return cleaned
     } catch (filterError) {
       console.error('Error filtering duplicate orders:', filterError)
       return orders
@@ -244,21 +248,12 @@ export function MyOrdersContent() {
 
   // Filter and search logic
   const filteredOrders = useMemo(() => {
-    let filtered = cleanedOrders
+    let filtered = orders
 
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter)
     }
-
-    // Debug: Log order statuses
-    console.log('📊 Orders Status Summary:', {
-      total: filtered.length,
-      processing: filtered.filter(o => o.status === 'processing').length,
-      completed: filtered.filter(o => o.status === 'completed').length,
-      cancelled: filtered.filter(o => o.status === 'cancelled').length,
-      cancellable: filtered.filter(o => o.status === 'processing').length,
-    })
 
     // Search by order ID, shop name, or product name
     if (searchQuery) {
@@ -292,13 +287,13 @@ export function MyOrdersContent() {
   // Status counts for badges
   const statusCounts = useMemo(() => {
     return {
-      all: cleanedOrders.length,
-      processing: cleanedOrders.filter(o => o.status === 'processing').length,
-      completed: cleanedOrders.filter(o => o.status === 'completed').length,
-      cancelled: cleanedOrders.filter(o => o.status === 'cancelled').length,
-      waitingConfirmation: cleanedOrders.filter(o => o.gameCodeDeliveredAt && !o.buyerConfirmed && o.status !== 'cancelled').length,
+      all: orders.length,
+      processing: orders.filter(o => o.status === 'processing').length,
+      completed: orders.filter(o => o.status === 'completed').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      waitingConfirmation: orders.filter(o => o.gameCodeDeliveredAt && !o.buyerConfirmed && o.status !== 'cancelled').length,
     }
-  }, [cleanedOrders])
+  }, [orders])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1066,9 +1061,6 @@ export function MyOrdersContent() {
             {paginatedOrders.map((order) => {
               const items = getOrderItems(order)
               const shopName = getShopName(order)
-              
-              // Debug: Log to check items
-              console.log('Order:', order.id, 'Items count:', items.length, 'Shop:', shopName)
               
               return (
         <Card 
