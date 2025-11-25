@@ -4,15 +4,19 @@ import { useAuth } from "@/components/auth-context";
 import { sendEmailVerification } from "firebase/auth";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import { usePathname } from "next/navigation";
 
 export function VerificationBanner() {
   const { user, isInitialized } = useAuth();
   const { toast } = useToast();
+  const pathname = usePathname();
   const hasShownToast = useRef(false);
 
   useEffect(() => {
     if (!isInitialized || !user) return;
+
+    // Don't show on auth action page
+    if (pathname?.startsWith('/auth/action')) return;
 
     // If verified, don't show anything
     if (user.emailVerified) return;
