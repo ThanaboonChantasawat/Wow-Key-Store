@@ -634,7 +634,7 @@ export default function SellerSalesHistory() {
 
       {/* Order Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center justify-between pr-8">
               <div>
@@ -658,7 +658,7 @@ export default function SellerSalesHistory() {
           </DialogHeader>
           
           {selectedOrder && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto pr-2">
               {/* Status & Date */}
               <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
                 <div className="space-y-1">
@@ -763,7 +763,7 @@ export default function SellerSalesHistory() {
 
       {/* Update Order Form Dialog */}
       <Dialog open={showUpdateForm} onOpenChange={setShowUpdateForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>อัพเดตสถานะคำสั่งซื้อ</DialogTitle>
             <DialogDescription>
@@ -772,7 +772,7 @@ export default function SellerSalesHistory() {
           </DialogHeader>
 
           {selectedOrder && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto pr-2">
               {/* Current Status */}
               <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
                 <div>
