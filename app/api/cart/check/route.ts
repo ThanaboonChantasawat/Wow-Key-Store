@@ -17,7 +17,10 @@ export async function GET(req: Request) {
     const cartRef = adminDb.collection('cart').doc(`${userId}_${itemId}`)
     const cartDoc = await cartRef.get()
 
-    return NextResponse.json({ inCart: cartDoc.exists })
+    return NextResponse.json({ 
+      inCart: cartDoc.exists,
+      quantity: cartDoc.exists ? cartDoc.data()?.quantity || 1 : 0
+    })
   } catch (error) {
     console.error('Error checking cart:', error)
     return NextResponse.json({ inCart: false })

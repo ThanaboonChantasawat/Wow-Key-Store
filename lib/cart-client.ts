@@ -113,6 +113,18 @@ export async function isInCart(userId: string, itemId: string): Promise<boolean>
   }
 }
 
+export async function getCartItemQuantity(userId: string, itemId: string): Promise<number> {
+  try {
+    const response = await fetch(`/api/cart/check?userId=${userId}&itemId=${itemId}`)
+    if (!response.ok) return 0
+    const data = await response.json()
+    return data.quantity || 0
+  } catch (error) {
+    console.error('Error checking cart quantity:', error)
+    return 0
+  }
+}
+
 export async function getCartCount(userId: string): Promise<number> {
   try {
     const response = await fetch(`/api/cart/count?userId=${userId}`)

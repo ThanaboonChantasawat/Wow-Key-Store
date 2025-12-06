@@ -10,7 +10,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-context";
 import { addToFavorites, removeFromFavorites, isFavorited } from "@/lib/favorites-client";
-import { addToCart, removeFromCart, isInCart } from "@/lib/cart-client";
+import { addToCart, removeFromCart, isInCart, getCartItemQuantity } from "@/lib/cart-client";
 
 interface ProductStats {
   views: number
@@ -28,6 +28,7 @@ const ProductCard = ({ game }: { game: Game }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(true);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+  const [cartQuantity, setCartQuantity] = useState(0);
   const [cartLoading, setCartLoading] = useState(false);
   const [checkingCart, setCheckingCart] = useState(true);
   const [stats, setStats] = useState<ProductStats | null>(null);
@@ -101,7 +102,9 @@ const ProductCard = ({ game }: { game: Game }) => {
 
       try {
         const inCart = await isInCart(user.uid, game.id);
+        const quantity = await getCartItemQuantity(user.uid, game.id);
         setIsAddedToCart(inCart);
+        setCartQuantity(quantity);
       } catch (error) {
         console.error("Error checking cart:", error);
       } finally {
@@ -164,11 +167,13 @@ const ProductCard = ({ game }: { game: Game }) => {
       if (isAddedToCart) {
         await removeFromCart(user.uid, game.id);
         setIsAddedToCart(false);
+        setCartQuantity(0);
       } else {
         // Check if this is a product by looking at the game object structure
         const itemType = (game as Game & { shopId?: string }).shopId ? 'product' : 'game';
         await addToCart(user.uid, game.id, 1, itemType);
         setIsAddedToCart(true);
+        setCartQuantity(1);
       }
     } catch (error) {
       console.error("Error toggling cart:", error);

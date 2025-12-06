@@ -83,7 +83,7 @@ export function SellerProducts() {
     description: "",
     price: "" as any, // Allow empty string for easier editing
     images: [],
-    stock: "unlimited",
+    stock: 0,
     category: "",
     status: "active",
   })
@@ -272,7 +272,7 @@ export function SellerProducts() {
       description: product.description,
       price: product.price,
       images: product.images,
-      stock: product.stock === -1 ? "unlimited" : product.stock,
+      stock: product.stock === -1 ? 0 : product.stock,
       category: product.category,
       status: product.status === "out_of_stock" ? "active" : product.status,
     })
@@ -335,7 +335,7 @@ export function SellerProducts() {
         ...formData,
         images: imageUrls,
         price: Number(formData.price),
-        stock: formData.stock === "unlimited" ? "unlimited" : Number(formData.stock),
+        stock: Number(formData.stock),
       }
 
       if (editingId) {
@@ -382,7 +382,7 @@ export function SellerProducts() {
       description: "",
       price: "" as any,
       images: [],
-      stock: "unlimited",
+      stock: 0,
       category: "",
       status: "active",
     })
@@ -816,31 +816,18 @@ export function SellerProducts() {
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      value={formData.stock === "unlimited" ? "" : formData.stock}
+                      value={formData.stock}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          stock: e.target.value ? Number(e.target.value) : "unlimited",
+                          stock: e.target.value ? Number(e.target.value) : 0,
                         })
                       }
-                      placeholder="ไม่จำกัด"
+                      placeholder="จำนวนสินค้า"
                       min="0"
                       className="border-2 focus:border-[#ff9800]"
-                      disabled={loadingProducts || formData.stock === "unlimited"}
+                      disabled={loadingProducts}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          stock: formData.stock === "unlimited" ? 0 : "unlimited",
-                        })
-                      }
-                      className="whitespace-nowrap"
-                    >
-                      {formData.stock === "unlimited" ? "กำหนดจำนวน" : "ไม่จำกัด"}
-                    </Button>
                   </div>
                 </div>
               </div>

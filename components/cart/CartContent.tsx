@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, Store, ShoppingCart } from "lucide-react"
+import Link from 'next/link'
+import { Trash2, Store, ShoppingCart, Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import Image from "next/image"
 import { useAuth } from "@/components/auth-context"
-import { getUserCartWithDetails, removeFromCart } from "@/lib/cart-service"
+import { getUserCartWithDetails, removeFromCart, updateCartQuantity } from "@/lib/cart-service"
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 import { db } from "@/components/firebase-config"
 import { canProceedWithTransaction } from "@/lib/email-verification"
@@ -23,6 +24,8 @@ interface CartItem {
   image: string
   shopId: string
   shopName: string
+  quantity: number
+  stock: number
 }
 
 interface GroupedCart {
@@ -80,7 +83,9 @@ export function CartContent() {
             price: itemData.price || 0,
             image: itemData.images?.[0] || "/placeholder.svg",
             shopId: shopId,
-            shopName: "" // Will be filled later
+            shopName: "", // Will be filled later
+            quantity: cartDoc.quantity || 1,
+            stock: itemData.stock === "unlimited" ? 9999 : (itemData.stock || 0)
           })
         } else {
           // Product not found (deleted?), remove from cart automatically
@@ -221,6 +226,44 @@ export function CartContent() {
     }
   }
 
+  const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
+    if (!user || newQuantity < 1) return
+
+    const itemId = cartItemId.split('_')[1]
+    
+    // Find item to check stock
+    const allItems = getAllItems()
+    const item = allItems.find(i => i.id === cartItemId)
+    if (!item) return
+    
+    if (newQuantity > item.stock) {
+      toast({
+        title: "สินค้ามีจำนวนจำกัด",
+        description: `มีสินค้าเหลือเพียง ${item.stock} ชิ้น`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Optimistic update
+      setGroupedCarts(groups => 
+        groups.map(group => ({
+          ...group,
+          items: group.items.map(i => 
+            i.id === cartItemId ? { ...i, quantity: newQuantity } : i
+          )
+        }))
+      )
+
+      await updateCartQuantity(user.uid, itemId, newQuantity)
+    } catch (error) {
+      console.error("Error updating quantity:", error)
+      // Revert on error (reload cart)
+      loadCart()
+    }
+  }
+
   const getAllItems = () => {
     return groupedCarts.flatMap(group => group.items)
   }
@@ -258,7 +301,7 @@ export function CartContent() {
     const allItems = getAllItems()
     return allItems
       .filter((item) => selectedItems.includes(item.id))
-      .reduce((sum, item) => sum + item.price, 0)
+      .reduce((sum, item) => sum + (item.price * item.quantity), 0)
   }
 
   const handleCheckout = async () => {
@@ -439,24 +482,52 @@ export function CartContent() {
                         />
 
                         {/* Product Image */}
-                        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        <Link href={`/product/${item.gameId}`} className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity">
                           <Image
                             src={item.image}
                             alt={item.name}
                             fill
                             className="object-cover"
                           />
-                        </div>
+                        </Link>
 
                         {/* Product Info */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-[#1e1e1e] mb-1 truncate">
-                            {item.name}
-                          </h3>
+                          <Link href={`/product/${item.gameId}`} className="hover:text-[#ff9800] transition-colors">
+                            <h3 className="text-lg font-semibold text-[#1e1e1e] mb-1 truncate">
+                              {item.name}
+                            </h3>
+                          </Link>
                           <p className="text-sm text-gray-500 mb-2">{item.category}</p>
-                          <p className="text-xl font-bold text-[#ff9800]">
-                            ฿{item.price.toLocaleString()}
-                          </p>
+                          
+                          <div className="flex flex-wrap items-center justify-between gap-4 mt-2">
+                            <p className="text-xl font-bold text-[#ff9800]">
+                              ฿{item.price.toLocaleString()}
+                            </p>
+                            
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-md hover:bg-white hover:shadow-sm"
+                                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-md hover:bg-white hover:shadow-sm"
+                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                                disabled={item.quantity >= item.stock}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Remove Button */}
