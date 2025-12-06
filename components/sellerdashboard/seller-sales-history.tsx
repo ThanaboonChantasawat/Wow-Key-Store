@@ -117,6 +117,11 @@ export default function SellerSalesHistory() {
       if (order) {
         setChatOrder(order)
         setIsChatOpen(true)
+        
+        // Clear the query param to prevent reopening on refresh
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('chatOrderId');
+        window.history.replaceState({}, '', newUrl.toString());
       }
     }
   }, [orders, searchParams])

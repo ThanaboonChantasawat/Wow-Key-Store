@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,6 +76,7 @@ interface Order {
 export function SellerUpdateOrders() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -86,6 +88,22 @@ export function SellerUpdateOrders() {
   // Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatOrder, setChatOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    const chatOrderId = searchParams.get('chatOrderId');
+    if (chatOrderId && orders.length > 0) {
+      const order = orders.find(o => o.id === chatOrderId);
+      if (order) {
+        setChatOrder(order);
+        setIsChatOpen(true);
+        
+        // Clear the query param to prevent reopening on refresh
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('chatOrderId');
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    }
+  }, [orders, searchParams]);
 
   // Form states for game account info
   const [email, setEmail] = useState("");

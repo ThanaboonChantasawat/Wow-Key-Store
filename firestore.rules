@@ -161,16 +161,11 @@ service cloud.firestore {
 
     // Support Messages - เจ้าของ ticket และ admin อ่านได้
     match /support_messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid || isAdmin()
-      );
+      allow read: if isAuthenticated();
       allow write: if false; // ใช้ API route
 
       match /replies/{replyId} {
-        allow read: if isAuthenticated() && (
-          get(/databases/$(database)/documents/support_messages/$(messageId)).data.userId == request.auth.uid ||
-          isAdmin()
-        );
+        allow read: if isAuthenticated();
         allow write: if false; // ใช้ API route
       }
     }

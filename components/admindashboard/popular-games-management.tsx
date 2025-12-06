@@ -318,9 +318,6 @@ export function PopularGamesManagement() {
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-gray-900 text-lg">{game.name}</h4>
-                    <Badge variant={game.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                      {game.status === 'active' ? 'พร้อมขาย' : 'ไม่พร้อมขาย'}
-                    </Badge>
                   </div>
                   <p className="text-sm text-gray-500 line-clamp-1">
                     {game.description || "ไม่มีรายละเอียด"}

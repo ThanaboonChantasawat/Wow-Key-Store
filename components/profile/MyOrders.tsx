@@ -874,41 +874,66 @@ export function MyOrdersContent() {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-blue-900">{statusCounts.all}</div>
-            <div className="text-xs text-blue-700">ทั้งหมด</div>
-          </CardContent>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{statusCounts.all}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            </div>
+          </div>
         </Card>
-        {/* Removed "รอดำเนินการ" card - orders now only show after payment is completed */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-purple-900">{statusCounts.processing}</div>
-            <div className="text-xs text-purple-700">กำลังดำเนินการ</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'processing' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
+          onClick={() => setStatusFilter('processing')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'processing' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'processing' ? 'text-blue-900' : 'text-gray-900'}`}>{statusCounts.processing}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'processing' ? 'text-blue-700' : 'text-gray-500'}`}>กำลังดำเนินการ</div>
+            </div>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-green-900">{statusCounts.completed}</div>
-            <div className="text-xs text-green-700">สำเร็จ</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'completed' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          onClick={() => setStatusFilter('completed')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'completed' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'completed' ? 'text-green-900' : 'text-gray-900'}`}>{statusCounts.completed}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'completed' ? 'text-green-700' : 'text-gray-500'}`}>สำเร็จ</div>
+            </div>
+          </div>
         </Card>
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-red-900">{statusCounts.cancelled}</div>
-            <div className="text-xs text-red-700">ยกเลิก</div>
-          </CardContent>
+
+        <Card 
+          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'cancelled' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          onClick={() => setStatusFilter('cancelled')}
+        >
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'cancelled' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="min-w-0">
+              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'cancelled' ? 'text-red-900' : 'text-gray-900'}`}>{statusCounts.cancelled}</div>
+              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'cancelled' ? 'text-red-700' : 'text-gray-500'}`}>ยกเลิก</div>
+            </div>
+          </div>
         </Card>
-        {/* New: Waiting Confirmation Count */}
-        {statusCounts.waitingConfirmation > 0 && (
-          <Card className="bg-gradient-to-br from-orange-50 to-amber-100 border-orange-300 ring-2 ring-orange-400 animate-pulse">
-            <CardContent className="p-3 sm:p-4 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-orange-900">{statusCounts.waitingConfirmation}</div>
-              <div className="text-xs text-orange-700 font-semibold">🔔 รอยืนยัน</div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Bulk Actions Bar */}
@@ -954,87 +979,27 @@ export function MyOrdersContent() {
         </Card>
       )}
 
-      {/* Filters & Search */}
-      <Card>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          {/* Status Filter Tabs */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={statusFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('all')}
-              className={statusFilter === 'all' ? 'bg-[#ff9800] hover:bg-[#ff9800]/90' : ''}
-            >
-              <Filter className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">ทั้งหมด</span>
-              <span className="sm:hidden">All</span>
-              <Badge className="ml-1 sm:ml-2 bg-white text-gray-900 text-xs">{statusCounts.all}</Badge>
-            </Button>
-            {/* Removed "รอดำเนินการ" (pending) tab - orders now only show after payment is completed */}
-            <Button
-              variant={statusFilter === 'processing' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('processing')}
-              className={statusFilter === 'processing' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-            >
-              <Package className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">กำลังดำเนินการ</span>
-              <span className="sm:hidden">ทำ</span>
-              {statusCounts.processing > 0 && (
-                <Badge className="ml-1 sm:ml-2 bg-white text-gray-900 text-xs">{statusCounts.processing}</Badge>
-              )}
-            </Button>
-            <Button
-              variant={statusFilter === 'completed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('completed')}
-              className={statusFilter === 'completed' ? 'bg-green-600 hover:bg-green-700' : ''}
-            >
-              <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">สำเร็จ</span>
-              <span className="sm:hidden">✓</span>
-              {statusCounts.completed > 0 && (
-                <Badge className="ml-1 sm:ml-2 bg-white text-gray-900 text-xs">{statusCounts.completed}</Badge>
-              )}
-            </Button>
-            <Button
-              variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('cancelled')}
-              className={statusFilter === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
-            >
-              <XCircle className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">ยกเลิก</span>
-              <span className="sm:hidden">✕</span>
-              {statusCounts.cancelled > 0 && (
-                <Badge className="ml-1 sm:ml-2 bg-white text-gray-900 text-xs">{statusCounts.cancelled}</Badge>
-              )}
-            </Button>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="ค้นหา (รหัสคำสั่งซื้อ, ร้าน, สินค้า)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 sm:pl-10 pr-10 text-sm sm:text-base"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                onClick={() => setSearchQuery('')}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search Bar */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="ค้นหา (รหัสคำสั่งซื้อ, ร้าน, สินค้า)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 sm:pl-10 pr-10 text-sm sm:text-base h-10 sm:h-12 bg-white shadow-sm border-gray-200 focus:border-orange-500 focus:ring-orange-500 rounded-xl"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100 rounded-full"
+            onClick={() => setSearchQuery('')}
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </Button>
+        )}
+      </div>
 
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
