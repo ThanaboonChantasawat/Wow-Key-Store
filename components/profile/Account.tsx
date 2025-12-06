@@ -102,6 +102,11 @@ export function AccountContent() {
     (provider) => provider.providerId === "password"
   );
 
+  // Check if user logged in with Google
+  const isGoogleLogin = user?.providerData.some(
+    (provider) => provider.providerId === "google.com"
+  );
+
   const handleEditClick = () => {
     setIsEditing(true);
     setDisplayName(userProfile?.displayName || user?.displayName || "");
@@ -715,9 +720,14 @@ export function AccountContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="กรอกอีเมลของคุณ"
                     className="max-w-md border-2 focus:border-[#ff9800] transition-colors"
-                    disabled={loading}
+                    disabled={loading || isGoogleLogin}
                   />
-                  {!isEmailPasswordProvider ? (
+                  {isGoogleLogin ? (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      คุณเข้าสู่ระบบด้วย Google ไม่สามารถเปลี่ยนอีเมลได้
+                    </p>
+                  ) : !isEmailPasswordProvider ? (
                     <p className="text-xs text-gray-500">
                       💡 คุณ login ด้วย {user?.providerData[0]?.providerId === 'google.com' ? 'Google' : 'Facebook'} 
                       {' '}สามารถเพิ่มอีเมลสำหรับการติดต่อได้
