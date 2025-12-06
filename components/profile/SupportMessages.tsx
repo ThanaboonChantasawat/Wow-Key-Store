@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/components/auth-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { MessageSquare, Clock, Send } from 'lucide-react'
 import { format } from 'date-fns'
 import { th } from 'date-fns/locale'
 import Link from 'next/link'
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore'
+import { db } from '@/components/firebase-config'
 
 interface SupportMessage {
   id: string
@@ -47,68 +49,84 @@ export function SupportMessagesContent() {
   const [isLoadingReplies, setIsLoadingReplies] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [isSendingReply, setIsSendingReply] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [replies])
 
   useEffect(() => {
     if (user) {
-      fetchMyMessages()
+      // Real-time listener for my support messages
+      const q = query(
+        collection(db, 'support_messages'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      )
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const newMessages = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString(),
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : new Date(data.updatedAt).toISOString(),
+          }
+        }) as SupportMessage[]
+        
+        setMessages(newMessages)
+        setIsLoading(false)
+      }, (error) => {
+        console.error("Error fetching support messages:", error)
+        setIsLoading(false)
+      })
+
+      return () => unsubscribe()
     }
   }, [user])
 
   useEffect(() => {
     if (selectedMessage) {
-      fetchReplies(selectedMessage.id)
+      // Real-time listener for replies
+      setIsLoadingReplies(true)
+      const q = query(
+        collection(db, 'support_messages', selectedMessage.id, 'replies'),
+        orderBy('createdAt', 'asc')
+      )
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const newReplies = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString(),
+          }
+        }) as Reply[]
+        
+        setReplies(newReplies)
+        setIsLoadingReplies(false)
+      }, (error) => {
+        console.error("Error fetching replies:", error)
+        setIsLoadingReplies(false)
+      })
+
+      return () => unsubscribe()
     } else {
       setReplies([])
     }
   }, [selectedMessage])
 
-  const fetchMyMessages = async () => {
-    if (!user) return
-
-    try {
-      setIsLoading(true)
-      const token = await user.getIdToken()
-      
-      const response = await fetch(`/api/support?userId=${user.uid}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setMessages(data.messages || [])
-      }
-    } catch (error) {
-      console.error('Error fetching support messages:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchReplies = async (messageId: string) => {
-    if (!user) return
-
-    try {
-      setIsLoadingReplies(true)
-      const token = await user.getIdToken()
-      
-      const response = await fetch(`/api/support/${messageId}/replies`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setReplies(data.replies || [])
-      }
-    } catch (error) {
-      console.error('Error fetching replies:', error)
-    } finally {
-      setIsLoadingReplies(false)
-    }
-  }
+  // Old fetch functions removed
+  /*
+  const fetchMyMessages = async () => { ... }
+  const fetchReplies = async (messageId: string) => { ... }
+  */
 
   const sendReply = async () => {
     if (!user || !selectedMessage || !replyText.trim()) return
@@ -339,6 +357,7 @@ export function SupportMessagesContent() {
                         </div>
                       ))
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
               </div>
