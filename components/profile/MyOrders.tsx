@@ -60,6 +60,15 @@ interface OrderItem {
   gameName?: string
 }
 
+interface DeliveredItem {
+  index: number;
+  itemName: string;
+  email?: string;
+  username?: string;
+  password?: string;
+  additionalInfo?: string;
+}
+
 interface Order {
   id: string
   userId: string
@@ -83,6 +92,7 @@ interface Order {
   buyerConfirmedAt?: string
   createdAt: string
   updatedAt: string
+  deliveredItems?: DeliveredItem[];
 }
 
 // Simple in-memory cache for shop details
@@ -1680,7 +1690,88 @@ export function MyOrdersContent() {
                   </div>
 
                   {/* Game Account Info */}
-                  {(selectedOrderDetail.email || selectedOrderDetail.username || selectedOrderDetail.password || selectedOrderDetail.additionalInfo) && (
+                  {(selectedOrderDetail.deliveredItems && selectedOrderDetail.deliveredItems.length > 0) ? (
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-xl shadow-md">
+                          <Key className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-green-900 mb-1">🎮 ข้อมูลบัญชีเกม ({selectedOrderDetail.deliveredItems.length} รายการ)</h4>
+                          <p className="text-xs text-green-700">กรุณาเปลี่ยนรหัสผ่านทันทีหลังได้รับบัญชี</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        {selectedOrderDetail.deliveredItems.map((item, idx) => (
+                          <div key={idx} className="bg-white/50 rounded-xl p-4 border border-green-200">
+                            <h5 className="font-bold text-gray-800 mb-3 pb-2 border-b border-green-100 flex items-center justify-between">
+                              <span>{item.itemName}</span>
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">รายการที่ {idx + 1}</span>
+                            </h5>
+                            
+                            <div className="space-y-3">
+                              {(item.email || item.username) && (
+                                <div className="bg-white border border-green-200 rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded">ID / Email</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => copyToClipboard(item.email || item.username || "", `${selectedOrderDetail.id}-${idx}-id`)}
+                                    >
+                                      {copiedId === `${selectedOrderDetail.id}-${idx}-id` ? (
+                                        <><Check className="w-3 h-3 mr-1" /> คัดลอกแล้ว</>
+                                      ) : (
+                                        <><Copy className="w-3 h-3 mr-1" /> คัดลอก</>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <code className="text-sm font-mono font-bold text-gray-900 break-all block">
+                                    {item.email || item.username}
+                                  </code>
+                                </div>
+                              )}
+
+                              {item.password && (
+                                <div className="bg-white border border-orange-200 rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-orange-800 bg-orange-100 px-2 py-0.5 rounded">Password</span>
+                                      <span className="text-[10px] text-orange-600 font-medium">⚠️ เปลี่ยนทันที!</span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => copyToClipboard(item.password || "", `${selectedOrderDetail.id}-${idx}-pass`)}
+                                    >
+                                      {copiedId === `${selectedOrderDetail.id}-${idx}-pass` ? (
+                                        <><Check className="w-3 h-3 mr-1" /> คัดลอกแล้ว</>
+                                      ) : (
+                                        <><Copy className="w-3 h-3 mr-1" /> คัดลอก</>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <code className="text-sm font-mono font-bold text-gray-900 break-all block">
+                                    {item.password}
+                                  </code>
+                                </div>
+                              )}
+
+                              {item.additionalInfo && (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <span className="text-xs font-bold text-gray-600 block mb-1">ข้อมูลเพิ่มเติม</span>
+                                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{item.additionalInfo}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (selectedOrderDetail.email || selectedOrderDetail.username || selectedOrderDetail.password || selectedOrderDetail.additionalInfo) && (
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5">
                       <div className="flex items-start gap-3">
                         <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-xl shadow-md">

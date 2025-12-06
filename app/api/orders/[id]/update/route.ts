@@ -17,7 +17,8 @@ export async function PATCH(
       username, 
       password, 
       additionalInfo,
-      notes 
+      notes,
+      deliveredItems // New field for multiple items
     } = body
 
     if (!orderId) {
@@ -75,6 +76,14 @@ export async function PATCH(
     if (additionalInfo !== undefined) {
       updateData.additionalInfo = additionalInfo
       hasGameAccountInfo = true
+    }
+
+    // Update deliveredItems if provided
+    if (deliveredItems !== undefined && Array.isArray(deliveredItems)) {
+      updateData.deliveredItems = deliveredItems
+      if (deliveredItems.length > 0) {
+        hasGameAccountInfo = true
+      }
     }
 
     // Set delivery timestamp if any game account info is provided

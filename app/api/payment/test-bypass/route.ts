@@ -59,6 +59,50 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [TEST] Order marked as paid:', orderId)
 
+    // Update stock for purchased items (TEST MODE)
+    try {
+      console.log('📦 [TEST] Updating stock for purchased items...')
+      const batch = adminDb.batch()
+      let updateCount = 0
+
+      // Helper to add stock update to batch
+      const addStockUpdate = (productId: string, quantity: number) => {
+        if (!productId) return
+        const productRef = adminDb.collection('products').doc(productId)
+        batch.update(productRef, {
+          stock: admin.firestore.FieldValue.increment(-quantity),
+          soldCount: admin.firestore.FieldValue.increment(quantity)
+        })
+        updateCount++
+      }
+
+      // Case 1: Cart checkout order with shops array
+      if (orderData?.type === 'cart_checkout' && orderData.shops && Array.isArray(orderData.shops)) {
+        for (const shop of orderData.shops) {
+          if (shop.items && Array.isArray(shop.items)) {
+            for (const item of shop.items) {
+              const qty = item.quantity || 1
+              addStockUpdate(item.productId, qty)
+            }
+          }
+        }
+      }
+      // Case 2: Direct order (if any)
+      else if (orderData?.items && Array.isArray(orderData.items)) {
+        for (const item of orderData.items) {
+          const qty = item.quantity || 1
+          addStockUpdate(item.productId, qty)
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit()
+        console.log(`✅ [TEST] Updated stock for ${updateCount} items`)
+      }
+    } catch (stockError) {
+      console.error('❌ [TEST] Failed to update stock:', stockError)
+    }
+
     // Also update sub-orders if they exist
     if (orderData?.subOrders && Array.isArray(orderData.subOrders)) {
       const batch = adminDb.batch()

@@ -6,6 +6,7 @@ interface CheckoutItem {
   shopId: string
   price: number
   name: string
+  quantity: number
 }
 
 interface GroupedOrder {
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 
       const group = shopGroups.get(item.shopId)!
       group.items.push(item)
-      group.totalAmount += item.price
+      group.totalAmount += item.price * (item.quantity || 1)
     }
 
     // Calculate fees for each group
@@ -210,6 +211,7 @@ export async function POST(request: NextRequest) {
           productId: i.productId,
           name: i.name,
           price: i.price,
+          quantity: i.quantity || 1,
         })),
       })),
       totalAmount: grandTotal,

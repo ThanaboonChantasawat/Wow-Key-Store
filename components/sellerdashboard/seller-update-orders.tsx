@@ -50,6 +50,15 @@ interface OrderItem {
   quantity: number;
 }
 
+interface DeliveredItem {
+  index: number;
+  itemName: string;
+  email?: string;
+  username?: string;
+  password?: string;
+  additionalInfo?: string;
+}
+
 interface Order {
   id: string;
   userId: string;
@@ -71,6 +80,7 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   gameCodeDeliveredAt?: string;
+  deliveredItems?: DeliveredItem[];
 }
 
 export function SellerUpdateOrders() {
@@ -111,6 +121,7 @@ export function SellerUpdateOrders() {
   const [password, setPassword] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [notes, setNotes] = useState("");
+  const [deliveredItems, setDeliveredItems] = useState<DeliveredItem[]>([]);
 
   const [updating, setUpdating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -215,6 +226,39 @@ export function SellerUpdateOrders() {
     setPassword(order.password || "");
     setAdditionalInfo(order.additionalInfo || "");
     setNotes(order.sellerNotes || "");
+
+    // Initialize deliveredItems
+    if (order.deliveredItems && order.deliveredItems.length > 0) {
+      setDeliveredItems(order.deliveredItems);
+    } else {
+      // Create empty items based on order items and quantity
+      const items: DeliveredItem[] = [];
+      let currentIndex = 0;
+      order.items.forEach(item => {
+        const qty = item.quantity || 1;
+        for (let i = 0; i < qty; i++) {
+          items.push({
+            index: currentIndex++,
+            itemName: `${item.name} #${i + 1}`,
+            email: "",
+            username: "",
+            password: "",
+            additionalInfo: ""
+          });
+        }
+      });
+      
+      // If legacy data exists, populate the first item
+      if (items.length > 0 && (order.email || order.username || order.password)) {
+        items[0].email = order.email;
+        items[0].username = order.username;
+        items[0].password = order.password;
+        items[0].additionalInfo = order.additionalInfo;
+      }
+      
+      setDeliveredItems(items);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -235,7 +279,7 @@ export function SellerUpdateOrders() {
     try {
       // ถ้ามีการส่งรหัส (email หรือ password) ให้เปลี่ยนสถานะเป็น completed ทันที
       // เพื่อป้องกันการยกเลิก แต่ยังรอลูกค้ายืนยัน (buyerConfirmed: false)
-      const hasCodes = email.trim() || password.trim();
+      const hasCodes = deliveredItems.some(item => item.email || item.password || item.username) || email.trim() || password.trim();
       const finalStatus = hasCodes ? "completed" : (newStatus || selectedOrder.status);
 
       const response = await fetch(`/api/orders/${selectedOrder.id}/update`, {
@@ -245,11 +289,14 @@ export function SellerUpdateOrders() {
         },
         body: JSON.stringify({
           status: finalStatus,
-          email: email.trim() || undefined,
-          username: username.trim() || undefined,
-          password: password.trim() || undefined,
-          additionalInfo: additionalInfo.trim() || undefined,
+          // Legacy fields for backward compatibility (use first item or global inputs)
+          email: deliveredItems[0]?.email || email.trim() || undefined,
+          username: deliveredItems[0]?.username || username.trim() || undefined,
+          password: deliveredItems[0]?.password || password.trim() || undefined,
+          additionalInfo: deliveredItems[0]?.additionalInfo || additionalInfo.trim() || undefined,
+          
           notes: notes.trim() || undefined,
+          deliveredItems: deliveredItems // Send the full list
         }),
       });
 
@@ -718,69 +765,114 @@ export function SellerUpdateOrders() {
                           </div>
                         </div>
 
-                        {/* Email Input - Primary for mobile games */}
-                        <div>
-                          <Label
-                            htmlFor="email"
-                            className="text-base font-semibold mb-2 flex items-center gap-2"
-                          >
-                            Email หรือ Username ที่ใช้เข้าเกม
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="example@gmail.com หรือ username"
-                            className="font-mono"
-                          />
-                        </div>
+                        {/* Delivered Items Inputs */}
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">
+                              ข้อมูลบัญชีที่จัดส่ง ({deliveredItems.length} รายการ)
+                            </Label>
+                            <p className="text-sm text-orange-600">
+                              ⚠️ สำคัญ! โปรดปิด 2FA(การยืนยันตัวตน 2 ชั้น) ด้วยหากมี
+                            </p>
+                          </div>
+                          
+                          {deliveredItems.map((item, index) => (
+                            <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                              <div className="absolute top-4 right-4 bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full font-medium">
+                                รายการที่ {index + 1}
+                              </div>
+                              <h4 className="font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200 pr-20">
+                                {item.itemName}
+                              </h4>
+                              
+                              <div className="space-y-4">
+                                {/* Email/Username Input */}
+                                <div>
+                                  <Label
+                                    htmlFor={`email-${index}`}
+                                    className="text-sm font-medium mb-1.5 flex items-center gap-2"
+                                  >
+                                    Email หรือ Username
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id={`email-${index}`}
+                                    value={item.email || item.username || ""}
+                                    onChange={(e) => {
+                                      const newItems = [...deliveredItems];
+                                      newItems[index] = { ...newItems[index], email: e.target.value, username: e.target.value };
+                                      setDeliveredItems(newItems);
+                                      
+                                      // Sync with legacy state for first item
+                                      if (index === 0) {
+                                        setEmail(e.target.value);
+                                        setUsername(e.target.value);
+                                      }
+                                    }}
+                                    placeholder="example@gmail.com หรือ username"
+                                    className="font-mono bg-white"
+                                    disabled={updating}
+                                  />
+                                </div>
 
-                        
+                                {/* Password Input */}
+                                <div>
+                                  <Label
+                                    htmlFor={`password-${index}`}
+                                    className="text-sm font-medium mb-1.5 flex items-center gap-2"
+                                  >
+                                    Password
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id={`password-${index}`}
+                                    type="text"
+                                    value={item.password || ""}
+                                    onChange={(e) => {
+                                      const newItems = [...deliveredItems];
+                                      newItems[index] = { ...newItems[index], password: e.target.value };
+                                      setDeliveredItems(newItems);
+                                      
+                                      // Sync with legacy state for first item
+                                      if (index === 0) {
+                                        setPassword(e.target.value);
+                                      }
+                                    }}
+                                    placeholder="รหัสผ่านสำหรับเข้าเกม"
+                                    className="font-mono bg-white"
+                                    disabled={updating}
+                                  />
+                                </div>
 
-                        {/* Password Input */}
-                        <div>
-                          <Label
-                            htmlFor="password"
-                            className="text-base font-semibold mb-2 flex items-center gap-2"
-                          >
-                            Password
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="password"
-                            type="text"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="รหัสผ่านสำหรับเข้าเกม"
-                            className="font-mono"
-                            disabled={updating}
-                          />
-                          <p className="text-sm text-orange-600 mt-2">
-                            ⚠️ สำคัญ! โปรดปิด 2FA(การยืนยันตัวตน 2 ชั้น) ด้วยหากมี
-                          </p>
-                        </div>
-
-                        {/* Additional Info Input */}
-                        <div>
-                          <Label
-                            htmlFor="additionalInfo"
-                            className="text-base font-semibold mb-2 block"
-                          >
-                            ข้อมูลเพิ่มเติม{" "}
-                            <span className="text-gray-400 font-normal">
-                              (ถ้ามี)
-                            </span>
-                          </Label>
-                          <Textarea
-                            id="additionalInfo"
-                            value={additionalInfo}
-                            onChange={(e) => setAdditionalInfo(e.target.value)}
-                            placeholder="ข้อมูลเพิ่มเติมเกี่ยวกับบัญชี เช่น Server, Level, Items พิเศษ"
-                            rows={3}
-                            disabled={updating}
-                          />
+                                {/* Additional Info Input */}
+                                <div>
+                                  <Label
+                                    htmlFor={`additionalInfo-${index}`}
+                                    className="text-sm font-medium mb-1.5 block"
+                                  >
+                                    ข้อมูลเพิ่มเติม <span className="text-gray-400 font-normal">(ถ้ามี)</span>
+                                  </Label>
+                                  <Input
+                                    id={`additionalInfo-${index}`}
+                                    value={item.additionalInfo || ""}
+                                    onChange={(e) => {
+                                      const newItems = [...deliveredItems];
+                                      newItems[index] = { ...newItems[index], additionalInfo: e.target.value };
+                                      setDeliveredItems(newItems);
+                                      
+                                      // Sync with legacy state for first item
+                                      if (index === 0) {
+                                        setAdditionalInfo(e.target.value);
+                                      }
+                                    }}
+                                    placeholder="ข้อมูลเพิ่มเติม เช่น Server, Level"
+                                    className="bg-white"
+                                    disabled={updating}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
 
                         {selectedOrder.gameCodeDeliveredAt && (
@@ -864,31 +956,23 @@ export function SellerUpdateOrders() {
                   ⚠️ เมื่อส่งรหัสแล้ว รอลูกค้ายืนยันการรับสินค้า จึงจะได้รับเงิน (ไม่สามารถยกเลิกได้)
                 </p>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                {email && (
-                  <div>
-                    <span className="font-semibold text-gray-600">Email:</span>
-                    <span className="ml-2 text-gray-900">{email}</span>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-60 overflow-y-auto">
+                <p className="font-semibold text-gray-900 mb-2">รายการที่จัดส่ง ({deliveredItems.length}):</p>
+                {deliveredItems.map((item, idx) => (
+                  <div key={idx} className="border-b border-gray-200 pb-2 last:border-0 last:pb-0">
+                    <p className="font-medium text-xs text-gray-500">{item.itemName}</p>
+                    {(item.email || item.username) && (
+                      <div className="text-xs truncate">
+                        <span className="text-gray-600">ID:</span> {item.email || item.username}
+                      </div>
+                    )}
+                    {item.password && (
+                      <div className="text-xs truncate">
+                        <span className="text-gray-600">Pass:</span> {item.password}
+                      </div>
+                    )}
                   </div>
-                )}
-                {username && (
-                  <div>
-                    <span className="font-semibold text-gray-600">Username:</span>
-                    <span className="ml-2 text-gray-900">{username}</span>
-                  </div>
-                )}
-                {password && (
-                  <div>
-                    <span className="font-semibold text-gray-600">Password:</span>
-                    <span className="ml-2 text-gray-900">{password}</span>
-                  </div>
-                )}
-                {additionalInfo && (
-                  <div>
-                    <span className="font-semibold text-gray-600">ข้อมูลเพิ่มเติม:</span>
-                    <span className="ml-2 text-gray-900">{additionalInfo}</span>
-                  </div>
-                )}
+                ))}
               </div>
               <p className="text-orange-600 font-medium">
                 ⚠️ ข้อมูลจะถูกส่งให้ลูกค้าทันที

@@ -6,6 +6,7 @@ interface CheckoutItem {
   shopId: string
   price: number
   name: string
+  quantity: number
 }
 
 export async function POST(request: NextRequest) {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate totals
-    const grandTotal = items.reduce((sum: number, item: CheckoutItem) => sum + item.price, 0)
+    const grandTotal = items.reduce((sum: number, item: CheckoutItem) => sum + (item.price * (item.quantity || 1)), 0)
     const totalPlatformFee = Math.round(grandTotal * 0.05) // 5% platform fee
 
     console.log('Validation successful:', { grandTotal, totalPlatformFee })

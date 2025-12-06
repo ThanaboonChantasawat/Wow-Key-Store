@@ -18,6 +18,7 @@ interface CheckoutItem {
   image: string
   shopId: string
   shopName: string
+  quantity: number
 }
 
 export default function CartCheckoutPage() {
@@ -65,6 +66,7 @@ export default function CartCheckoutPage() {
           shopId: item.shopId,
           price: item.price,
           name: item.name,
+          quantity: item.quantity || 1,
         }))
         
         const response = await fetch('/api/cart/validate-checkout', {
@@ -233,9 +235,16 @@ export default function CartCheckoutPage() {
                             {item.name}
                           </p>
                           <p className="text-xs text-gray-500">{item.category}</p>
-                          <p className="text-sm font-bold text-[#ff9800] mt-1">
-                            ฿{item.price.toLocaleString()}
-                          </p>
+                          <div className="flex justify-between items-center mt-1">
+                            <p className="text-sm font-bold text-[#ff9800]">
+                              ฿{item.price.toLocaleString()}
+                            </p>
+                            {item.quantity > 1 && (
+                              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                                x{item.quantity}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
