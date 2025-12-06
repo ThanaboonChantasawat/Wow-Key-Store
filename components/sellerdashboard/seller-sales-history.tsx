@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -108,6 +108,18 @@ export default function SellerSalesHistory() {
   const { toast } = useToast()
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const chatOrderId = searchParams.get('chatOrderId')
+    if (chatOrderId && orders.length > 0) {
+      const order = orders.find(o => o.id === chatOrderId)
+      if (order) {
+        setChatOrder(order)
+        setIsChatOpen(true)
+      }
+    }
+  }, [orders, searchParams])
 
   useEffect(() => {
     if (user) {
@@ -529,13 +541,13 @@ export default function SellerSalesHistory() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
                         onClick={(e) => handleOpenChat(e, order)}
-                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                        title="แชทกับลูกค้า"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
                       >
-                        <MessageCircle className="w-5 h-5" />
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        แชท
                       </Button>
                       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
                     </div>

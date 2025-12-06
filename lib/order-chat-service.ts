@@ -134,7 +134,9 @@ export async function sendOrderMessage(
     }
 
     if (recipientId) {
-      const link = isBuyer ? '/seller' : '/profile?tab=my-orders'
+      const link = isBuyer 
+        ? `/seller?tab=orders&chatOrderId=${data.orderId}` 
+        : `/profile?tab=my-orders&chatOrderId=${data.orderId}`
       
       await createNotification(
         recipientId,

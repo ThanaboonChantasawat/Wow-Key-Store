@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -90,6 +91,7 @@ const shopCache = new Map<string, any>();
 export function MyOrdersContent() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -128,6 +130,16 @@ export function MyOrdersContent() {
   const [showChatDialog, setShowChatDialog] = useState(false)
   const [selectedOrderToChat, setSelectedOrderToChat] = useState<Order | null>(null)
 
+  useEffect(() => {
+    const chatOrderId = searchParams.get('chatOrderId')
+    if (chatOrderId && orders.length > 0) {
+      const order = orders.find(o => o.id === chatOrderId)
+      if (order) {
+        setSelectedOrderToChat(order)
+        setShowChatDialog(true)
+      }
+    }
+  }, [orders, searchParams])
 
   const fetchOrders = async (showLoading = true) => {
     if (!user) return
