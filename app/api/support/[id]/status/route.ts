@@ -27,7 +27,7 @@ export async function PATCH(
     }
 
     // Update document in Firestore
-    await adminDb.collection('supportMessages').doc(messageId).update({
+    await adminDb.collection('support_messages').doc(messageId).update({
       status,
       updatedAt: new Date().toISOString(),
     })

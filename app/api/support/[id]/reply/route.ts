@@ -49,7 +49,7 @@ export async function POST(
     }
 
     // Update document in Firestore
-    await adminDb.collection('supportMessages').doc(messageId).update({
+    await adminDb.collection('support_messages').doc(messageId).update({
       adminReply: reply.trim(),
       repliedAt: new Date().toISOString(),
       repliedBy: adminEmail,

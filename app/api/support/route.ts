@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save to Firestore
-    const docRef = await adminDb.collection('supportMessages').add(supportMessage)
+    const docRef = await adminDb.collection('support_messages').add(supportMessage)
 
     console.log('✅ Support message created:', docRef.id)
 
@@ -79,17 +79,17 @@ export async function GET(request: NextRequest) {
     
     if (userId) {
       // If filtering by userId, use that as primary query
-      snapshot = await adminDb.collection('supportMessages')
+      snapshot = await adminDb.collection('support_messages')
         .where('userId', '==', userId)
         .get()
     } else if (status) {
       // If filtering by status, use that as primary query
-      snapshot = await adminDb.collection('supportMessages')
+      snapshot = await adminDb.collection('support_messages')
         .where('status', '==', status)
         .get()
     } else {
       // No filter, get all (limited)
-      snapshot = await adminDb.collection('supportMessages')
+      snapshot = await adminDb.collection('support_messages')
         .limit(limit)
         .get()
     }

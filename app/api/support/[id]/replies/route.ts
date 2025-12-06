@@ -20,7 +20,7 @@ export async function GET(
 
     // Fetch replies subcollection
     const repliesSnapshot = await adminDb
-      .collection('supportMessages')
+      .collection('support_messages')
       .doc(messageId)
       .collection('replies')
       .orderBy('createdAt', 'asc')
@@ -80,7 +80,7 @@ export async function POST(
 
     // Get original message details for email notification
     const messageDoc = await adminDb
-      .collection('supportMessages')
+      .collection('support_messages')
       .doc(messageId)
       .get()
 
@@ -104,14 +104,14 @@ export async function POST(
     }
 
     const replyRef = await adminDb
-      .collection('supportMessages')
+      .collection('support_messages')
       .doc(messageId)
       .collection('replies')
       .add(replyData)
 
     // Update parent message
     await adminDb
-      .collection('supportMessages')
+      .collection('support_messages')
       .doc(messageId)
       .update({
         updatedAt: new Date().toISOString(),
