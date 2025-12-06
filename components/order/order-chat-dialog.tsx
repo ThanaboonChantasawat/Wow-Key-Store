@@ -12,6 +12,8 @@ import { MessageCircle, Send, Loader2, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-context"
 import { OrderMessage } from "@/lib/order-chat-types"
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { db } from '@/components/firebase-config'
 
 interface OrderChatDialogProps {
   orderId: string
@@ -44,38 +46,53 @@ export function OrderChatDialog({
     scrollToBottom()
   }, [messages])
 
+  // Real-time messages listener
   useEffect(() => {
-    if (isOpen) {
-      loadMessages()
-      // Polling every 5 seconds
-      const interval = setInterval(loadMessages, 5000)
-      return () => clearInterval(interval)
+    if (isOpen && orderId) {
+      setLoading(true)
+      
+      // Subscribe to messages
+      const q = query(
+        collection(db, 'orders', orderId, 'messages'),
+        orderBy('createdAt', 'asc')
+      )
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const newMessages = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt)
+          }
+        }) as OrderMessage[]
+        
+        setMessages(newMessages)
+        setLoading(false)
+        
+        // Mark as read when messages loaded
+        markAsRead()
+      }, (error) => {
+        console.error("Error fetching messages:", error)
+        setLoading(false)
+      })
+
+      return () => unsubscribe()
     }
   }, [isOpen, orderId])
 
-  const loadMessages = async () => {
+  const markAsRead = async () => {
     if (!user) return
-
     try {
-      setLoading(true)
       const token = await user.getIdToken()
-      
-      const response = await fetch(`/api/orders/${orderId}/chat/messages`, {
+      await fetch(`/api/orders/${orderId}/chat/read`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-
-      const data = await response.json()
-
-      if (data.success && data.messages) {
-        setMessages(data.messages)
-      }
-
     } catch (error) {
-      console.error('Error loading messages:', error)
-    } finally {
-      setLoading(false)
+      console.error('Error marking messages as read:', error)
     }
   }
 
@@ -104,8 +121,7 @@ export function OrderChatDialog({
       }
 
       setNewMessage('')
-      loadMessages() // Reload messages
-
+      // No need to reload, onSnapshot will handle it
     } catch (error: any) {
       console.error('Error sending message:', error)
       toast({

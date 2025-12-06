@@ -110,18 +110,38 @@ export async function sendOrderMessage(
       await chatRef.set(chat)
     }
 
-    // ส่ง Notification ให้อีกฝ่าย
-    const recipientId = isBuyer ? 
-      (chatDoc.data()?.sellerId || orderData.sellerId) : 
-      orderData.userId
+    // Determine recipient ID
+    let recipientId = ''
+    
+    if (isBuyer) {
+      // If sender is buyer, recipient is seller
+      if (chatDoc.exists && chatDoc.data()?.sellerId) {
+        recipientId = chatDoc.data()?.sellerId
+      } else if (orderData.sellerId) {
+        recipientId = orderData.sellerId
+      } else if (orderData.shopId) {
+        // Fallback: fetch shop owner again if needed (though we did it above for new chat)
+        // We can reuse the logic if we refactor, but for now let's just fetch if we don't have it
+        const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
+        const shopData = shopDoc.data()
+        if (shopData?.ownerId) {
+          recipientId = shopData.ownerId
+        }
+      }
+    } else {
+      // If sender is seller, recipient is buyer
+      recipientId = orderData.userId
+    }
 
     if (recipientId) {
+      const link = isBuyer ? '/seller' : '/profile?tab=my-orders'
+      
       await createNotification(
         recipientId,
         'info',
         'ข้อความใหม่ในคำสั่งซื้อ',
         `${userData?.displayName || 'ผู้ใช้'}: ${data.message.substring(0, 50)}${data.message.length > 50 ? '...' : ''}`,
-        `/orders/${data.orderId}/chat`
+        link
       )
     }
 

@@ -23,11 +23,13 @@ import {
   ChevronRight,
   Edit,
   AlertCircle,
-  Filter
+  Filter,
+  MessageCircle
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-context"
 import { Loading } from "@/components/ui/loading"
+import { OrderChatDialog } from "@/components/order/order-chat-dialog"
 import {
   Dialog,
   DialogContent,
@@ -88,6 +90,10 @@ export default function SellerSalesHistory() {
   const [showUpdateForm, setShowUpdateForm] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showSendConfirm, setShowSendConfirm] = useState(false)
+  
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [chatOrder, setChatOrder] = useState<Order | null>(null)
   
   // Update form states
   const [formEmail, setFormEmail] = useState("")
@@ -257,6 +263,12 @@ export default function SellerSalesHistory() {
 
   const handleCancelOrder = () => {
     setShowCancelConfirm(true)
+  }
+
+  const handleOpenChat = (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation()
+    setChatOrder(order)
+    setIsChatOpen(true)
   }
 
   const handleUpdateOrder = async (newStatus?: string) => {
@@ -515,7 +527,18 @@ export default function SellerSalesHistory() {
                         {getStatusBadge(order.status)}
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleOpenChat(e, order)}
+                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                        title="แชทกับลูกค้า"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                      </Button>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -528,10 +551,25 @@ export default function SellerSalesHistory() {
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>รายละเอียดคำสั่งซื้อ</DialogTitle>
-            <DialogDescription>
-              รหัสคำสั่งซื้อ: #{selectedOrder?.id}
-            </DialogDescription>
+            <div className="flex items-center justify-between pr-8">
+              <div>
+                <DialogTitle>รายละเอียดคำสั่งซื้อ</DialogTitle>
+                <DialogDescription>
+                  รหัสคำสั่งซื้อ: #{selectedOrder?.id}
+                </DialogDescription>
+              </div>
+              {selectedOrder && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => handleOpenChat(e, selectedOrder)}
+                  className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  แชทกับลูกค้า
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           
           {selectedOrder && (
@@ -905,6 +943,17 @@ export default function SellerSalesHistory() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Chat Dialog */}
+      {chatOrder && (
+        <OrderChatDialog
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          orderId={chatOrder.id}
+          orderNumber={chatOrder.id.slice(-8).toUpperCase()}
+          userRole="seller"
+        />
+      )}
     </div>
   )
 }

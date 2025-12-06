@@ -16,8 +16,10 @@ import {
   AlertCircle,
   Store,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { OrderChatDialog } from "@/components/order/order-chat-dialog";
 
 // Helper function to ensure minimum loading time for better UX
 const withMinimumLoadingTime = async <T,>(
@@ -80,6 +82,10 @@ export function SellerUpdateOrders() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatOrder, setChatOrder] = useState<Order | null>(null);
 
   // Form states for game account info
   const [email, setEmail] = useState("");
@@ -178,6 +184,11 @@ export function SellerUpdateOrders() {
 
     fetchOrders();
   }, [shopId, activeTab]);
+
+  const handleOpenChat = (order: Order) => {
+    setChatOrder(order);
+    setIsChatOpen(true);
+  };
 
   const handleOpenDialog = (order: Order) => {
     setSelectedOrder(order);
@@ -475,12 +486,23 @@ export function SellerUpdateOrders() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    onClick={() => handleOpenDialog(order)}
-                    className="bg-[#ff9800] hover:bg-[#ff9800]/90 text-white"
-                  >
-                    จัดการ
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleOpenChat(order)}
+                      className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                      title="แชทกับลูกค้า"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleOpenDialog(order)}
+                      className="bg-[#ff9800] hover:bg-[#ff9800]/90 text-white"
+                    >
+                      จัดการ
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="border-t border-gray-200 pt-4">
@@ -874,6 +896,17 @@ export function SellerUpdateOrders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Chat Dialog */}
+      {chatOrder && (
+        <OrderChatDialog
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          orderId={chatOrder.id}
+          orderNumber={chatOrder.id.slice(-8).toUpperCase()}
+          userRole="seller"
+        />
       )}
     </>
   );
