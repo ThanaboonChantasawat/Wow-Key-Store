@@ -150,14 +150,6 @@ export function OrderChatDialog({
               <MessageCircle className="w-5 h-5 text-blue-600" />
               แชทคำสั่งซื้อ {orderNumber}
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0"
-            >
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </DialogHeader>
 

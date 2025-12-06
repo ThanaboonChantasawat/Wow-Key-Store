@@ -489,12 +489,11 @@ export function SellerUpdateOrders() {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      size="icon"
                       onClick={() => handleOpenChat(order)}
-                      className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                      title="แชทกับลูกค้า"
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50"
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      แชท
                     </Button>
                     <Button
                       onClick={() => handleOpenDialog(order)}
