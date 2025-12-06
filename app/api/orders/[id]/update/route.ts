@@ -3,6 +3,11 @@ import { adminDb } from '@/lib/firebase-admin-config'
 import admin from 'firebase-admin'
 import { createNotification } from '@/lib/notification-service'
 
+// Initialize Stripe lazily if needed (legacy)
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -95,6 +100,151 @@ export async function PATCH(
     // Update notes if provided
     if (notes !== undefined) {
       updateData.sellerNotes = notes
+    }
+
+    // Handle Cancellation Logic (Refund & Stock Return)
+    if (status === 'cancelled' && orderDoc.data()?.status !== 'cancelled') {
+      console.log('🚫 Order is being cancelled by seller/admin:', orderId)
+      const orderData = orderDoc.data()
+      
+      // 1. Process Refund if payment was completed
+      if (orderData?.paymentStatus === 'completed') {
+        console.log('💰 Payment was completed, processing refund...')
+        const omise = require('omise')({ secretKey: process.env.OMISE_SECRET_KEY })
+        let refundResult: { refundId?: string; amount?: number; status?: string; error?: boolean; message?: string } | null = null
+
+        // Check if this is an Omise payment or Stripe payment
+        if (orderData.omiseChargeId) {
+          // Omise refund
+          try {
+            console.log('🔄 Processing Omise refund for charge:', orderData.omiseChargeId)
+            
+            const refund = await omise.charges.refund(orderData.omiseChargeId, {
+              amount: Math.round(orderData.totalAmount * 100), // Convert to satang
+              metadata: {
+                orderId,
+                userId: orderData.userId,
+                shopId: orderData.shopId,
+                cancelReason: notes || 'Seller cancelled order',
+                cancelledBy: 'seller'
+              },
+            })
+            
+            refundResult = {
+              refundId: refund.id,
+              amount: refund.amount / 100, // Convert back to THB
+              status: refund.status || 'pending',
+            }
+            
+            console.log('✅ Omise refund created:', refundResult)
+          } catch (refundError: any) {
+            console.error('❌ Omise refund error:', refundError)
+            refundResult = {
+              error: true,
+              message: refundError.message || 'Failed to process Omise refund',
+            }
+          }
+        } else if (orderData.paymentIntentId && stripe) {
+          // Stripe refund (legacy orders)
+          try {
+            console.log('💳 Processing Stripe refund for payment intent:', orderData.paymentIntentId)
+            
+            const paymentIntent: any = await stripe.paymentIntents.retrieve(orderData.paymentIntentId, {
+              expand: ['charges'],
+            })
+            
+            const charges = paymentIntent.charges
+            if (paymentIntent.status === 'succeeded' && charges?.data && charges.data.length > 0) {
+              const chargeId = charges.data[0].id
+              
+              const refund = await stripe.refunds.create({
+                charge: chargeId,
+                amount: Math.round(orderData.totalAmount * 100),
+                reason: 'requested_by_customer',
+                metadata: {
+                  orderId,
+                  userId: orderData.userId,
+                  shopId: orderData.shopId,
+                  cancelReason: notes || 'Seller cancelled order',
+                  cancelledBy: 'seller'
+                },
+              })
+              
+              refundResult = {
+                refundId: refund.id,
+                amount: refund.amount / 100,
+                status: refund.status || undefined,
+              }
+              
+              console.log('✅ Stripe refund created:', refundResult)
+            }
+          } catch (refundError: any) {
+            console.error('❌ Stripe refund error:', refundError)
+             refundResult = {
+              error: true,
+              message: refundError.message || 'Failed to process Stripe refund',
+            }
+          }
+        }
+
+        // Add refund info to updateData
+        if (refundResult) {
+          updateData.refund = refundResult
+          if (refundResult.error) {
+            updateData.refundStatus = 'failed'
+            updateData.refundError = refundResult.message
+          } else {
+            updateData.refundStatus = refundResult.status
+            updateData.refundId = refundResult.refundId
+            updateData.refundAmount = refundResult.amount
+          }
+        }
+      }
+
+      // 2. Restore Stock
+      try {
+        console.log('📦 Restoring stock for cancelled order:', orderId)
+        const batch = adminDb.batch()
+        let updateCount = 0
+
+        const addStockRestore = (productId: string, quantity: number) => {
+          if (!productId) return
+          const productRef = adminDb.collection('products').doc(productId)
+          batch.update(productRef, {
+            stock: admin.firestore.FieldValue.increment(quantity),
+            soldCount: admin.firestore.FieldValue.increment(-quantity)
+          })
+          updateCount++
+        }
+
+        if (orderData?.type === 'cart_checkout' && orderData.shops && Array.isArray(orderData.shops)) {
+          for (const shop of orderData.shops) {
+            if (shop.items && Array.isArray(shop.items)) {
+              for (const item of shop.items) {
+                const qty = item.quantity || 1
+                addStockRestore(item.productId, qty)
+              }
+            }
+          }
+        } else if (orderData?.items && Array.isArray(orderData.items)) {
+          for (const item of orderData.items) {
+            const qty = item.quantity || 1
+            addStockRestore(item.productId, qty)
+          }
+        }
+
+        if (updateCount > 0) {
+          await batch.commit()
+          console.log(`✅ Restored stock for ${updateCount} items`)
+        }
+      } catch (stockError) {
+        console.error('❌ Failed to restore stock:', stockError)
+      }
+      
+      // Add cancellation metadata
+      updateData.cancelledAt = new Date()
+      updateData.cancelledBy = 'seller' 
+      updateData.cancelReason = notes || 'Seller cancelled order'
     }
 
     // Update the order

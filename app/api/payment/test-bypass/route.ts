@@ -103,6 +103,29 @@ export async function POST(request: NextRequest) {
       console.error('❌ [TEST] Failed to update stock:', stockError)
     }
 
+    // Clear cart items after successful payment (TEST MODE)
+    if (orderData?.cartItemIds && Array.isArray(orderData.cartItemIds) && orderData.cartItemIds.length > 0) {
+      try {
+        const userId = orderData.userId
+        console.log('🧹 [TEST] Clearing cart items for user:', userId, 'items:', orderData.cartItemIds)
+        
+        const batch = adminDb.batch()
+        let deletedCount = 0
+        
+        for (const itemId of orderData.cartItemIds) {
+          // Cart uses individual documents with pattern: {userId}_{itemId}
+          const cartItemRef = adminDb.collection('cart').doc(`${userId}_${itemId}`)
+          batch.delete(cartItemRef)
+          deletedCount++
+        }
+        
+        await batch.commit()
+        console.log(`✅ [TEST] Cleared ${deletedCount} items from cart`)
+      } catch (cartError) {
+        console.error('⚠️ [TEST] Failed to clear cart items:', cartError)
+      }
+    }
+
     // Also update sub-orders if they exist
     if (orderData?.subOrders && Array.isArray(orderData.subOrders)) {
       const batch = adminDb.batch()

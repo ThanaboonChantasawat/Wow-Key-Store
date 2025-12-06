@@ -20,6 +20,7 @@ interface CheckoutItem {
   image: string
   shopId: string
   shopName: string
+  quantity: number
 }
 
 interface PaymentMethodSelectorProps {
@@ -90,6 +91,7 @@ export function PaymentMethodSelector({
         shopId: item.shopId,
         price: item.price,
         name: item.name,
+        quantity: item.quantity || 1,
       }))
       
       const storedCartItemIds = sessionStorage.getItem('cartItemIds')

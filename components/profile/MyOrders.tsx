@@ -58,6 +58,7 @@ interface OrderItem {
   price: number
   gameId?: string
   gameName?: string
+  quantity?: number
 }
 
 interface DeliveredItem {
@@ -1676,13 +1677,23 @@ export function MyOrdersContent() {
                         <div key={index} className="bg-white border rounded-lg p-3">
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">{item.name}</p>
+                              <Link href={`/product/${item.gameId || item.productId}`} className="hover:text-[#ff9800] transition-colors">
+                                <p className="font-medium text-gray-900 hover:underline">{item.name}</p>
+                              </Link>
                               {item.gameName && (
                                 <p className="text-sm text-[#ff9800] font-medium mt-1">🎮 {item.gameName}</p>
                               )}
-                              <p className="text-xs text-gray-500 mt-1">รหัส: {item.productId.substring(0, 12)}...</p>
                             </div>
-                            <p className="font-semibold text-[#ff9800] ml-2">฿{item.price.toLocaleString()}</p>
+                            <div className="text-right">
+                              <p className="font-semibold text-[#ff9800] ml-2">
+                                ฿{(item.price * (item.quantity || 1)).toLocaleString()}
+                              </p>
+                              {(item.quantity && item.quantity > 1) && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {item.quantity} x ฿{item.price.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
