@@ -329,6 +329,21 @@ export default function SellerSalesHistory() {
       return
     }
 
+    // Validate email format if login type is email
+    if (loginType === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const invalidEmailItem = deliveredItems.find(item => item.email && !emailRegex.test(item.email.trim()));
+      
+      if (invalidEmailItem) {
+        toast({
+          title: "รูปแบบอีเมลไม่ถูกต้อง",
+          description: `กรุณาตรวจสอบอีเมลในรายการที่ ${invalidEmailItem.index + 1}`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     // Check 2FA confirmation for email login (Global check)
     if (loginType === "email" && !has2FADisabled) {
       toast({
