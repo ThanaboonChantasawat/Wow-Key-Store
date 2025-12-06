@@ -52,8 +52,18 @@ interface OrderItem {
   productName: string
   name?: string // Added fallback
   price: number
+  quantity?: number
   gameName?: string
   image?: string
+}
+
+interface DeliveredItem {
+  index: number;
+  itemName: string;
+  email?: string;
+  username?: string;
+  password?: string;
+  additionalInfo?: string;
 }
 
 interface Order {
@@ -76,6 +86,7 @@ interface Order {
   password?: string
   additionalInfo?: string
   sellerNotes?: string
+  deliveredItems?: DeliveredItem[]
 }
 
 export default function SellerSalesHistory() {
@@ -101,6 +112,7 @@ export default function SellerSalesHistory() {
   const [formPassword, setFormPassword] = useState("")
   const [formAdditionalInfo, setFormAdditionalInfo] = useState("")
   const [formNotes, setFormNotes] = useState("")
+  const [deliveredItems, setDeliveredItems] = useState<DeliveredItem[]>([])
   const [loginType, setLoginType] = useState<"email" | "username">("email")
   const [has2FADisabled, setHas2FADisabled] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -233,39 +245,91 @@ export default function SellerSalesHistory() {
     setFormNotes("")
     setLoginType("email")
     setHas2FADisabled(false)
+    
+    // Initialize deliveredItems
+    if (selectedOrder) {
+      if (selectedOrder.deliveredItems && selectedOrder.deliveredItems.length > 0) {
+        setDeliveredItems(selectedOrder.deliveredItems);
+        // Sync legacy state for first item if needed
+        if (selectedOrder.deliveredItems[0]) {
+          setFormEmail(selectedOrder.deliveredItems[0].email || "")
+          setFormUsername(selectedOrder.deliveredItems[0].username || "")
+          setFormPassword(selectedOrder.deliveredItems[0].password || "")
+          setFormAdditionalInfo(selectedOrder.deliveredItems[0].additionalInfo || "")
+        }
+      } else {
+        const items: DeliveredItem[] = [];
+        let currentIndex = 0;
+        selectedOrder.items.forEach(item => {
+          const qty = item.quantity || 1;
+          for (let i = 0; i < qty; i++) {
+            items.push({
+              index: currentIndex++,
+              itemName: `${item.productName || item.name} #${i + 1}`,
+              email: "",
+              username: "",
+              password: "",
+              additionalInfo: ""
+            });
+          }
+        });
+        
+        // Legacy support: if order has top-level email/pass, put it in first item
+        if (items.length > 0 && (selectedOrder.email || selectedOrder.password)) {
+           items[0].email = selectedOrder.email;
+           items[0].username = selectedOrder.username;
+           items[0].password = selectedOrder.password;
+           items[0].additionalInfo = selectedOrder.additionalInfo;
+           
+           // Also set form state
+           setFormEmail(selectedOrder.email || "")
+           setFormUsername(selectedOrder.username || "")
+           setFormPassword(selectedOrder.password || "")
+           setFormAdditionalInfo(selectedOrder.additionalInfo || "")
+        }
+        
+        setDeliveredItems(items);
+      }
+      
+      setFormNotes(selectedOrder.sellerNotes || "")
+    }
+    
     setShowUpdateForm(true)
   }
 
   const handleSendCode = () => {
-    // Validate required fields based on login type
-    if (!formPassword.trim()) {
+    // Validate required fields for ALL items
+    let isValid = true;
+    
+    // Check if at least one item has password filled (or all items?)
+    // Requirement: "Separate by quantity purchased... seller must choose which code to send first"
+    // Usually all items should be filled before sending, or at least one.
+    // Let's enforce all items must have password.
+    
+    const missingPassword = deliveredItems.some(item => !item.password?.trim());
+    if (missingPassword) {
       toast({
         title: "กรุณากรอกข้อมูล",
-        description: "กรุณากรอก Password",
+        description: "กรุณากรอก Password ให้ครบทุกรายการ",
         variant: "destructive",
       })
       return
     }
 
-    if (loginType === "email" && !formEmail.trim()) {
-      toast({
+    // Check email/username based on login type (if we want to enforce it per item, we need to know login type per item or global)
+    // Assuming global login type for now, or just check if either email or username is filled if password is filled.
+    
+    const missingLogin = deliveredItems.some(item => !item.email?.trim() && !item.username?.trim());
+    if (missingLogin) {
+       toast({
         title: "กรุณากรอกข้อมูล",
-        description: "กรุณากรอก Email สำหรับการเข้าสู่ระบบแบบ Email",
+        description: "กรุณากรอก Email หรือ Username ให้ครบทุกรายการ",
         variant: "destructive",
       })
       return
     }
 
-    if (loginType === "username" && !formUsername.trim()) {
-      toast({
-        title: "กรุณากรอกข้อมูล",
-        description: "กรุณากรอก Username สำหรับการเข้าสู่ระบบแบบ Username",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Check 2FA confirmation for email login
+    // Check 2FA confirmation for email login (Global check)
     if (loginType === "email" && !has2FADisabled) {
       toast({
         title: "กรุณายืนยัน",
@@ -293,7 +357,8 @@ export default function SellerSalesHistory() {
 
     setUpdating(true)
     try {
-      const hasCodes = formPassword.trim()
+      // Check if any password is filled to determine if it's completed
+      const hasCodes = deliveredItems.some(item => item.password?.trim()) || formPassword.trim();
       const finalStatus = hasCodes ? "completed" : (newStatus || selectedOrder.status)
 
       const response = await fetch(`/api/orders/${selectedOrder.id}/update`, {
@@ -303,11 +368,14 @@ export default function SellerSalesHistory() {
         },
         body: JSON.stringify({
           status: finalStatus,
+          // Legacy fields for backward compatibility
           email: formEmail.trim() || undefined,
           username: formUsername.trim() || undefined,
           password: formPassword.trim() || undefined,
           additionalInfo: formAdditionalInfo.trim() || undefined,
+          
           notes: formNotes.trim() || undefined,
+          deliveredItems: deliveredItems // Send the full list
         }),
       })
 
@@ -758,88 +826,140 @@ export default function SellerSalesHistory() {
                   </RadioGroup>
                 </div>
 
-                {/* Email Login Fields */}
-                {loginType === "email" && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="email" className="flex items-center gap-1">
-                        Email <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="อีเมลบัญชีเกม"
-                        value={formEmail}
-                        onChange={(e) => setFormEmail(e.target.value)}
-                      />
-                    </div>
+                {/* Delivered Items List */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      ข้อมูลบัญชีที่จัดส่ง ({deliveredItems.length} รายการ)
+                    </Label>
+                  </div>
+                  
+                  {deliveredItems.map((item, index) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                      <div className="absolute top-4 right-4 bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full font-medium">
+                        รายการที่ {index + 1}
+                      </div>
+                      <h4 className="font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200 pr-20">
+                        {item.itemName}
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        {/* Email Login Fields */}
+                        {loginType === "email" && (
+                          <div>
+                            <Label htmlFor={`email-${index}`} className="flex items-center gap-1">
+                              Email <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id={`email-${index}`}
+                              type="email"
+                              placeholder="อีเมลบัญชีเกม"
+                              value={item.email || ""}
+                              onChange={(e) => {
+                                const newItems = [...deliveredItems];
+                                newItems[index] = { ...newItems[index], email: e.target.value, username: e.target.value };
+                                setDeliveredItems(newItems);
+                                // Sync legacy
+                                if (index === 0) {
+                                  setFormEmail(e.target.value);
+                                  setFormUsername(e.target.value);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
 
-                    {/* 2FA Warning for Email */}
-                    <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 space-y-2">
-                        <p className="text-sm font-semibold text-orange-900">⚠️ สำคัญมาก: ปิด 2FA ก่อนส่งรหัส</p>
-                        <p className="text-xs text-orange-800">
-                          กรุณาปิด Two-Factor Authentication (2FA) ในบัญชีเกมก่อนส่งข้อมูลให้ลูกค้า
-                          เพราะลูกค้าจะไม่สามารถเข้าสู่ระบบได้หากยังเปิด 2FA อยู่
-                        </p>
-                        <div className="flex items-start space-x-3 pt-2 p-3 bg-white border-2 border-orange-300 rounded-md">
-                          <Checkbox
-                            id="2fa-disabled"
-                            checked={has2FADisabled}
-                            onCheckedChange={(checked) => setHas2FADisabled(checked === true)}
-                            className="mt-1 h-5 w-5 border-2 border-orange-500 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
-                          />
-                          <Label
-                            htmlFor="2fa-disabled"
-                            className="text-sm font-semibold cursor-pointer text-orange-900 leading-relaxed"
-                          >
-                            ✅ ฉันได้ปิด 2FA ในบัญชีนี้แล้ว
+                        {/* Username Login Fields */}
+                        {loginType === "username" && (
+                          <div>
+                            <Label htmlFor={`username-${index}`} className="flex items-center gap-1">
+                              Username <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id={`username-${index}`}
+                              placeholder="ชื่อผู้ใช้"
+                              value={item.username || ""}
+                              onChange={(e) => {
+                                const newItems = [...deliveredItems];
+                                newItems[index] = { ...newItems[index], username: e.target.value, email: e.target.value };
+                                setDeliveredItems(newItems);
+                                // Sync legacy
+                                if (index === 0) {
+                                  setFormUsername(e.target.value);
+                                  setFormEmail(e.target.value);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <Label htmlFor={`password-${index}`} className="flex items-center gap-1">
+                            Password <span className="text-red-500">*</span>
                           </Label>
+                          <Input
+                            id={`password-${index}`}
+                            type="text"
+                            placeholder="รหัสผ่านบัญชีเกม"
+                            value={item.password || ""}
+                            onChange={(e) => {
+                              const newItems = [...deliveredItems];
+                              newItems[index] = { ...newItems[index], password: e.target.value };
+                              setDeliveredItems(newItems);
+                              // Sync legacy
+                              if (index === 0) setFormPassword(e.target.value);
+                            }}
+                          />
                         </div>
+
+                        <div>
+                          <Label htmlFor={`additionalInfo-${index}`}>ข้อมูลเพิ่มเติม</Label>
+                          <Textarea
+                            id={`additionalInfo-${index}`}
+                            placeholder="ข้อมูลเพิ่มเติมสำหรับลูกค้า (เช่น โค้ดเกม, ลิงก์ดาวน์โหลด)"
+                            value={item.additionalInfo || ""}
+                            onChange={(e) => {
+                              const newItems = [...deliveredItems];
+                              newItems[index] = { ...newItems[index], additionalInfo: e.target.value };
+                              setDeliveredItems(newItems);
+                              // Sync legacy
+                              if (index === 0) setFormAdditionalInfo(e.target.value);
+                            }}
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 2FA Warning for Email */}
+                {loginType === "email" && (
+                  <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm font-semibold text-orange-900">⚠️ สำคัญมาก: ปิด 2FA ก่อนส่งรหัส</p>
+                      <p className="text-xs text-orange-800">
+                        กรุณาปิด Two-Factor Authentication (2FA) ในบัญชีเกมก่อนส่งข้อมูลให้ลูกค้า
+                        เพราะลูกค้าจะไม่สามารถเข้าสู่ระบบได้หากยังเปิด 2FA อยู่
+                      </p>
+                      <div className="flex items-start space-x-3 pt-2 p-3 bg-white border-2 border-orange-300 rounded-md">
+                        <Checkbox
+                          id="2fa-disabled"
+                          checked={has2FADisabled}
+                          onCheckedChange={(checked) => setHas2FADisabled(checked === true)}
+                          className="mt-1 h-5 w-5 border-2 border-orange-500 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                        />
+                        <Label
+                          htmlFor="2fa-disabled"
+                          className="text-sm font-semibold cursor-pointer text-orange-900 leading-relaxed"
+                        >
+                          ✅ ฉันได้ปิด 2FA ในบัญชีนี้แล้ว
+                        </Label>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Username Login Fields */}
-                {loginType === "username" && (
-                  <div>
-                    <Label htmlFor="username" className="flex items-center gap-1">
-                      Username <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="username"
-                      placeholder="ชื่อผู้ใช้"
-                      value={formUsername}
-                      onChange={(e) => setFormUsername(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <Label htmlFor="password" className="flex items-center gap-1">
-                    Password <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="รหัสผ่านบัญชีเกม"
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="additionalInfo">ข้อมูลเพิ่มเติม</Label>
-                  <Textarea
-                    id="additionalInfo"
-                    placeholder="ข้อมูลเพิ่มเติมสำหรับลูกค้า (เช่น โค้ดเกม, ลิงก์ดาวน์โหลด)"
-                    value={formAdditionalInfo}
-                    onChange={(e) => setFormAdditionalInfo(e.target.value)}
-                    rows={3}
-                  />
-                </div>
 
                 <div>
                   <Label htmlFor="notes">หมายเหตุภายใน</Label>
@@ -854,7 +974,7 @@ export default function SellerSalesHistory() {
               </div>
 
               {/* Warning */}
-              {formPassword.trim() && (
+              {deliveredItems.some(i => i.password) && (
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                   <div className="text-sm text-yellow-800">
