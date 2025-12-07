@@ -186,27 +186,27 @@ export function AdminUsers() {
     switch (role) {
       case "superadmin":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-600 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-600 text-white flex items-center gap-1 justify-center">
             <Crown className="w-3 h-3" />
             Super Admin
           </span>
         )
       case "admin":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center gap-1 justify-center">
             <Shield className="w-3 h-3" />
             Admin
           </span>
         )
       case "seller":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center gap-1 justify-center">
             👤 Seller
           </span>
         )
       default:
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-gray-400 to-gray-500 text-white">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-gray-400 to-gray-500 text-white flex items-center gap-1 justify-center">
             🎮 Buyer
           </span>
         )

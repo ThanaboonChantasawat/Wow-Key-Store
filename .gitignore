@@ -42,3 +42,16 @@ next-env.d.ts
 
 # Firebase admin key
 serviceAccountKey.json
+diagrams/admin_approval.drawio
+diagrams/authentication.drawio
+diagrams/buying.drawio
+diagrams/dispute_resolution.drawio
+diagrams/notification_system.drawio
+diagrams/order_chat.drawio
+diagrams/profile_management.drawio
+diagrams/reopen_shop.drawio
+diagrams/review_rating.drawio
+diagrams/selling.drawio
+diagrams/support_ticket.drawio
+diagrams/wallet_topup.drawio
+diagrams/wishlist_management.drawio
