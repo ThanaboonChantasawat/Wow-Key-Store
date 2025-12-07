@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { getUserDisputes } from '@/lib/dispute-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[Orders API] Fetching orders for user:', userId)
+
+    // Fetch user disputes first
+    const disputes = await getUserDisputes(userId)
+    const disputeMap = new Map(disputes.map(d => [d.orderId, d.status]))
 
     // Get orders from Firestore using Admin SDK
     // Exclude cancelled and expired pending orders
@@ -192,6 +197,9 @@ export async function GET(request: NextRequest) {
           )
         }
         
+        // Check dispute status
+        const disputeStatus = disputeMap.get(orderDoc.id)
+
         return {
           id: orderDoc.id,
           ...data,
@@ -202,6 +210,8 @@ export async function GET(request: NextRequest) {
           createdAt: createdAtIso,
           updatedAt: updatedAtIso,
           gameCodeDeliveredAt: gameCodeDeliveredAtIso,
+          hasDispute: !!disputeStatus,
+          disputeStatus: disputeStatus,
         }
       })
     )

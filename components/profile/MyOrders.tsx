@@ -95,6 +95,8 @@ interface Order {
   createdAt: string
   updatedAt: string
   deliveredItems?: DeliveredItem[];
+  hasDispute?: boolean;
+  disputeStatus?: 'pending' | 'investigating' | 'resolved' | 'rejected';
 }
 
 // Simple in-memory cache for shop details
@@ -1183,6 +1185,21 @@ export function MyOrdersContent() {
                     </div>
                   </div>
                   
+                  {/* Dispute Status Badge */}
+                  {order.hasDispute && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className={`w-full justify-center ${
+                        order.disputeStatus === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
+                        order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      }`}>
+                        {order.disputeStatus === 'resolved' ? '✅ ปัญหาได้รับการแก้ไขแล้ว' :
+                         order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
+                         '⏳ กำลังตรวจสอบปัญหา'}
+                      </Badge>
+                    </div>
+                  )}
+                  
                   {/* Action Buttons */}
                   <div className="grid grid-cols-2 gap-2">
                     <Button
@@ -1206,13 +1223,29 @@ export function MyOrdersContent() {
                         setShowReportDialog(true)
                       }}
                       variant="outline"
-                      className="w-full border-red-300 hover:bg-red-50 text-red-600"
+                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 ${order.hasDispute ? 'opacity-50 cursor-not-allowed' : ''}`}
                       size="sm"
+                      disabled={order.hasDispute}
                     >
                       <Flag className="w-4 h-4 mr-2" />
-                      รายงาน
+                      {order.hasDispute ? 'แจ้งปัญหาแล้ว' : 'รายงาน'}
                     </Button>
                   </div>
+                  
+                  {/* Dispute Status Badge */}
+                  {order.hasDispute && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className={`w-full justify-center ${
+                        order.disputeStatus === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
+                        order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      }`}>
+                        {order.disputeStatus === 'resolved' ? '✅ ปัญหาได้รับการแก้ไขแล้ว' :
+                         order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
+                         '⏳ กำลังตรวจสอบปัญหา'}
+                      </Badge>
+                    </div>
+                  )}
                   
                   <Button
                     onClick={(e) => {
