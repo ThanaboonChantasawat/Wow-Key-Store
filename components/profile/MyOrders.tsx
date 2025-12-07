@@ -1232,21 +1232,6 @@ export function MyOrdersContent() {
                     </Button>
                   </div>
                   
-                  {/* Dispute Status Badge */}
-                  {order.hasDispute && (
-                    <div className="mt-2">
-                      <Badge variant="outline" className={`w-full justify-center ${
-                        order.disputeStatus === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
-                        order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-yellow-50 text-yellow-700 border-yellow-200'
-                      }`}>
-                        {order.disputeStatus === 'resolved' ? '✅ ปัญหาได้รับการแก้ไขแล้ว' :
-                         order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
-                         '⏳ กำลังตรวจสอบปัญหา'}
-                      </Badge>
-                    </div>
-                  )}
-                  
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()
