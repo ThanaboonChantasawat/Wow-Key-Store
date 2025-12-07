@@ -18,6 +18,9 @@ export async function GET(request: NextRequest) {
 
     // Fetch user disputes first
     const disputes = await getUserDisputes(userId)
+    console.log(`[Orders API] Found ${disputes.length} disputes for user ${userId}`)
+    disputes.forEach(d => console.log(`  - Dispute for order ${d.orderId}: ${d.status}`))
+    
     const disputeMap = new Map(disputes.map(d => [d.orderId, d.status]))
 
     // Get orders from Firestore using Admin SDK
@@ -199,6 +202,9 @@ export async function GET(request: NextRequest) {
         
         // Check dispute status
         const disputeStatus = disputeMap.get(orderDoc.id)
+        if (disputeStatus) {
+          console.log(`[Orders API] Order ${orderDoc.id} has dispute status: ${disputeStatus}`)
+        }
 
         return {
           id: orderDoc.id,
