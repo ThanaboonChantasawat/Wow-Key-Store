@@ -41,6 +41,7 @@ export async function GET(
     // Check if request includes sellerView query parameter for seller verification
     const { searchParams } = new URL(request.url)
     const sellerView = searchParams.get('sellerView') === 'true'
+    const disputeId = searchParams.get('disputeId')
 
     if (sellerView) {
       // Verify authentication for seller view
@@ -53,57 +54,67 @@ export async function GET(
       }
 
       console.log('[Seller View] User ID:', decodedToken.uid)
-      console.log('[Seller View] Order has shopId:', orderData?.shopId)
-      console.log('[Seller View] Order has shops:', orderData?.shops?.length || 0)
+      console.log('[Seller View] Order ID:', orderId)
+      console.log('[Seller View] Dispute ID:', disputeId)
 
-      // Verify seller ownership
       let isOwner = false
 
-      // Check 1: Direct shopId field
-      if (orderData?.shopId) {
-        const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
-        if (shopDoc.exists) {
-          const shopData = shopDoc.data()
-          console.log('[Seller View] Shop userId:', shopData?.userId)
-          if (shopData?.userId === decodedToken.uid) {
+      // If disputeId is provided, verify seller owns the dispute (fastest check)
+      if (disputeId) {
+        const disputeDoc = await adminDb.collection('disputes').doc(disputeId).get()
+        if (disputeDoc.exists) {
+          const disputeData = disputeDoc.data()
+          if (disputeData?.sellerId === decodedToken.uid && disputeData?.orderId === orderId) {
             isOwner = true
-            console.log('[Seller View] Owner verified via shopId')
+            console.log('[Seller View] Owner verified via dispute')
           }
         }
       }
 
-      // Check 2: Cart orders with shops array
-      if (!isOwner && orderData?.shops && Array.isArray(orderData.shops)) {
-        for (const shop of orderData.shops) {
-          const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
+      // Otherwise check order ownership
+      if (!isOwner) {
+        console.log('[Seller View] Order has shopId:', orderData?.shopId)
+        console.log('[Seller View] Order has shops:', orderData?.shops?.length || 0)
+
+        // Check 1: Direct shopId field
+        if (orderData?.shopId) {
+          const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
           if (shopDoc.exists) {
             const shopData = shopDoc.data()
+            console.log('[Seller View] Shop userId:', shopData?.userId)
             if (shopData?.userId === decodedToken.uid) {
               isOwner = true
-              console.log('[Seller View] Owner verified via shops array')
-              break
+              console.log('[Seller View] Owner verified via shopId')
             }
           }
         }
-      }
 
-      // Check 3: Check if user owns ANY shop that matches items in the order
-      if (!isOwner && orderData?.items) {
-        // Get all shops owned by this user
-        const userShopsSnapshot = await adminDb
-          .collection('shops')
-          .where('userId', '==', decodedToken.uid)
-          .get()
-        
-        const userShopIds = userShopsSnapshot.docs.map(doc => doc.id)
-        console.log('[Seller View] User owns shops:', userShopIds)
+        // Check 2: Cart orders with shops array
+        if (!isOwner && orderData?.shops && Array.isArray(orderData.shops)) {
+          for (const shop of orderData.shops) {
+            const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
+            if (shopDoc.exists) {
+              const shopData = shopDoc.data()
+              if (shopData?.userId === decodedToken.uid) {
+                isOwner = true
+                console.log('[Seller View] Owner verified via shops array, shopId:', shop.shopId)
+                break
+              }
+            }
+          }
+        }
 
-        // Check if any item in the order belongs to user's shops
-        for (const item of orderData.items) {
-          if (item.shopId && userShopIds.includes(item.shopId)) {
-            isOwner = true
-            console.log('[Seller View] Owner verified via item shopId:', item.shopId)
-            break
+        // Check 3: Check if user owns ANY shop that matches items in the order
+        if (!isOwner && orderData?.items) {
+          for (const item of orderData.items) {
+            if (item.shopId) {
+              const shopDoc = await adminDb.collection('shops').doc(item.shopId).get()
+              if (shopDoc.exists && shopDoc.data()?.userId === decodedToken.uid) {
+                isOwner = true
+                console.log('[Seller View] Owner verified via item shopId:', item.shopId)
+                break
+              }
+            }
           }
         }
       }

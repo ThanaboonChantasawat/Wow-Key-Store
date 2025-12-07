@@ -131,12 +131,12 @@ export function SellerReports() {
     fetchReports()
   }, [user])
 
-  const fetchOrderData = async (orderId: string) => {
+  const fetchOrderData = async (orderId: string, disputeId: string) => {
     if (!user) return
     try {
       setLoadingOrder(true)
       const token = await user.getIdToken()
-      const res = await fetch(`/api/orders/${orderId}?sellerView=true`, {
+      const res = await fetch(`/api/orders/${orderId}?sellerView=true&disputeId=${disputeId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -150,6 +150,12 @@ export function SellerReports() {
         } else if (data.order.items) {
           setSelectedItems(data.order.items.map((_: any, idx: number) => idx))
         }
+      } else {
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: data.error || "ไม่สามารถดึงข้อมูลคำสั่งซื้อได้",
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error("Error fetching order:", error)
@@ -173,7 +179,7 @@ export function SellerReports() {
     setOrderData(null)
     
     if (action === 'new_code') {
-      fetchOrderData(report.orderId)
+      fetchOrderData(report.orderId, report.id)
     }
     
     setShowActionDialog(true)
