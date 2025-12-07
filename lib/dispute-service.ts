@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin-config'
 import { Dispute, CreateDisputeRequest, DisputeStatus, DisputeType } from './dispute-types'
 import { createNotification } from './notification-service'
+import { createRefund } from './payment-service'
 import { Timestamp } from 'firebase-admin/firestore'
 
 /**
@@ -234,6 +235,107 @@ export async function resolveDispute(
 
   } catch (error: any) {
     console.error('Error resolving dispute:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Resolve a dispute by Seller
+ */
+export async function sellerResolveDispute(
+  disputeId: string,
+  sellerId: string,
+  action: 'refund' | 'reject' | 'new_code',
+  response: string,
+  newCode?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const disputeDoc = await adminDb.collection('disputes').doc(disputeId).get()
+    
+    if (!disputeDoc.exists) {
+      return { success: false, error: 'ไม่พบข้อมูลการรายงาน' }
+    }
+
+    const disputeData = disputeDoc.data()
+
+    // Verify seller ownership
+    if (disputeData?.sellerId !== sellerId) {
+      return { success: false, error: 'คุณไม่มีสิทธิ์จัดการปัญหานี้' }
+    }
+
+    if (disputeData?.status === 'resolved') {
+      return { success: false, error: 'ปัญหานี้ถูกแก้ไขไปแล้ว' }
+    }
+
+    const updateData: any = {
+      status: 'resolved',
+      resolution: action === 'reject' ? 'dismiss' : action,
+      sellerResponse: response,
+      resolvedBy: sellerId,
+      resolvedAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    // Handle specific actions
+    if (action === 'refund') {
+      // Try to refund via Stripe
+      const orderDoc = await adminDb.collection('orders').doc(disputeData?.orderId).get()
+      const orderData = orderDoc.data()
+      
+      if (orderData?.paymentIntentId) {
+        try {
+          await createRefund(orderData.paymentIntentId)
+          updateData.sellerResponse = `${response} (ระบบได้ทำการคืนเงินเข้าบัตรเครดิต/ช่องทางชำระเงินเดิมแล้ว)`
+        } catch (err: any) {
+          console.error('Refund failed:', err)
+          updateData.sellerResponse = `${response} (หมายเหตุ: การคืนเงินอัตโนมัติล้มเหลว กรุณาติดต่อผู้ดูแลระบบ)`
+        }
+      }
+    } else if (action === 'new_code' && newCode) {
+        updateData.sellerResponse = `${response}\n\nรหัสใหม่: ${newCode}`
+    }
+
+    await disputeDoc.ref.update(updateData)
+
+    // Update Order
+    const orderDoc = await adminDb.collection('orders').doc(disputeData?.orderId).get()
+    
+    if (orderDoc.exists) {
+      await orderDoc.ref.update({
+        hasDispute: false,
+        disputeResolved: true,
+        disputeResolution: action === 'reject' ? 'dismiss' : action,
+        updatedAt: new Date()
+      })
+    }
+
+    // Send Notification to Buyer
+    if (disputeData?.userId) {
+      let title = 'มีการตอบกลับการแจ้งปัญหา'
+      let message = `คำสั่งซื้อ ${disputeData.orderNumber}: ${response}`
+      
+      if (action === 'refund') {
+        title = 'ร้านค้าอนุมัติการคืนเงิน'
+        message = `ร้านค้าได้ทำการคืนเงินสำหรับคำสั่งซื้อ ${disputeData.orderNumber} แล้ว`
+      } else if (action === 'reject') {
+        title = 'ร้านค้าปฏิเสธการแจ้งปัญหา'
+      } else if (action === 'new_code') {
+        title = 'ร้านค้าส่งรหัสใหม่ให้คุณ'
+      }
+
+      await createNotification(
+        disputeData.userId,
+        'info',
+        title,
+        message,
+        `/profile?tab=orders`
+      )
+    }
+
+    return { success: true }
+
+  } catch (error: any) {
+    console.error('Error resolving dispute by seller:', error)
     return { success: false, error: error.message }
   }
 }

@@ -10,6 +10,7 @@ import {
   Wallet,
   DollarSign,
   Menu,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +35,7 @@ export function SellerSidebar({
     { id: "overview", label: "แดชบอร์ดผู้ขาย", icon: BarChart3 },
     { id: "products", label: "สินค้าของฉัน", icon: Package },
     { id: "orders", label: "จัดการคำสั่งซื้อ", icon: Box },
+    { id: "reports", label: "รายการแจ้งปัญหา", icon: AlertTriangle },
     { id: "earnings", label: "รายได้ของฉัน", icon: DollarSign },
     { id: "payout", label: "ถอนเงิน", icon: CreditCard },
     { id: "payment", label: "บัญชีรับเงิน", icon: Wallet },

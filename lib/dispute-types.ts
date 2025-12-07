@@ -25,11 +25,12 @@ export interface Dispute {
   
   status: DisputeStatus
   
-  // Admin response
+  // Admin/Seller response
   adminResponse?: string
-  resolvedBy?: string   // Admin ID ที่จัดการ
+  sellerResponse?: string
+  resolvedBy?: string   // Admin ID or Seller ID
   resolvedAt?: Date
-  resolution?: 'refund' | 'resend_code' | 'dismiss'
+  resolution?: 'refund' | 'resend_code' | 'dismiss' | 'new_code'
   
   createdAt: Date
   updatedAt: Date

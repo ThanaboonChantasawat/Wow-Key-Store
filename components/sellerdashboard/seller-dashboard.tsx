@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { SellerSidebar } from "./seller-sidebar"
 import { SellerOverview } from "./seller-overview"
 import { SellerProducts } from "./seller-products"
-import { SellerIssues } from "./seller-issues"
+import { SellerReports } from "./seller-reports"
 import { SellerStoreSettings } from "./seller-store-settings"
 import { SellerPaymentSettings } from "./seller-payment-settings"
 import SellerEarnings from "./seller-earnings"
@@ -46,7 +46,7 @@ export function SellerDashboard() {
             {activeSection === "overview" && <SellerOverview />}
             {activeSection === "products" && <SellerProducts />}
             {activeSection === "orders" && <SellerSalesHistory />}
-            {activeSection === "issues" && <SellerIssues />}
+            {activeSection === "reports" && <SellerReports />}
             {activeSection === "earnings" && <SellerEarnings />}
             {activeSection === "payout" && <SellerPayouts />}
             {activeSection === "payment" && <SellerPaymentSettings />}
