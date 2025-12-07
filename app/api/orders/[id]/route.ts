@@ -81,8 +81,8 @@ export async function GET(
           const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
           if (shopDoc.exists) {
             const shopData = shopDoc.data()
-            console.log('[Seller View] Shop userId:', shopData?.userId)
-            if (shopData?.userId === decodedToken.uid) {
+            console.log('[Seller View] Shop ownerId:', shopData?.ownerId)
+            if (shopData?.ownerId === decodedToken.uid) {
               isOwner = true
               console.log('[Seller View] Owner verified via shopId')
             }
@@ -95,7 +95,7 @@ export async function GET(
             const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
             if (shopDoc.exists) {
               const shopData = shopDoc.data()
-              if (shopData?.userId === decodedToken.uid) {
+              if (shopData?.ownerId === decodedToken.uid) {
                 isOwner = true
                 console.log('[Seller View] Owner verified via shops array, shopId:', shop.shopId)
                 break
@@ -109,7 +109,7 @@ export async function GET(
           for (const item of orderData.items) {
             if (item.shopId) {
               const shopDoc = await adminDb.collection('shops').doc(item.shopId).get()
-              if (shopDoc.exists && shopDoc.data()?.userId === decodedToken.uid) {
+              if (shopDoc.exists && shopDoc.data()?.ownerId === decodedToken.uid) {
                 isOwner = true
                 console.log('[Seller View] Owner verified via item shopId:', item.shopId)
                 break
