@@ -186,27 +186,27 @@ export function AdminUsers() {
     switch (role) {
       case "superadmin":
         return (
-          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-600 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-600 text-white inline-flex items-center gap-1 justify-center">
             <Crown className="w-3 h-3" />
             Super Admin
           </span>
         )
       case "admin":
         return (
-          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white inline-flex items-center gap-1 justify-center">
             <Shield className="w-3 h-3" />
             Admin
           </span>
         )
       case "seller":
         return (
-          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white inline-flex items-center gap-1 justify-center">
             👤 Seller
           </span>
         )
       default:
         return (
-          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-gray-400 to-gray-500 text-white flex items-center gap-1 justify-center">
+          <span className="w-[110px] px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-gray-400 to-gray-500 text-white inline-flex items-center gap-1 justify-center">
             🎮 Buyer
           </span>
         )
@@ -217,26 +217,26 @@ export function AdminUsers() {
     switch (status) {
       case "active":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1 justify-center">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 inline-flex items-center gap-1 justify-center">
             <Check className="w-3 h-3" />
             ใช้งานปกติ
           </span>
         )
       case "suspended":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 inline-flex items-center gap-1 justify-center">
             ⏸ พักการใช้งาน
           </span>
         )
       case "banned":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1 justify-center">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 inline-flex items-center gap-1 justify-center">
             <Ban className="w-3 h-3" />
             แบน
           </span>
         )
       default:
-        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">-</span>
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700 inline-flex items-center gap-1 justify-center">-</span>
     }
   }
 
