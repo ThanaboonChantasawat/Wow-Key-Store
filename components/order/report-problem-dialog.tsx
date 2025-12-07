@@ -135,7 +135,7 @@ export function ReportProblemDialog({
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="problem-type">ประเภทปัญหา *</Label>
+            <Label htmlFor="problem-type">ประเภทปัญหา <span className="text-red-500">*</span></Label>
             <Select value={problemType} onValueChange={setProblemType}>
               <SelectTrigger>
                 <SelectValue placeholder="เลือกประเภทปัญหา" />
@@ -151,7 +151,7 @@ export function ReportProblemDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">หัวข้อปัญหา *</Label>
+            <Label htmlFor="subject">หัวข้อปัญหา <span className="text-red-500">*</span></Label>
             <input
               id="subject"
               type="text"
@@ -166,7 +166,7 @@ export function ReportProblemDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">รายละเอียดปัญหา *</Label>
+            <Label htmlFor="description">รายละเอียดปัญหา <span className="text-red-500">*</span></Label>
             <Textarea
               id="description"
               placeholder="อธิบายปัญหาโดยละเอียด เช่น รหัสที่ได้รับ, ข้อความแสดงข้อผิดพลาด, เวลาที่พบปัญหา"

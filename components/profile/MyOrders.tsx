@@ -67,6 +67,7 @@ interface DeliveredItem {
   email?: string;
   username?: string;
   password?: string;
+  emailPassword?: string;
   additionalInfo?: string;
 }
 
@@ -1741,6 +1742,29 @@ export function MyOrdersContent() {
                                   </div>
                                   <code className="text-sm font-mono font-bold text-gray-900 break-all block">
                                     {item.email || item.username}
+                                  </code>
+                                </div>
+                              )}
+
+                              {item.emailPassword && (
+                                <div className="bg-white border border-blue-200 rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">Email Password</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => copyToClipboard(item.emailPassword || "", `${selectedOrderDetail.id}-${idx}-emailpass`)}
+                                    >
+                                      {copiedId === `${selectedOrderDetail.id}-${idx}-emailpass` ? (
+                                        <><Check className="w-3 h-3 mr-1" /> คัดลอกแล้ว</>
+                                      ) : (
+                                        <><Copy className="w-3 h-3 mr-1" /> คัดลอก</>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <code className="text-sm font-mono font-bold text-gray-900 break-all block">
+                                    {item.emailPassword}
                                   </code>
                                 </div>
                               )}

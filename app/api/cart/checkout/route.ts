@@ -11,6 +11,7 @@ interface CheckoutItem {
 
 interface GroupedOrder {
   shopId: string
+  sellerId: string
   shopName: string
   items: CheckoutItem[]
   totalAmount: number
@@ -112,6 +113,31 @@ export async function POST(request: NextRequest) {
 
     for (const item of items) {
       console.log(`Processing item:`, item)
+
+      // Check product stock
+      const productRef = adminDb.collection('products').doc(item.productId)
+      const productDoc = await productRef.get()
+      
+      if (!productDoc.exists) {
+        return NextResponse.json(
+          { error: `ไม่พบสินค้า: ${item.name}` },
+          { status: 404 }
+        )
+      }
+      
+      const productData = productDoc.data()
+      const currentStock = productData?.stock
+      const requestQty = item.quantity || 1
+
+      // Check if stock is sufficient (skip if unlimited/-1)
+      if (currentStock !== 'unlimited' && currentStock !== -1) {
+        if (typeof currentStock === 'number' && currentStock < requestQty) {
+          return NextResponse.json(
+            { error: `สินค้า "${item.name}" มีไม่เพียงพอ (เหลือ ${currentStock} ชิ้น)` },
+            { status: 400 }
+          )
+        }
+      }
       
       // Get shop details
       const shopRef = adminDb.collection('shops').doc(item.shopId)
@@ -153,6 +179,7 @@ export async function POST(request: NextRequest) {
       if (!shopGroups.has(item.shopId)) {
         shopGroups.set(item.shopId, {
           shopId: item.shopId,
+          sellerId: shopData.ownerId,
           shopName: shopData.shopName,
           items: [],
           totalAmount: 0,
@@ -203,6 +230,7 @@ export async function POST(request: NextRequest) {
       type: 'cart_checkout',
       shops: shopsArray.map(g => ({
         shopId: g.shopId,
+        sellerId: g.sellerId,
         shopName: g.shopName,
         amount: g.totalAmount,
         platformFee: g.platformFee,
@@ -226,6 +254,7 @@ export async function POST(request: NextRequest) {
     // Add root-level shopId and sellerAmount for single-shop orders
     if (isSingleShop && rootShopId) {
       orderData.shopId = rootShopId
+      orderData.sellerId = shopsArray[0].sellerId
       orderData.sellerAmount = rootSellerAmount
       console.log(`✅ Single shop order - added root shopId: ${rootShopId}, sellerAmount: ${rootSellerAmount}`)
     }

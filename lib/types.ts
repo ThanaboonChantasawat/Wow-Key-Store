@@ -42,3 +42,12 @@ export interface GameAccountInfo {
   password?: string;           // Password
   additionalInfo?: string;     // ข้อมูลเพิ่มเติม เช่น Level, Skins, Characters
 }
+
+export interface FullAccessAccountInfo {
+  gameUsername: string;
+  gamePassword: string;
+  linkedEmail: string;
+  linkedEmailPassword: string;
+  backupCodes?: string;
+  additionalNotes?: string;
+}

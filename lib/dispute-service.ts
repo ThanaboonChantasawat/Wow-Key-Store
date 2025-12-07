@@ -50,13 +50,38 @@ export async function createDispute(
       return { success: false, error: 'คำสั่งซื้อนี้มีการรายงานปัญหาอยู่แล้ว' }
     }
 
+    // Determine sellerId
+    let sellerId = orderData.sellerId
+    
+    // Fallback 1: Check root shopId
+    if (!sellerId && orderData.shopId) {
+      const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
+      if (shopDoc.exists) {
+        sellerId = shopDoc.data()?.ownerId
+      }
+    }
+
+    // Fallback 2: Check shops array (for multi-shop orders or new structure)
+    if (!sellerId && orderData.shops && Array.isArray(orderData.shops) && orderData.shops.length > 0) {
+      // Try to find sellerId in the first shop group
+      const firstShop = orderData.shops[0]
+      if (firstShop.sellerId) {
+        sellerId = firstShop.sellerId
+      } else if (firstShop.shopId) {
+         const shopDoc = await adminDb.collection('shops').doc(firstShop.shopId).get()
+         if (shopDoc.exists) {
+           sellerId = shopDoc.data()?.ownerId
+         }
+      }
+    }
+
     // สร้าง Dispute
     const dispute: Omit<Dispute, 'id'> = {
       orderId: data.orderId,
       orderNumber: `#${orderData.id?.slice(-8) || 'N/A'}`,
       userId,
-      shopId: orderData.shopId,
-      sellerId: orderData.sellerId || '',
+      shopId: orderData.shopId || (orderData.shops?.[0]?.shopId) || '',
+      sellerId: sellerId || '',
       type: data.type,
       subject: data.subject,
       description: data.description,
@@ -64,15 +89,6 @@ export async function createDispute(
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date()
-    }
-
-    // Get seller ID from shop
-    if (orderData.shopId) {
-      const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
-      const shopData = shopDoc.data()
-      if (shopData?.ownerId) {
-        dispute.sellerId = shopData.ownerId
-      }
     }
 
     const disputeRef = await adminDb.collection('disputes').add(dispute)

@@ -63,6 +63,7 @@ interface DeliveredItem {
   email?: string;
   username?: string;
   password?: string;
+  emailPassword?: string;
   additionalInfo?: string;
 }
 
@@ -861,26 +862,47 @@ export default function SellerSalesHistory() {
                       <div className="space-y-4">
                         {/* Email Login Fields */}
                         {loginType === "email" && (
-                          <div>
-                            <Label htmlFor={`email-${index}`} className="flex items-center gap-1">
-                              Email <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              id={`email-${index}`}
-                              type="email"
-                              placeholder="อีเมลบัญชีเกม"
-                              value={item.email || ""}
-                              onChange={(e) => {
-                                const newItems = [...deliveredItems];
-                                newItems[index] = { ...newItems[index], email: e.target.value, username: e.target.value };
-                                setDeliveredItems(newItems);
-                                // Sync legacy
-                                if (index === 0) {
-                                  setFormEmail(e.target.value);
-                                  setFormUsername(e.target.value);
-                                }
-                              }}
-                            />
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor={`email-${index}`} className="flex items-center gap-1">
+                                Email <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id={`email-${index}`}
+                                type="email"
+                                placeholder="อีเมลบัญชีเกม"
+                                value={item.email || ""}
+                                onChange={(e) => {
+                                  const newItems = [...deliveredItems];
+                                  newItems[index] = { ...newItems[index], email: e.target.value, username: e.target.value };
+                                  setDeliveredItems(newItems);
+                                  // Sync legacy
+                                  if (index === 0) {
+                                    setFormEmail(e.target.value);
+                                    setFormUsername(e.target.value);
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`email-password-${index}`} className="flex items-center gap-1">
+                                รหัสผ่านอีเมล (Email Password) <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id={`email-password-${index}`}
+                                type="text"
+                                placeholder="รหัสผ่านสำหรับเข้าอีเมล"
+                                value={item.emailPassword || ""}
+                                onChange={(e) => {
+                                  const newItems = [...deliveredItems];
+                                  newItems[index] = { ...newItems[index], emailPassword: e.target.value };
+                                  setDeliveredItems(newItems);
+                                }}
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                ใส่รหัสผ่านอีเมลเพื่อให้ลูกค้าสามารถเข้าไปเปลี่ยนข้อมูลได้
+                              </p>
+                            </div>
                           </div>
                         )}
 
