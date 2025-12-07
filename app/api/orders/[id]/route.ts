@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { verifyAuth } from '@/lib/auth-helpers'
 
 export async function GET(
   request: NextRequest,
@@ -35,6 +36,49 @@ export async function GET(
         { error: 'Order data is invalid' },
         { status: 500 }
       )
+    }
+
+    // Check if request includes sellerView query parameter for seller verification
+    const { searchParams } = new URL(request.url)
+    const sellerView = searchParams.get('sellerView') === 'true'
+
+    if (sellerView) {
+      // Verify authentication for seller view
+      const user = await verifyAuth(request)
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+
+      // Verify seller ownership
+      let isOwner = false
+
+      // For cart orders (with shops array)
+      if (orderData?.shops && Array.isArray(orderData.shops)) {
+        for (const shop of orderData.shops) {
+          const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
+          if (shopDoc.exists && shopDoc.data()?.userId === user.uid) {
+            isOwner = true
+            break
+          }
+        }
+      } 
+      // For direct orders (with shopId)
+      else if (orderData?.shopId) {
+        const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
+        if (shopDoc.exists && shopDoc.data()?.userId === user.uid) {
+          isOwner = true
+        }
+      }
+
+      if (!isOwner) {
+        return NextResponse.json(
+          { error: 'You do not have permission to view this order' },
+          { status: 403 }
+        )
+      }
     }
 
     const order = {

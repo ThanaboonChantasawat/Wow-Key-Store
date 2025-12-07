@@ -136,7 +136,7 @@ export function SellerReports() {
     try {
       setLoadingOrder(true)
       const token = await user.getIdToken()
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/${orderId}?sellerView=true`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
