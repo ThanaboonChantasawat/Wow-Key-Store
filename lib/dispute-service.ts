@@ -167,11 +167,15 @@ export async function getUserDisputes(userId: string): Promise<Dispute[]> {
  */
 export async function getSellerDisputes(sellerId: string): Promise<Dispute[]> {
   try {
+    console.log(`[getSellerDisputes] Querying disputes for sellerId: ${sellerId}`)
+    
     const snapshot = await adminDb
       .collection('disputes')
       .where('sellerId', '==', sellerId)
       .orderBy('createdAt', 'desc')
       .get()
+
+    console.log(`[getSellerDisputes] Found ${snapshot.size} disputes for seller ${sellerId}`)
 
     return snapshot.docs.map(doc => ({
       id: doc.id,

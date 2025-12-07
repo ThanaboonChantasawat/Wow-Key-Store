@@ -18,8 +18,13 @@ export async function GET(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(token)
     const userId = decodedToken.uid
 
+    console.log(`[Seller Reports API] Fetching disputes for seller: ${userId}`)
+
     // Get disputes
     const disputes = await getSellerDisputes(userId)
+
+    console.log(`[Seller Reports API] Found ${disputes.length} disputes for seller ${userId}`)
+    disputes.forEach(d => console.log(`  - Dispute ${d.id}: Order ${d.orderId}, Status: ${d.status}`))
 
     return NextResponse.json({ success: true, disputes })
 

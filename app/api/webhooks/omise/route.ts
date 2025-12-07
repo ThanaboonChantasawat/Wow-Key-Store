@@ -91,14 +91,41 @@ export async function POST(request: NextRequest) {
         let updateCount = 0
 
         // Helper to add stock update to batch
-        const addStockUpdate = (productId: string, quantity: number) => {
+        const addStockUpdate = async (productId: string, quantity: number) => {
           if (!productId) return
+          
           const productRef = adminDb.collection('products').doc(productId)
-          batch.update(productRef, {
-            stock: admin.firestore.FieldValue.increment(-quantity),
-            soldCount: admin.firestore.FieldValue.increment(quantity)
-          })
-          updateCount++
+          const productDoc = await productRef.get()
+          
+          if (!productDoc.exists) {
+            console.warn(`⚠️ Product ${productId} not found, skipping stock update`)
+            return
+          }
+          
+          const currentStock = productDoc.data()?.stock
+          
+          // Skip stock update for unlimited items
+          if (currentStock === 'unlimited' || currentStock === -1) {
+            console.log(`ℹ️ Product ${productId} has unlimited stock, skipping decrement`)
+            // Still update soldCount
+            batch.update(productRef, {
+              soldCount: admin.firestore.FieldValue.increment(quantity)
+            })
+            updateCount++
+            return
+          }
+          
+          // For numbered stock, decrement and update soldCount
+          if (typeof currentStock === 'number') {
+            console.log(`📦 Decrementing stock for ${productId}: ${currentStock} -> ${currentStock - quantity}`)
+            batch.update(productRef, {
+              stock: admin.firestore.FieldValue.increment(-quantity),
+              soldCount: admin.firestore.FieldValue.increment(quantity)
+            })
+            updateCount++
+          } else {
+            console.warn(`⚠️ Product ${productId} has invalid stock type: ${typeof currentStock}`)
+          }
         }
 
         // Case 1: Cart checkout order with shops array
@@ -107,7 +134,7 @@ export async function POST(request: NextRequest) {
             if (shop.items && Array.isArray(shop.items)) {
               for (const item of shop.items) {
                 const qty = item.quantity || 1
-                addStockUpdate(item.productId, qty)
+                await addStockUpdate(item.productId, qty)
               }
             }
           }
@@ -116,7 +143,7 @@ export async function POST(request: NextRequest) {
         else if (orderData.items && Array.isArray(orderData.items)) {
           for (const item of orderData.items) {
             const qty = item.quantity || 1
-            addStockUpdate(item.productId, qty)
+            await addStockUpdate(item.productId, qty)
           }
         }
 

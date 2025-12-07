@@ -78,6 +78,7 @@ export function SellerReports() {
     if (!user) return
     try {
       setLoading(true)
+      console.log('[Seller Reports] Fetching reports...')
       const token = await user.getIdToken()
       const res = await fetch('/api/seller/reports', {
         headers: {
@@ -85,8 +86,12 @@ export function SellerReports() {
         }
       })
       const data = await res.json()
+      console.log('[Seller Reports] API Response:', data)
       if (data.success) {
+        console.log(`[Seller Reports] Loaded ${data.disputes.length} reports`)
         setReports(data.disputes)
+      } else {
+        console.error('[Seller Reports] API Error:', data.error)
       }
     } catch (error) {
       console.error("Error fetching reports:", error)
