@@ -96,6 +96,7 @@ export async function createDispute(
     // พักการโอนเงิน (update order)
     await orderDoc.ref.update({
       hasDispute: true,
+      disputeStatus: 'pending',
       disputeId: disputeRef.id,
       updatedAt: new Date()
     })
@@ -379,12 +380,12 @@ export async function sellerResolveDispute(
 
     await disputeDoc.ref.update(updateData)
 
-    // Update Order
+    // Update Order - Keep hasDispute true but mark as resolved so user can report again if needed
     const orderDoc = await adminDb.collection('orders').doc(disputeData?.orderId).get()
     
     if (orderDoc.exists) {
       await orderDoc.ref.update({
-        hasDispute: false,
+        disputeStatus: 'resolved',
         disputeResolved: true,
         disputeResolution: action === 'reject' ? 'dismiss' : action,
         updatedAt: new Date()

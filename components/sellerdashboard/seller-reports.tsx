@@ -14,7 +14,8 @@ import {
   ChevronUp,
   MoreHorizontal,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -94,7 +95,7 @@ export function SellerReports() {
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [loadingOrder, setLoadingOrder] = useState(false)
   const [selectedItems, setSelectedItems] = useState<number[]>([])
-  const [newCodes, setNewCodes] = useState<{[key: number]: {type: 'email' | 'username', value: string, password: string, emailPassword?: string}}>({})  
+  const [newCodes, setNewCodes] = useState<{[key: number]: {type: 'email' | 'username', value: string, password: string, emailPassword?: string, has2FADisabled?: boolean}}>({})  
 
   const fetchReports = async () => {
     if (!user) return
@@ -147,12 +148,7 @@ export function SellerReports() {
       const data = await res.json()
       if (data.success) {
         setOrderData(data.order)
-        // Pre-select all items
-        if (data.order.deliveredItems) {
-          setSelectedItems(data.order.deliveredItems.map((_: any, idx: number) => idx))
-        } else if (data.order.items) {
-          setSelectedItems(data.order.items.map((_: any, idx: number) => idx))
-        }
+        // Don't pre-select items - let user choose
       } else {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -211,13 +207,34 @@ export function SellerReports() {
       
       // Validate that all selected items have new codes
       for (const idx of selectedItems) {
-        if (!newCodes[idx] || !newCodes[idx].value || !newCodes[idx].password) {
+        const code = newCodes[idx]
+        if (!code || !code.value || !code.password) {
           toast({
             title: "กรุณากรอกข้อมูลให้ครบถ้วน",
             description: `รายการที่ ${idx + 1} ยังไม่มีข้อมูลครบ`,
             variant: "destructive"
           })
           return
+        }
+        
+        // Validate email type requirements
+        if (code.type === 'email') {
+          if (!code.emailPassword) {
+            toast({
+              title: "กรุณากรอกรหัสผ่าน Email",
+              description: `รายการที่ ${idx + 1} ต้องกรอกรหัสผ่าน Email`,
+              variant: "destructive"
+            })
+            return
+          }
+          if (!code.has2FADisabled) {
+            toast({
+              title: "กรุณายืนยันว่าได้ปิด 2FA แล้ว",
+              description: `รายการที่ ${idx + 1} ต้องยืนยันการปิด 2FA`,
+              variant: "destructive"
+            })
+            return
+          }
         }
       }
     }
@@ -552,8 +569,28 @@ export function SellerReports() {
                             />
                             <div className="flex-1">
                               <div className="font-semibold text-gray-900">{itemName}</div>
-                              {item.email && <div className="text-sm text-gray-600">เดิม: {item.email}</div>}
-                              {item.username && <div className="text-sm text-gray-600">เดิม: {item.username}</div>}
+                              <div className="text-sm text-gray-600 space-y-1 mt-1">
+                                {item.email && !item.username && (
+                                  <div>Email เดิม: <span className="font-mono">{item.email}</span></div>
+                                )}
+                                {item.username && !item.email && (
+                                  <div>Username เดิม: <span className="font-mono">{item.username}</span></div>
+                                )}
+                                {item.email && item.username && (
+                                  <>
+                                    <div>Email เดิม: <span className="font-mono">{item.email}</span></div>
+                                    {item.email !== item.username && (
+                                      <div>Username เดิม: <span className="font-mono">{item.username}</span></div>
+                                    )}
+                                  </>
+                                )}
+                                {item.password && (
+                                  <div>Password เดิม: <span className="font-mono">{item.password}</span></div>
+                                )}
+                                {item.emailPassword && (
+                                  <div>Email Password เดิม: <span className="font-mono">{item.emailPassword}</span></div>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -562,6 +599,7 @@ export function SellerReports() {
                               <div className="space-y-2">
                                 <Label className="text-sm">ประเภทข้อมูล</Label>
                                 <Select
+                                  key={`type-${idx}`}
                                   value={newCodes[idx]?.type || 'email'}
                                   onValueChange={(v: 'email' | 'username') => {
                                     setNewCodes({
@@ -582,9 +620,10 @@ export function SellerReports() {
 
                               <div className="space-y-2">
                                 <Label className="text-sm">
-                                  {newCodes[idx]?.type === 'email' ? 'Email' : 'Username'} <span className="text-red-500">*</span>
+                                  {(newCodes[idx]?.type || 'email') === 'email' ? 'Email' : 'Username'} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
+                                  key={`value-${idx}-${newCodes[idx]?.type || 'email'}`}
                                   value={newCodes[idx]?.value || ''}
                                   onChange={(e) => {
                                     setNewCodes({
@@ -592,13 +631,16 @@ export function SellerReports() {
                                       [idx]: {...(newCodes[idx] || {type: 'email', password: ''}), value: e.target.value}
                                     })
                                   }}
-                                  placeholder={newCodes[idx]?.type === 'email' ? 'example@email.com' : 'username123'}
+                                  placeholder={(newCodes[idx]?.type || 'email') === 'email' ? 'example@email.com' : 'username123'}
                                 />
                               </div>
 
                               <div className="space-y-2">
-                                <Label className="text-sm">Password <span className="text-red-500">*</span></Label>
+                                <Label className="text-sm">
+                                  รหัสผ่านบัญชี <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
+                                  key={`password-${idx}`}
                                   value={newCodes[idx]?.password || ''}
                                   onChange={(e) => {
                                     setNewCodes({
@@ -610,19 +652,58 @@ export function SellerReports() {
                                 />
                               </div>
 
-                              <div className="space-y-2">
-                                <Label className="text-sm">Email Password (ถ้ามี)</Label>
-                                <Input
-                                  value={newCodes[idx]?.emailPassword || ''}
-                                  onChange={(e) => {
-                                    setNewCodes({
-                                      ...newCodes,
-                                      [idx]: {...(newCodes[idx] || {type: 'email', value: '', password: ''}), emailPassword: e.target.value}
-                                    })
-                                  }}
-                                  placeholder="รหัสผ่านของอีเมล (ถ้ามี)"
-                                />
-                              </div>
+                              {(newCodes[idx]?.type || 'email') === 'email' && (
+                                <>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm">
+                                      รหัสผ่าน Email <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                      key={`emailPassword-${idx}`}
+                                      value={newCodes[idx]?.emailPassword || ''}
+                                      onChange={(e) => {
+                                        setNewCodes({
+                                          ...newCodes,
+                                          [idx]: {...(newCodes[idx] || {type: 'email', value: '', password: ''}), emailPassword: e.target.value}
+                                        })
+                                      }}
+                                      placeholder="รหัสผ่านของอีเมล (บังคับสำหรับการขายยกเมล)"
+                                    />
+                                  </div>
+
+                                  {/* 2FA Warning */}
+                                  <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                    <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 space-y-2">
+                                      <p className="text-sm font-semibold text-orange-900">⚠️ สำคัญมาก: ปิด 2FA ก่อนส่งรหัส</p>
+                                      <p className="text-xs text-orange-800">
+                                        กรุณาปิด Two-Factor Authentication (2FA) ในบัญชีเกมก่อนส่งข้อมูลให้ลูกค้า
+                                        เพราะลูกค้าจะไม่สามารถเข้าสู่ระบบได้หากยังเปิด 2FA อยู่
+                                      </p>
+                                      <div className="flex items-start space-x-3 pt-2 p-3 bg-white border-2 border-orange-300 rounded-md">
+                                        <input
+                                          type="checkbox"
+                                          id={`2fa-disabled-${idx}`}
+                                          checked={newCodes[idx]?.has2FADisabled || false}
+                                          onChange={(e) => {
+                                            setNewCodes({
+                                              ...newCodes,
+                                              [idx]: {...(newCodes[idx] || {type: 'email', value: '', password: ''}), has2FADisabled: e.target.checked}
+                                            })
+                                          }}
+                                          className="mt-1 h-5 w-5 border-2 border-orange-500"
+                                        />
+                                        <Label
+                                          htmlFor={`2fa-disabled-${idx}`}
+                                          className="text-sm font-semibold cursor-pointer text-orange-900 leading-relaxed"
+                                        >
+                                          ✅ ฉันได้ปิด 2FA ในบัญชีนี้แล้ว
+                                        </Label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>

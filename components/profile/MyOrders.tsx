@@ -1186,15 +1186,13 @@ export function MyOrdersContent() {
                   </div>
                   
                   {/* Dispute Status Badge */}
-                  {order.hasDispute && (
+                  {order.hasDispute && order.disputeStatus !== 'resolved' && (
                     <div className="mt-2">
                       <Badge variant="outline" className={`w-full justify-center ${
-                        order.disputeStatus === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
                         order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
                         'bg-yellow-50 text-yellow-700 border-yellow-200'
                       }`}>
-                        {order.disputeStatus === 'resolved' ? '✅ ปัญหาได้รับการแก้ไขแล้ว' :
-                         order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
+                        {order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
                          '⏳ กำลังตรวจสอบปัญหา'}
                       </Badge>
                     </div>
@@ -1223,12 +1221,14 @@ export function MyOrdersContent() {
                         setShowReportDialog(true)
                       }}
                       variant="outline"
-                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 ${order.hasDispute ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 ${
+                        (order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                       size="sm"
-                      disabled={order.hasDispute}
+                      disabled={!!(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved')}
                     >
                       <Flag className="w-4 h-4 mr-2" />
-                      {order.hasDispute ? 'แจ้งปัญหาแล้ว' : 'รายงาน'}
+                      {(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงาน'}
                     </Button>
                   </div>
                   
