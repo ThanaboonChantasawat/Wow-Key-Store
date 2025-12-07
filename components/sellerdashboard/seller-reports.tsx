@@ -131,12 +131,15 @@ export function SellerReports() {
     fetchReports()
   }, [user])
 
-  const fetchOrderData = async (orderId: string, disputeId: string) => {
+  const fetchOrderData = async (orderId: string, disputeId?: string) => {
     if (!user) return
     try {
       setLoadingOrder(true)
       const token = await user.getIdToken()
-      const res = await fetch(`/api/orders/${orderId}?sellerView=true&disputeId=${disputeId}`, {
+      const url = disputeId 
+        ? `/api/orders/${orderId}?sellerView=true&disputeId=${disputeId}`
+        : `/api/orders/${orderId}?sellerView=true`
+      const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -179,6 +182,8 @@ export function SellerReports() {
     setOrderData(null)
     
     if (action === 'new_code') {
+      console.log('[Open Action Dialog] Report:', report)
+      console.log('[Open Action Dialog] Dispute ID:', report.id)
       fetchOrderData(report.orderId, report.id)
     }
     
