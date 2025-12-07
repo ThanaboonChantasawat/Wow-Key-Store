@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Parse body
     const body = await request.json()
-    const { disputeId, action, response, newCode } = body
+    const { disputeId, action, response, newCode, deliveredItems } = body
 
     if (!disputeId || !action || !response) {
       return NextResponse.json(
@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
       userId,
       action,
       response,
-      newCode
+      newCode,
+      deliveredItems
     )
 
     if (!result.success) {

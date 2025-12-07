@@ -267,7 +267,14 @@ export async function sellerResolveDispute(
   sellerId: string,
   action: 'refund' | 'reject' | 'new_code',
   response: string,
-  newCode?: string
+  newCode?: string,
+  deliveredItems?: Array<{
+    itemName: string
+    type: 'email' | 'username'
+    value: string
+    password: string
+    emailPassword?: string
+  }>
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const disputeDoc = await adminDb.collection('disputes').doc(disputeId).get()
@@ -311,8 +318,63 @@ export async function sellerResolveDispute(
           updateData.sellerResponse = `${response} (หมายเหตุ: การคืนเงินอัตโนมัติล้มเหลว กรุณาติดต่อผู้ดูแลระบบ)`
         }
       }
-    } else if (action === 'new_code' && newCode) {
+    } else if (action === 'new_code') {
+      // Handle multi-item code delivery
+      if (deliveredItems && deliveredItems.length > 0) {
+        // Update order with new deliveredItems
+        const orderDoc = await adminDb.collection('orders').doc(disputeData?.orderId).get()
+        
+        if (orderDoc.exists) {
+          const currentOrder = orderDoc.data()
+          let updatedDeliveredItems = [...(currentOrder?.deliveredItems || [])]
+          
+          // Update or add new items
+          deliveredItems.forEach(newItem => {
+            const existingIndex = updatedDeliveredItems.findIndex(
+              (item: any) => item.itemName === newItem.itemName
+            )
+            
+            if (existingIndex !== -1) {
+              // Update existing item
+              updatedDeliveredItems[existingIndex] = {
+                ...updatedDeliveredItems[existingIndex],
+                ...newItem,
+                updatedAt: new Date()
+              }
+            } else {
+              // Add new item
+              updatedDeliveredItems.push({
+                ...newItem,
+                deliveredAt: new Date()
+              })
+            }
+          })
+          
+          await orderDoc.ref.update({
+            deliveredItems: updatedDeliveredItems,
+            updatedAt: new Date()
+          })
+        }
+        
+        // Build response message with new codes
+        let codesText = '\n\nรหัสใหม่:\n'
+        deliveredItems.forEach((item, idx) => {
+          codesText += `\n${idx + 1}. ${item.itemName}:\n`
+          if (item.type === 'email') {
+            codesText += `   Email: ${item.value}\n`
+          } else {
+            codesText += `   Username: ${item.value}\n`
+          }
+          codesText += `   Password: ${item.password}\n`
+          if (item.emailPassword) {
+            codesText += `   Email Password: ${item.emailPassword}\n`
+          }
+        })
+        updateData.sellerResponse = `${response}${codesText}`
+      } else if (newCode) {
+        // Legacy single code format
         updateData.sellerResponse = `${response}\n\nรหัสใหม่: ${newCode}`
+      }
     }
 
     await disputeDoc.ref.update(updateData)

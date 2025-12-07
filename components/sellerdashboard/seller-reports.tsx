@@ -42,6 +42,22 @@ import { useAuth } from "@/components/auth-context"
 import { format } from "date-fns"
 import { th } from "date-fns/locale"
 
+interface DeliveredItem {
+  index: number
+  itemName: string
+  email?: string
+  username?: string
+  password?: string
+  emailPassword?: string
+  additionalInfo?: string
+}
+
+interface OrderData {
+  id: string
+  items: Array<{productId: string; name: string; quantity?: number}>
+  deliveredItems?: DeliveredItem[]
+}
+
 interface Dispute {
   id: string
   orderId: string
@@ -73,6 +89,12 @@ export function SellerReports() {
   const [responseMessage, setResponseMessage] = useState("")
   const [newCode, setNewCode] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  
+  // New Code Dialog State
+  const [orderData, setOrderData] = useState<OrderData | null>(null)
+  const [loadingOrder, setLoadingOrder] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [newCodes, setNewCodes] = useState<{[key: number]: {type: 'email' | 'username', value: string, password: string, emailPassword?: string}}>({})  
 
   const fetchReports = async () => {
     if (!user) return
@@ -109,6 +131,54 @@ export function SellerReports() {
     fetchReports()
   }, [user])
 
+  const fetchOrderData = async (orderId: string) => {
+    if (!user) return
+    try {
+      setLoadingOrder(true)
+      const token = await user.getIdToken()
+      const res = await fetch(`/api/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setOrderData(data.order)
+        // Pre-select all items
+        if (data.order.deliveredItems) {
+          setSelectedItems(data.order.deliveredItems.map((_: any, idx: number) => idx))
+        } else if (data.order.items) {
+          setSelectedItems(data.order.items.map((_: any, idx: number) => idx))
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching order:", error)
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถดึงข้อมูลคำสั่งซื้อได้",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingOrder(false)
+    }
+  }
+
+  const openActionDialog = (report: Dispute, action: 'refund' | 'reject' | 'new_code') => {
+    setSelectedReport(report)
+    setActionType(action)
+    setResponseMessage("")
+    setNewCode("")
+    setNewCodes({})
+    setSelectedItems([])
+    setOrderData(null)
+    
+    if (action === 'new_code') {
+      fetchOrderData(report.orderId)
+    }
+    
+    setShowActionDialog(true)
+  }
+
   const handleAction = async () => {
     if (!selectedReport || !user) return
     if (!responseMessage.trim()) {
@@ -118,29 +188,73 @@ export function SellerReports() {
       })
       return
     }
-    if (actionType === 'new_code' && !newCode.trim()) {
-      toast({
-        title: "กรุณาระบุรหัสใหม่",
-        variant: "destructive"
-      })
-      return
+    
+    if (actionType === 'new_code') {
+      if (selectedItems.length === 0) {
+        toast({
+          title: "กรุณาเลือกรายการที่จะส่งรหัสใหม่",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      // Validate that all selected items have new codes
+      for (const idx of selectedItems) {
+        if (!newCodes[idx] || !newCodes[idx].value || !newCodes[idx].password) {
+          toast({
+            title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+            description: `รายการที่ ${idx + 1} ยังไม่มีข้อมูลครบ`,
+            variant: "destructive"
+          })
+          return
+        }
+      }
     }
 
     try {
       setSubmitting(true)
       const token = await user.getIdToken()
+      
+      let requestBody: any = {
+        disputeId: selectedReport.id,
+        orderId: selectedReport.orderId,
+        action: actionType,
+        response: responseMessage
+      }
+      
+      if (actionType === 'new_code') {
+        // Build deliveredItems array for selected items
+        const updatedItems = selectedItems.map(idx => {
+          const code = newCodes[idx]
+          const item: any = {
+            index: idx,
+            itemName: orderData?.deliveredItems?.[idx]?.itemName || orderData?.items?.[idx]?.name || `รายการที่ ${idx + 1}`,
+            password: code.password
+          }
+          
+          if (code.type === 'email') {
+            item.email = code.value
+          } else {
+            item.username = code.value
+          }
+          
+          if (code.emailPassword) {
+            item.emailPassword = code.emailPassword
+          }
+          
+          return item
+        })
+        
+        requestBody.deliveredItems = updatedItems
+      }
+      
       const res = await fetch('/api/seller/reports/resolve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          disputeId: selectedReport.id,
-          action: actionType,
-          response: responseMessage,
-          newCode: actionType === 'new_code' ? newCode : undefined
-        })
+        body: JSON.stringify(requestBody)
       })
 
       const data = await res.json()
@@ -150,6 +264,9 @@ export function SellerReports() {
           description: "ระบบได้บันทึกการดำเนินการเรียบร้อยแล้ว"
         })
         setShowActionDialog(false)
+        setOrderData(null)
+        setSelectedItems([])
+        setNewCodes({})
         fetchReports()
       } else {
         throw new Error(data.error)
@@ -308,13 +425,7 @@ export function SellerReports() {
                   {report.status === 'pending' && (
                     <Button 
                       size="sm" 
-                      onClick={() => {
-                        setSelectedReport(report)
-                        setResponseMessage("")
-                        setNewCode("")
-                        setActionType('refund')
-                        setShowActionDialog(true)
-                      }}
+                      onClick={() => openActionDialog(report, 'refund')}
                     >
                       จัดการปัญหา
                     </Button>
@@ -363,7 +474,7 @@ export function SellerReports() {
 
       {/* Action Dialog */}
       <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>จัดการปัญหาคำสั่งซื้อ {selectedReport?.orderNumber}</DialogTitle>
             <DialogDescription>
@@ -376,7 +487,12 @@ export function SellerReports() {
               <Label>เลือกการดำเนินการ</Label>
               <Select 
                 value={actionType} 
-                onValueChange={(v: any) => setActionType(v)}
+                onValueChange={(v: any) => {
+                  setActionType(v)
+                  if (v === 'new_code' && selectedReport) {
+                    fetchOrderData(selectedReport.orderId)
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -390,13 +506,119 @@ export function SellerReports() {
             </div>
 
             {actionType === 'new_code' && (
-              <div className="space-y-2">
-                <Label>รหัสสินค้าใหม่</Label>
-                <Input 
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="กรอกรหัสสินค้าใหม่ที่นี่..."
-                />
+              <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+                {loadingOrder ? (
+                  <div className="text-center py-4 text-gray-500">กำลังโหลดข้อมูลคำสั่งซื้อ...</div>
+                ) : orderData ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">รายการสินค้า ({orderData.deliveredItems?.length || orderData.items?.length} รายการ)</Label>
+                      <p className="text-sm text-gray-600">เลือกรายการที่ต้องการส่งรหัสใหม่</p>
+                    </div>
+
+                    {(orderData.deliveredItems || orderData.items)?.map((item: any, idx: number) => {
+                      const isSelected = selectedItems.includes(idx)
+                      const itemName = item.itemName || item.name
+                      
+                      return (
+                        <div key={idx} className="border rounded-lg p-4 bg-white">
+                          <div className="flex items-start gap-3 mb-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedItems([...selectedItems, idx])
+                                  setNewCodes({...newCodes, [idx]: {type: 'email', value: '', password: ''}})
+                                } else {
+                                  setSelectedItems(selectedItems.filter(i => i !== idx))
+                                  const newCodesUpdated = {...newCodes}
+                                  delete newCodesUpdated[idx]
+                                  setNewCodes(newCodesUpdated)
+                                }
+                              }}
+                              className="mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{itemName}</div>
+                              {item.email && <div className="text-sm text-gray-600">เดิม: {item.email}</div>}
+                              {item.username && <div className="text-sm text-gray-600">เดิม: {item.username}</div>}
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <div className="pl-7 space-y-3 border-t pt-3">
+                              <div className="space-y-2">
+                                <Label className="text-sm">ประเภทข้อมูล</Label>
+                                <Select
+                                  value={newCodes[idx]?.type || 'email'}
+                                  onValueChange={(v: 'email' | 'username') => {
+                                    setNewCodes({
+                                      ...newCodes,
+                                      [idx]: {...(newCodes[idx] || {value: '', password: ''}), type: v}
+                                    })
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="email">Email</SelectItem>
+                                    <SelectItem value="username">Username</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className="text-sm">
+                                  {newCodes[idx]?.type === 'email' ? 'Email' : 'Username'} <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  value={newCodes[idx]?.value || ''}
+                                  onChange={(e) => {
+                                    setNewCodes({
+                                      ...newCodes,
+                                      [idx]: {...(newCodes[idx] || {type: 'email', password: ''}), value: e.target.value}
+                                    })
+                                  }}
+                                  placeholder={newCodes[idx]?.type === 'email' ? 'example@email.com' : 'username123'}
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className="text-sm">Password <span className="text-red-500">*</span></Label>
+                                <Input
+                                  value={newCodes[idx]?.password || ''}
+                                  onChange={(e) => {
+                                    setNewCodes({
+                                      ...newCodes,
+                                      [idx]: {...(newCodes[idx] || {type: 'email', value: ''}), password: e.target.value}
+                                    })
+                                  }}
+                                  placeholder="รหัสผ่านของบัญชี"
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className="text-sm">Email Password (ถ้ามี)</Label>
+                                <Input
+                                  value={newCodes[idx]?.emailPassword || ''}
+                                  onChange={(e) => {
+                                    setNewCodes({
+                                      ...newCodes,
+                                      [idx]: {...(newCodes[idx] || {type: 'email', value: '', password: ''}), emailPassword: e.target.value}
+                                    })
+                                  }}
+                                  placeholder="รหัสผ่านของอีเมล (ถ้ามี)"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </>
+                ) : null}
               </div>
             )}
 
