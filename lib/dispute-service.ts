@@ -108,23 +108,28 @@ export async function createDispute(
         'report',
         'มีการรายงานปัญหาจากผู้ซื้อ',
         `คำสั่งซื้อ ${dispute.orderNumber} ถูกรายงานปัญหา: ${data.subject}`,
-        `/seller/disputes/${disputeRef.id}`
+        `/seller?tab=reports`
       )
     }
 
-    // ส่ง Notification ให้ Admin
+    // ส่ง Notification ให้ Admin (ยกเว้น seller ของ order นี้เพื่อไม่ให้ได้ notification ซ้ำ)
     const adminsSnapshot = await adminDb
       .collection('users')
       .where('role', 'in', ['admin', 'superadmin'])
       .get()
 
     for (const adminDoc of adminsSnapshot.docs) {
+      // Skip if this admin is the seller of this order
+      if (adminDoc.id === dispute.sellerId) {
+        continue
+      }
+      
       await createNotification(
         adminDoc.id,
         'report',
         'มีการรายงานปัญหาใหม่',
         `คำสั่งซื้อ ${dispute.orderNumber}: ${data.subject}`,
-        `/admin/disputes/${disputeRef.id}`
+        `/admin/reports`
       )
     }
 

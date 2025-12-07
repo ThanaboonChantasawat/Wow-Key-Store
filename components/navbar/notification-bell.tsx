@@ -227,10 +227,27 @@ export function NotificationBell() {
                 <p className="text-sm">ไม่มีการแจ้งเตือน</p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.map((notification) => {
+                // Fix old notification links that point to non-existent dispute routes
+                let notificationLink = notification.link || '#'
+                
+                // Fix old dispute routes
+                if (notificationLink.includes('/admin/disputes/')) {
+                  notificationLink = '/admin/reports'
+                } else if (notificationLink.includes('/seller/disputes/')) {
+                  notificationLink = '/seller?tab=reports'
+                }
+                
+                // For report notifications, prioritize seller view over admin view
+                // (since most sellers are not admins, and sellers should see their reports in seller dashboard)
+                if (notification.type === 'report' && notificationLink === '/admin/reports') {
+                  notificationLink = '/seller?tab=reports'
+                }
+                
+                return (
                 <Link
                   key={notification.id}
-                  href={notification.link || '#'}
+                  href={notificationLink}
                   onClick={() => {
                     markAsRead(notification.id)
                     setShowDropdown(false)
@@ -265,7 +282,8 @@ export function NotificationBell() {
                     </div>
                   </div>
                 </Link>
-              ))
+                )
+              })
             )}
           </div>
 
