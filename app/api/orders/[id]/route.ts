@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
-import { verifyAuth } from '@/lib/auth-helpers'
+import { verifyIdToken } from '@/lib/auth-helpers'
 
 export async function GET(
   request: NextRequest,
@@ -44,8 +44,8 @@ export async function GET(
 
     if (sellerView) {
       // Verify authentication for seller view
-      const user = await verifyAuth(request)
-      if (!user) {
+      const decodedToken = await verifyIdToken(request)
+      if (!decodedToken) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -59,7 +59,7 @@ export async function GET(
       if (orderData?.shops && Array.isArray(orderData.shops)) {
         for (const shop of orderData.shops) {
           const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
-          if (shopDoc.exists && shopDoc.data()?.userId === user.uid) {
+          if (shopDoc.exists && shopDoc.data()?.userId === decodedToken.uid) {
             isOwner = true
             break
           }
@@ -68,7 +68,7 @@ export async function GET(
       // For direct orders (with shopId)
       else if (orderData?.shopId) {
         const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
-        if (shopDoc.exists && shopDoc.data()?.userId === user.uid) {
+        if (shopDoc.exists && shopDoc.data()?.userId === decodedToken.uid) {
           isOwner = true
         }
       }
