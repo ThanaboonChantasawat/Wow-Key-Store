@@ -276,11 +276,13 @@ export async function sellerResolveDispute(
   response: string,
   newCode?: string,
   deliveredItems?: Array<{
+    index?: number
     itemName: string
-    type: 'email' | 'username'
-    value: string
+    email?: string
+    username?: string
     password: string
     emailPassword?: string
+    additionalInfo?: string
   }>
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -356,12 +358,37 @@ export async function sellerResolveDispute(
             )
             
             if (existingIndex !== -1) {
-              // Update existing item
-              updatedDeliveredItems[existingIndex] = {
-                ...updatedDeliveredItems[existingIndex],
-                ...newItem,
+              // Update existing item - replace completely to remove old email/username
+              const baseItem: any = {
+                index: newItem.index,
+                itemName: newItem.itemName,
+                password: newItem.password,
                 updatedAt: new Date()
               }
+              
+              // Add email or username (not both)
+              if (newItem.email) {
+                baseItem.email = newItem.email
+              } else if (newItem.username) {
+                baseItem.username = newItem.username
+              }
+              
+              // Add emailPassword if provided
+              if (newItem.emailPassword) {
+                baseItem.emailPassword = newItem.emailPassword
+              }
+              
+              // Add additionalInfo if provided
+              if ((newItem as any).additionalInfo) {
+                baseItem.additionalInfo = (newItem as any).additionalInfo
+              }
+              
+              // Keep original deliveredAt timestamp
+              if (updatedDeliveredItems[existingIndex].deliveredAt) {
+                baseItem.deliveredAt = updatedDeliveredItems[existingIndex].deliveredAt
+              }
+              
+              updatedDeliveredItems[existingIndex] = baseItem
             } else {
               // Add new item
               updatedDeliveredItems.push({
