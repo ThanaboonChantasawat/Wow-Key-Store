@@ -16,8 +16,10 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 const navItems = [
   { id: "account", label: "บัญชี", icon: User },
@@ -80,6 +82,9 @@ export function SidebarNav({ activeItem, onItemChange }: SidebarNavProps) {
           </SheetTrigger>
           <SheetContent side="left" className="w-[280px] sm:w-[320px]">
             <SheetHeader className="mb-6">
+              <VisuallyHidden>
+                <SheetTitle>เมนูบัญชีผู้ใช้</SheetTitle>
+              </VisuallyHidden>
               <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0">
                   <User className="w-5 h-5 text-white" />

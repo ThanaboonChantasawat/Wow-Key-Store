@@ -204,7 +204,10 @@ export function MyOrdersContent() {
       // Check if there are orders waiting for confirmation (only show toast on initial load)
       if (showLoading) {
         const pendingConfirmation = (data.orders || []).filter(
-          (order: Order) => order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled'
+          (order: Order) => 
+            order.status === 'processing' && 
+            order.gameCodeDeliveredAt && 
+            !order.buyerConfirmed
         )
         
         if (pendingConfirmation.length > 0) {
@@ -212,7 +215,7 @@ export function MyOrdersContent() {
             title: "🔔 มีคำสั่งซื้อรอการยืนยัน",
             description: `คุณมี ${pendingConfirmation.length} คำสั่งซื้อที่ได้รับข้อมูลบัญชีแล้ว กรุณายืนยันรับสินค้า`,
             variant: "default",
-            duration: 5000,
+            duration: 10000,
           })
         }
       }
@@ -1096,28 +1099,28 @@ export function MyOrdersContent() {
                 className="flex-1 cursor-pointer"
                 onClick={() => openOrderDetail(order)}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:gap-3">
                   {/* Left Section - Order Info */}
-                  <div className="flex-1 space-y-3">
+                  <div className="flex-1 space-y-2">
                 {/* Shop Name */}
-                <div className="flex items-center gap-2">
-                  <Store className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  <span className="font-semibold text-base text-gray-900 truncate">{shopName}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
+                  <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{shopName}</span>
                 </div>
                 
                 {/* Game Name & Items - Enhanced Display - Always show */}
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-gradient-to-br from-[#ff9800] to-orange-600 p-1.5 rounded-md">
-                      <Package className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-2 sm:p-2.5">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="bg-gradient-to-br from-[#ff9800] to-orange-600 p-1 sm:p-1.5 rounded-md flex-shrink-0">
+                      <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       {items[0]?.gameName && (
-                        <p className="text-sm font-bold text-[#ff9800] truncate">
+                        <p className="text-xs sm:text-sm font-bold text-[#ff9800] truncate">
                           🎮 {items[0].gameName}
                         </p>
                       )}
-                      <p className={`text-xs ${items[0]?.gameName ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
+                      <p className={`text-xs line-clamp-2 ${items[0]?.gameName ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
                         {items[0]?.name || 'สินค้า'}
                         {items.length > 1 && (
                           <span className="ml-1 text-[#ff9800] font-medium">
@@ -1130,70 +1133,69 @@ export function MyOrdersContent() {
                 </div>
                 
                 {/* Date */}
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Calendar className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{formatDate(order.createdAt)}</span>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="truncate text-xs">{formatDate(order.createdAt)}</span>
                 </div>
-                
+              </div>
+
+              {/* Status & Summary Section */}
+              <div className="flex items-center justify-between gap-2">
                 {/* Summary */}
                 <div className="text-xs text-gray-400">
                   {items.length} รายการ • ฿{order.totalAmount.toLocaleString()}
                 </div>
-              </div>
-
-              {/* Right Section - Status & Actions */}
-              <div className="flex flex-row sm:flex-col items-center gap-2">
-                <div className="flex flex-col gap-2">
-                  {getStatusBadge(order.status)}
+                
+                {/* Status Badges */}
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   {/* Show payment status for pending orders too */}
                   {order.status !== 'cancelled' && getPaymentStatusBadge(order.paymentStatus, order)}
                   
                   {/* Buyer Confirmation Badge - Hide if refunded */}
                   {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
-                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-300">
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-300 text-xs">
                       <AlertTriangle className="w-3 h-3 mr-1" />
                       รอยืนยัน
                     </Badge>
                   )}
                   {order.buyerConfirmed && order.disputeResolution !== 'refund' && (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border border-green-300">
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border border-green-300 text-xs">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       ยืนยันแล้ว
                     </Badge>
                   )}
-                  
-                  {/* Cancel Button - Show for processing orders only */}
-                  {order.status === 'processing' && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openCancelModal(order)
-                      }}
-                      className="mt-2"
-                    >
-                      <XCircle className="w-3 h-3 mr-1" />
-                      ยกเลิก
-                    </Button>
-                  )}
                 </div>
               </div>
+              
+              {/* Cancel Button - Show for processing orders only */}
+              {order.status === 'processing' && (
+                <div className="mt-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openCancelModal(order)
+                    }}
+                    className="w-full h-8 text-xs"
+                  >
+                    <XCircle className="w-3 h-3 mr-1" />
+                    ยกเลิก
+                  </Button>
+                </div>
+              )}
                 </div>
               </div>
               
               {/* Confirm Receipt Button - Show if delivered but not confirmed and not refunded */}
               {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
-                <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3">
+                <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2.5">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-blue-900">
-                          ผู้ขายส่งรหัสให้คุณแล้ว
-                        </p>
-                        <p className="text-xs text-blue-700 mt-1">
-                          กรุณายืนยันหลังตรวจสอบว่าได้รับรหัสแล้ว
+                          ผู้ขายส่งรหัสให้คุณแล้ว กรุณายืนยันหลังตรวจสอบ
                         </p>
                       </div>
                     </div>
@@ -1201,8 +1203,8 @@ export function MyOrdersContent() {
                   
                   {/* Dispute Status Badge */}
                   {order.hasDispute && order.disputeStatus !== 'resolved' && (
-                    <div className="mt-2">
-                      <Badge variant="outline" className={`w-full justify-center ${
+                    <div className="mt-1.5">
+                      <Badge variant="outline" className={`w-full justify-center text-xs ${
                         order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
                         'bg-yellow-50 text-yellow-700 border-yellow-200'
                       }`}>
@@ -1214,8 +1216,8 @@ export function MyOrdersContent() {
                   
                   {/* Resolved Dispute Status */}
                   {order.disputeStatus === 'resolved' && order.disputeResolution && (
-                    <div className="mt-2">
-                      <Badge variant="outline" className={`w-full justify-center ${
+                    <div className="mt-1.5">
+                      <Badge variant="outline" className={`w-full justify-center text-xs ${
                         (order.disputeResolution as string) === 'refund' ? 'bg-green-50 text-green-700 border-green-200' :
                         (order.disputeResolution as string) === 'new_code' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-gray-50 text-gray-700 border-gray-200'
@@ -1230,7 +1232,7 @@ export function MyOrdersContent() {
                   {/* Action Buttons */}
                   {/* Hide report button if refunded */}
                   {(order.disputeResolution as string) !== 'refund' && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1238,10 +1240,10 @@ export function MyOrdersContent() {
                         setShowChatDialog(true)
                       }}
                       variant="outline"
-                      className="w-full border-blue-300 hover:bg-blue-50"
+                      className="w-full border-blue-300 hover:bg-blue-50 h-8 text-xs"
                       size="sm"
                     >
-                      <MessageCircle className="w-4 h-4 mr-2" />
+                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                       แชท
                     </Button>
                     
@@ -1252,14 +1254,14 @@ export function MyOrdersContent() {
                         setShowReportDialog(true)
                       }}
                       variant="outline"
-                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 ${
+                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 h-8 text-xs ${
                         (order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                       size="sm"
                       disabled={!!(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved')}
                     >
-                      <Flag className="w-4 h-4 mr-2" />
-                      {(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงาน'}
+                      <Flag className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+                      <span className="truncate">{(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงาน'}</span>
                     </Button>
                   </div>
                   )}
@@ -1273,10 +1275,10 @@ export function MyOrdersContent() {
                         setShowChatDialog(true)
                       }}
                       variant="outline"
-                      className="w-full border-blue-300 hover:bg-blue-50"
+                      className="w-full border-blue-300 hover:bg-blue-50 h-8 text-xs"
                       size="sm"
                     >
-                      <MessageCircle className="w-4 h-4 mr-2" />
+                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                       แชท
                     </Button>
                   )}
@@ -1289,18 +1291,18 @@ export function MyOrdersContent() {
                       openConfirmDialog(order)
                     }}
                     disabled={confirmingOrderId === order.id}
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white h-9"
                     size="sm"
                   >
                     {confirmingOrderId === order.id ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        กำลังยืนยัน...
+                        <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 animate-spin" />
+                        <span className="text-xs sm:text-sm">กำลังยืนยัน...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        ✅ ยืนยันรับสินค้าเรียบร้อย
+                        <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
+                        <span className="text-xs sm:text-sm">✅ ยืนยันรับสินค้า</span>
                       </>
                     )}
                   </Button>
