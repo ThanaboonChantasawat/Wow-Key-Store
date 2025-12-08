@@ -355,11 +355,11 @@ export default function SellerPayouts() {
     .reduce((sum, p) => sum + p.amount, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold">💸 การโอนเงิน</h2>
-        <p className="text-muted-foreground mt-1">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">💸 การโอนเงิน</h2>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           จัดการการถอนเงินและตรวจสอบประวัติการโอน (อัปเดตอัตโนมัติทุก 30 วินาที)
         </p>
       </div>
@@ -367,17 +367,17 @@ export default function SellerPayouts() {
       {/* Withdraw Card */}
       {balance ? (
         <Card className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-green-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="w-full sm:w-auto">
                 <div className="flex items-center gap-2 mb-2">
-                  <Wallet className="w-5 h-5 text-green-600" />
-                  <p className="text-sm font-medium text-green-700">ยอดเงินพร้อมถอน</p>
+                  <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                  <p className="text-xs sm:text-sm font-medium text-green-700">ยอดเงินพร้อมถอน</p>
                 </div>
-                <p className="text-4xl font-bold text-green-900 mb-1">
+                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-900 mb-1">
                   ฿{balance.available.toFixed(2)}
                 </p>
-                <p className="text-xs text-green-600">
+                <p className="text-xs sm:text-sm text-green-600">
                   จาก {balance.confirmedOrdersCount} คำสั่งซื้อที่ผู้ซื้อยืนยันแล้ว
                 </p>
               </div>
@@ -385,17 +385,17 @@ export default function SellerPayouts() {
                 onClick={() => setWithdrawDialogOpen(true)}
                 disabled={balance.available <= 0}
                 size="lg"
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               >
-                <ArrowDownToLine className="w-5 h-5 mr-2" />
+                <ArrowDownToLine className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 ถอนเงิน
               </Button>
             </div>
             
             {balance.pending > 0 && (
-              <div className="mt-4 pt-4 border-t border-green-200">
-                <p className="text-sm text-green-700">
-                  <Clock className="w-4 h-4 inline mr-1" />
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-green-200">
+                <p className="text-xs sm:text-sm text-green-700">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                   รอผู้ซื้อยืนยัน: ฿{balance.pending.toFixed(2)} ({balance.pendingOrdersCount} คำสั่งซื้อ)
                 </p>
               </div>
@@ -404,12 +404,12 @@ export default function SellerPayouts() {
         </Card>
       ) : (
         <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-yellow-900 mb-1">ไม่สามารถโหลดยอดเงินได้</p>
-                <p className="text-sm text-yellow-700">
+                <p className="font-medium text-yellow-900 mb-1 text-sm sm:text-base">ไม่สามารถโหลดยอดเงินได้</p>
+                <p className="text-xs sm:text-sm text-yellow-700">
                   กรุณาตรวจสอบว่าคุณได้ตั้งค่าบัญชีธนาคารแล้ว
                   หรือลองรีเฟรชหน้านี้อีกครั้ง
                 </p>
@@ -420,16 +420,16 @@ export default function SellerPayouts() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-green-700">โอนสำเร็จ</p>
-                <p className="text-2xl font-bold text-green-900">
+                <p className="text-xs sm:text-sm text-green-700">โอนสำเร็จ</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-900">
                   ฿{formatAmount(totalPaid)}
                 </p>
               </div>
@@ -438,14 +438,14 @@ export default function SellerPayouts() {
         </Card>
 
         <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Clock className="w-5 h-5 text-yellow-600" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-yellow-700">กำลังดำเนินการ</p>
-                <p className="text-2xl font-bold text-yellow-900">
+                <p className="text-xs sm:text-sm text-yellow-700">กำลังดำเนินการ</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-900">
                   ฿{formatAmount(totalPending)}
                 </p>
               </div>
@@ -454,14 +454,14 @@ export default function SellerPayouts() {
         </Card>
 
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-blue-700">จำนวนครั้ง</p>
-                <p className="text-2xl font-bold text-blue-900">
+                <p className="text-xs sm:text-sm text-blue-700">จำนวนครั้ง</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-900">
                   {payouts.length}
                 </p>
               </div>
@@ -473,19 +473,19 @@ export default function SellerPayouts() {
       {/* Payouts List */}
       <Card>
         <CardHeader>
-          <CardTitle>ประวัติการโอนเงิน</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">ประวัติการโอนเงิน</CardTitle>
         </CardHeader>
         <CardContent>
           {payouts.length === 0 ? (
-            <div className="text-center py-12">
-              <ArrowDownToLine className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-muted-foreground">ยังไม่มีรายการโอนเงิน</p>
-              <p className="text-sm text-muted-foreground mt-1">
+            <div className="text-center py-8 sm:py-12">
+              <ArrowDownToLine className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm sm:text-base">ยังไม่มีรายการโอนเงิน</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 ระบบจะโอนเงินเข้าบัญชีธนาคารของคุณตามรอบที่กำหนด
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {payouts.map((payout) => {
                 const daysUntil = getDaysUntil(payout.arrival_date)
                 const isPast = daysUntil < 0
@@ -494,27 +494,27 @@ export default function SellerPayouts() {
                 return (
                   <div 
                     key={payout.id} 
-                    className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
                       {/* Left: Status & Details */}
-                      <div className="flex gap-3 flex-1">
+                      <div className="flex gap-2 sm:gap-3 flex-1 w-full">
                         <div className="mt-1">
                           {getStatusIcon(payout.status)}
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
                             {getStatusBadge(payout.status)}
-                            <span className="font-mono text-xs text-muted-foreground">
+                            <span className="font-mono text-xs text-muted-foreground truncate">
                               {payout.id}
                             </span>
                           </div>
                           
-                          <p className="text-sm text-muted-foreground mb-2">
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-2">
                             {getStatusText(payout.status)}
                           </p>
                           
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
                               <span className="font-medium">วันที่โอน:</span>
@@ -544,8 +544,8 @@ export default function SellerPayouts() {
                       </div>
 
                       {/* Right: Amount */}
-                      <div className="text-right">
-                        <div className={`text-2xl font-bold ${
+                      <div className="text-left sm:text-right w-full sm:w-auto">
+                        <div className={`text-xl sm:text-2xl font-bold ${
                           payout.status === 'paid' 
                             ? 'text-green-600' 
                             : payout.status === 'failed' || payout.status === 'canceled'
@@ -569,10 +569,10 @@ export default function SellerPayouts() {
 
       {/* Info Note */}
       <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex gap-2 sm:gap-3">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm text-blue-800">
               <p className="font-medium mb-1">ℹ️ เกี่ยวกับการถอนเงิน</p>
               <ul className="space-y-1 text-blue-700">
                 <li>• เงินจากคำสั่งซื้อที่<strong>ผู้ซื้อยืนยันรับสินค้าแล้ว</strong>จึงจะถอนได้</li>
@@ -593,12 +593,12 @@ export default function SellerPayouts() {
           setWithdrawAmount("")
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-full sm:max-w-md md:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               {withdrawStep === 1 ? 'เลือกบัญชีที่ต้องการถอนเงิน' : 'ระบุจำนวนเงินที่ต้องการถอน'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {withdrawStep === 1 
                 ? 'กรุณาเลือกบัญชีปลายทางสำหรับการรับเงิน' 
                 : `สูงสุด ฿${balance?.available.toFixed(2) || '0.00'}`
@@ -608,7 +608,7 @@ export default function SellerPayouts() {
           
           {withdrawStep === 1 ? (
             /* Step 1: Select Account */
-            <div className="space-y-4 py-4">
+            <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
               {bankAccounts.length > 0 ? (
                 <RadioGroup 
                   value={selectedAccountId} 
@@ -620,7 +620,7 @@ export default function SellerPayouts() {
                   {bankAccounts.map((account) => (
                     <div 
                       key={account.id}
-                      className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                      className="flex items-start space-x-2 sm:space-x-3 border rounded-lg p-3 sm:p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                       onClick={() => {
                         if (account.verificationStatus === 'verified') {
                           setSelectedAccountId(account.id)
@@ -634,13 +634,13 @@ export default function SellerPayouts() {
                         disabled={account.verificationStatus !== 'verified'}
                       />
                       <Label htmlFor={account.id} className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                           {account.accountType === 'promptpay' ? (
-                            <Smartphone className="w-5 h-5 text-blue-600" />
+                            <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                           ) : (
-                            <CreditCard className="w-5 h-5 text-green-600" />
+                            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                           )}
-                          <span className="font-medium text-base">{account.displayName}</span>
+                          <span className="font-medium text-sm sm:text-base">{account.displayName}</span>
                           {account.isDefault && (
                             <Badge variant="default" className="text-xs">
                               <Star className="h-3 w-3 mr-1" />
@@ -669,12 +669,12 @@ export default function SellerPayouts() {
                         </div>
                         
                         {account.accountType === 'promptpay' ? (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             {account.promptPayType === 'mobile' ? '📱 ' : '🆔 '}
                             {account.promptPayId}
                           </p>
                         ) : (
-                          <div className="text-sm text-muted-foreground space-y-0.5">
+                          <div className="text-xs sm:text-sm text-muted-foreground space-y-0.5">
                             <p>🏦 {account.bankName}</p>
                             <p>เลขบัญชี: {account.bankAccountNumber}</p>
                             <p>ชื่อบัญชี: {account.bankAccountName}</p>
@@ -685,37 +685,37 @@ export default function SellerPayouts() {
                   ))}
                 </RadioGroup>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-orange-500" />
-                  <p>ยังไม่มีบัญชีสำหรับรับเงิน</p>
-                  <p className="text-sm mt-1">กรุณาตั้งค่าบัญชีธนาคารหรือพร้อมเพย์</p>
+                <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                  <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-orange-500" />
+                  <p className="text-sm sm:text-base">ยังไม่มีบัญชีสำหรับรับเงิน</p>
+                  <p className="text-xs sm:text-sm mt-1">กรุณาตั้งค่าบัญชีธนาคารหรือพร้อมเพย์</p>
                 </div>
               )}
             </div>
           ) : (
             /* Step 2: Enter Amount */
-            <div className="space-y-4 py-4">
-              <div className="bg-accent/50 border rounded-lg p-3 mb-4">
-                <p className="text-sm text-muted-foreground mb-1">จะโอนเงินเข้า:</p>
+            <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+              <div className="bg-accent/50 border rounded-lg p-2.5 sm:p-3 mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">จะโอนเงินเข้า:</p>
                 {(() => {
                   const selectedAccount = bankAccounts.find(acc => acc.id === selectedAccountId)
                   if (!selectedAccount) return null
                   
                   return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       {selectedAccount.accountType === 'promptpay' ? (
                         <>
-                          <Smartphone className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium">{selectedAccount.displayName}</span>
-                          <span className="text-sm text-muted-foreground">
+                          <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                          <span className="font-medium text-xs sm:text-sm">{selectedAccount.displayName}</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground truncate">
                             {selectedAccount.promptPayId}
                           </span>
                         </>
                       ) : (
                         <>
-                          <CreditCard className="w-4 h-4 text-green-600" />
-                          <span className="font-medium">{selectedAccount.displayName}</span>
-                          <span className="text-sm text-muted-foreground">
+                          <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
+                          <span className="font-medium text-xs sm:text-sm">{selectedAccount.displayName}</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground truncate">
                             {selectedAccount.bankName} - {selectedAccount.bankAccountNumber}
                           </span>
                         </>
@@ -726,7 +726,7 @@ export default function SellerPayouts() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">จำนวนเงิน (บาท)</Label>
+                <Label htmlFor="amount" className="text-sm">จำนวนเงิน (บาท)</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     ฿
@@ -745,10 +745,11 @@ export default function SellerPayouts() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                   onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.25).toFixed(2))}
                 >
                   25%
@@ -756,6 +757,7 @@ export default function SellerPayouts() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                   onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.5).toFixed(2))}
                 >
                   50%
@@ -763,6 +765,7 @@ export default function SellerPayouts() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                   onClick={() => setWithdrawAmount(((balance?.available || 0) * 0.75).toFixed(2))}
                 >
                   75%
@@ -770,13 +773,14 @@ export default function SellerPayouts() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                   onClick={() => setWithdrawAmount((balance?.available || 0).toFixed(2))}
                 >
                   ทั้งหมด
                 </Button>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-blue-800">
                 <p className="font-medium mb-1">ข้อมูลการถอนเงิน:</p>
                 <ul className="space-y-1 text-blue-700">
                   <li>• เงินจะโอนเข้าบัญชีที่คุณเลือก</li>
@@ -787,12 +791,13 @@ export default function SellerPayouts() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             {withdrawStep === 2 && (
               <Button
                 variant="outline"
                 onClick={() => setWithdrawStep(1)}
                 disabled={withdrawing}
+                className="w-full sm:w-auto"
               >
                 ย้อนกลับ
               </Button>
@@ -805,6 +810,7 @@ export default function SellerPayouts() {
                 setWithdrawAmount("")
               }}
               disabled={withdrawing}
+              className="w-full sm:w-auto"
             >
               ยกเลิก
             </Button>
@@ -825,7 +831,7 @@ export default function SellerPayouts() {
                   setWithdrawStep(2)
                 }}
                 disabled={!selectedAccountId || bankAccounts.length === 0}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 ถัดไป
               </Button>
@@ -833,7 +839,7 @@ export default function SellerPayouts() {
               <Button
                 onClick={handleWithdraw}
                 disabled={withdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 {withdrawing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {withdrawing ? 'กำลังดำเนินการ...' : 'ยืนยันถอนเงิน'}

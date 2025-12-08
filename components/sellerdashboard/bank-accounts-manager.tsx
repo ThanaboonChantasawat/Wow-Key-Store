@@ -344,38 +344,38 @@ export function BankAccountsManager({ shopId }: BankAccountsManagerProps) {
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <CardContent className="flex items-center justify-center py-8 sm:py-12">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-gray-400" />
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div>
-              <CardTitle>บัญชีรับเงิน</CardTitle>
-              <CardDescription>จัดการบัญชีธนาคารและ PromptPay สำหรับรับเงิน</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">บัญชีรับเงิน</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">จัดการบัญชีธนาคารและ PromptPay สำหรับรับเงิน</CardDescription>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open)
               if (!open) resetForm()
             }}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   เพิ่มบัญชี
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+              <DialogContent className="max-w-full sm:max-w-2xl max-h-[85vh] flex flex-col mx-2 sm:mx-auto">
                 <DialogHeader>
-                  <DialogTitle className="text-xl">
+                  <DialogTitle className="text-base sm:text-lg lg:text-xl">
                     {editingAccount ? '✏️ แก้ไขบัญชี' : '➕ เพิ่มบัญชีใหม่'}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-xs sm:text-sm">
                     กรอกข้อมูลบัญชีธนาคารหรือ PromptPay เพื่อรับเงิน (ช่องที่มี <span className="text-red-500">*</span> จำเป็นต้องกรอก)
                   </DialogDescription>
                 </DialogHeader>
@@ -589,32 +589,32 @@ export function BankAccountsManager({ shopId }: BankAccountsManagerProps) {
         </CardHeader>
         <CardContent>
           {accounts.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>ยังไม่มีบัญชีรับเงิน</p>
-              <p className="text-sm">คลิก "เพิ่มบัญชี" เพื่อเริ่มต้น</p>
+            <div className="text-center py-8 sm:py-12 text-gray-500">
+              <Building2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-gray-300" />
+              <p className="text-sm sm:text-base">ยังไม่มีบัญชีรับเงิน</p>
+              <p className="text-xs sm:text-sm">คลิก "เพิ่มบัญชี" เพื่อเริ่มต้น</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
+                  className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
                   onClick={() => handleEdit(account)}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                    <div className="flex items-start gap-2 sm:gap-3 flex-1 w-full">
                       <div className="mt-1">
                         {account.accountType === 'bank' ? (
-                          <Building2 className="h-5 w-5 text-blue-600" />
+                          <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                         ) : (
-                          <Smartphone className="h-5 w-5 text-green-600" />
+                          <Smartphone className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                         )}
                       </div>
                       
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold group-hover:text-blue-600 transition-colors">{account.displayName}</h4>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <h4 className="font-semibold group-hover:text-blue-600 transition-colors text-sm sm:text-base">{account.displayName}</h4>
                           {account.isDefault && (
                             <Badge variant="default" className="text-xs">
                               <Star className="h-3 w-3 mr-1" />
@@ -654,14 +654,14 @@ export function BankAccountsManager({ shopId }: BankAccountsManagerProps) {
                         </div>
 
                         {account.accountType === 'bank' ? (
-                          <div className="text-sm text-gray-600 space-y-1">
+                          <div className="text-xs sm:text-sm text-gray-600 space-y-0.5 sm:space-y-1">
                             <p>{account.bankName}</p>
                             <p>เลขบัญชี: {account.bankAccountNumber}</p>
                             <p>ชื่อบัญชี: {account.bankAccountName}</p>
                             {account.bankBranch && <p>สาขา: {account.bankBranch}</p>}
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             <p>
                               {account.promptPayType === 'mobile' ? '📱 เบอร์โทร: ' : '🆔 บัตรประชาชน: '}
                               {account.promptPayId}
@@ -671,7 +671,7 @@ export function BankAccountsManager({ shopId }: BankAccountsManagerProps) {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-1.5 sm:gap-2 items-center">
                       {!account.isDefault && (
                         <Button
                           size="sm"
@@ -681,8 +681,9 @@ export function BankAccountsManager({ shopId }: BankAccountsManagerProps) {
                             handleSetDefault(account.id)
                           }}
                           title="ตั้งเป็นบัญชีหลัก"
+                          className="h-8 w-8 sm:h-9 sm:w-9 p-0"
                         >
-                          <Star className="h-4 w-4" />
+                          <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       )}
                       

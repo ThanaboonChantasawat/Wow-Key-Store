@@ -74,12 +74,14 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="flex flex-col">
-      <main className="container mx-auto px-4 py-8">
-        <div className={`grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-6 transition-opacity duration-150 ${!isInitialized ? 'opacity-0' : 'opacity-100'}`}>
+    <div className="flex flex-col min-h-screen">
+      <main className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-4 sm:gap-5 lg:gap-6 transition-opacity duration-150 ${!isInitialized ? 'opacity-0' : 'opacity-100'}`}>
           <SidebarNav activeItem={activeItem} onItemChange={setActiveItem} />
 
-          {renderContent()}
+          <div className="min-w-0">
+            {renderContent()}
+          </div>
         </div>
       </main>
     </div>

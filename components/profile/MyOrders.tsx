@@ -99,6 +99,7 @@ interface Order {
   disputeStatus?: 'pending' | 'investigating' | 'resolved' | 'rejected';
   disputeResolution?: 'refund' | 'new_code' | 'dismiss';
   disputeResolved?: boolean;
+  refundStatus?: string;
 }
 
 // Simple in-memory cache for shop details
@@ -964,19 +965,20 @@ export function MyOrdersContent() {
       {/* Bulk Actions Bar */}
       {selectedOrderIds.size > 0 && (
         <Card className="border-2 border-orange-300 bg-orange-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-orange-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="bg-orange-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold text-sm sm:text-base">
                   {selectedOrderIds.size}
                 </div>
-                <span className="font-semibold text-gray-900">เลือกแล้ว {selectedOrderIds.size} รายการ</span>
+                <span className="font-semibold text-gray-900 text-sm sm:text-base">เลือกแล้ว {selectedOrderIds.size} รายการ</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedOrderIds(new Set())}
+                  className="flex-1 sm:flex-none text-xs sm:text-sm"
                 >
                   ยกเลิกการเลือก
                 </Button>
@@ -985,15 +987,16 @@ export function MyOrdersContent() {
                   size="sm"
                   onClick={openBulkCancelModal}
                   disabled={bulkCancelling}
+                  className="flex-1 sm:flex-none text-xs sm:text-sm"
                 >
                   {bulkCancelling ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin" />
                       กำลังยกเลิก...
                     </>
                   ) : (
                     <>
-                      <XCircle className="w-4 h-4 mr-2" />
+                      <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                       ยกเลิกทั้งหมด
                     </>
                   )}
@@ -1005,14 +1008,14 @@ export function MyOrdersContent() {
       )}
 
       {/* Search Bar */}
-      <div className="relative mb-6">
+      <div className="relative mb-4 sm:mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
         <Input
           type="text"
           placeholder="ค้นหา (รหัสคำสั่งซื้อ, ร้าน, สินค้า)..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 sm:pl-10 pr-10 text-sm sm:text-base h-10 sm:h-12 bg-white shadow-sm border-gray-200 focus:border-orange-500 focus:ring-orange-500 rounded-xl"
+          className="pl-9 sm:pl-10 pr-9 sm:pr-10 text-sm sm:text-base h-10 sm:h-12 bg-white shadow-sm border-gray-200 focus:border-orange-500 focus:ring-orange-500 rounded-lg sm:rounded-xl"
         />
         {searchQuery && (
           <Button
@@ -1029,12 +1032,12 @@ export function MyOrdersContent() {
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <CardContent className="p-8 sm:p-12 text-center">
+            <ShoppingBag className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
               {searchQuery || statusFilter !== 'all' ? 'ไม่พบคำสั่งซื้อ' : 'ยังไม่มีคำสั่งซื้อ'}
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600">
               {searchQuery || statusFilter !== 'all' 
                 ? 'ลองเปลี่ยนตัวกรองหรือคำค้นหา' 
                 : 'เมื่อคุณซื้อสินค้า รายการจะแสดงที่นี่'}
@@ -1045,21 +1048,21 @@ export function MyOrdersContent() {
         <>
           {/* Select All Checkbox (for processing orders only) */}
           {paginatedOrders.some(o => o.status === 'processing') && (
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg border">
               <input
                 type="checkbox"
                 checked={paginatedOrders.filter(o => o.status === 'processing').length > 0 && 
                          paginatedOrders.filter(o => o.status === 'processing').every(o => selectedOrderIds.has(o.id))}
                 onChange={toggleSelectAll}
-                className="w-5 h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer"
+                className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer"
               />
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-xs sm:text-sm font-medium text-gray-700">
                 เลือกทั้งหมดในหน้านี้ ({paginatedOrders.filter(o => o.status === 'processing').length} รายการที่ยกเลิกได้)
               </span>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {paginatedOrders.map((order) => {
               const items = getOrderItems(order)
               const shopName = getShopName(order)
@@ -1071,8 +1074,8 @@ export function MyOrdersContent() {
             selectedOrderIds.has(order.id) ? 'ring-2 ring-orange-500 bg-orange-50/30' : ''
           }`}
         >
-          <CardContent className="p-4 md:p-6">
-            <div className="flex gap-3">
+          <CardContent className="p-3 sm:p-4 md:p-6">
+            <div className="flex gap-2 sm:gap-3">
               {/* Checkbox - for processing orders only */}
               {order.status === 'processing' && (
                 <div 
@@ -1083,7 +1086,7 @@ export function MyOrdersContent() {
                     type="checkbox"
                     checked={selectedOrderIds.has(order.id)}
                     onChange={() => toggleSelectOrder(order.id)}
-                    className="w-5 h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer mt-1"
+                    className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer mt-1"
                   />
                 </div>
               )}
@@ -1213,12 +1216,12 @@ export function MyOrdersContent() {
                   {order.disputeStatus === 'resolved' && order.disputeResolution && (
                     <div className="mt-2">
                       <Badge variant="outline" className={`w-full justify-center ${
-                        order.disputeResolution === 'refund' ? 'bg-green-50 text-green-700 border-green-200' :
-                        order.disputeResolution === 'new_code' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        (order.disputeResolution as string) === 'refund' ? 'bg-green-50 text-green-700 border-green-200' :
+                        (order.disputeResolution as string) === 'new_code' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-gray-50 text-gray-700 border-gray-200'
                       }`}>
-                        {order.disputeResolution === 'refund' ? '✅ ได้รับการคืนเงินแล้ว' :
-                         order.disputeResolution === 'new_code' ? '✅ ร้านค้าส่งรหัสใหม่แล้ว' :
+                        {(order.disputeResolution as string) === 'refund' ? '✅ ได้รับการคืนเงินแล้ว' :
+                         (order.disputeResolution as string) === 'new_code' ? '✅ ร้านค้าส่งรหัสใหม่แล้ว' :
                          '✅ ปัญหาได้รับการแก้ไข'}
                       </Badge>
                     </div>
@@ -1226,7 +1229,7 @@ export function MyOrdersContent() {
                   
                   {/* Action Buttons */}
                   {/* Hide report button if refunded */}
-                  {order.disputeResolution !== 'refund' && (
+                  {(order.disputeResolution as string) !== 'refund' && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={(e) => {
@@ -1262,7 +1265,7 @@ export function MyOrdersContent() {
                   )}
                   
                   {/* Show only chat button if refunded */}
-                  {order.disputeResolution === 'refund' && (
+                  {(order.disputeResolution as string) === 'refund' && (
                     <Button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1279,7 +1282,7 @@ export function MyOrdersContent() {
                   )}
                   
                   {/* Hide confirm button if refunded */}
-                  {order.disputeResolution !== 'refund' && (
+                  {(order.disputeResolution as string) !== 'refund' && (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()

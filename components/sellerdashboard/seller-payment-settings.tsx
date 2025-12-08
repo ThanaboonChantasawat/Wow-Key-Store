@@ -38,21 +38,21 @@ export function SellerPaymentSettings() {
 
   if (!shopId) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">ไม่พบข้อมูลร้านค้า กรุณาสร้างร้านค้าก่อน</p>
+      <div className="text-center py-6 sm:py-8">
+        <p className="text-muted-foreground text-sm sm:text-base">ไม่พบข้อมูลร้านค้า กรุณาสร้างร้านค้าก่อน</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <Wallet className="w-10 h-10" />
-          <h2 className="text-3xl font-bold">บัญชีรับเงิน</h2>
+      <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 text-white">
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <Wallet className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10" />
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">บัญชีรับเงิน</h2>
         </div>
-        <p className="text-white/90">ตั้งค่าบัญชีธนาคาร/PromptPay เพื่อรับเงินจากการขายผ่าน Omise</p>
+        <p className="text-white/90 text-xs sm:text-sm lg:text-base">ตั้งค่าบัญชีธนาคาร/PromptPay เพื่อรับเงินจากการขายผ่าน Omise</p>
       </div>
 
       {/* Bank Account Settings - Multi-account support like Shopee */}
