@@ -5,6 +5,7 @@ import { adminDb } from './firebase-admin-config'
 import { Dispute, CreateDisputeRequest, DisputeStatus, DisputeType } from './dispute-types'
 import { createNotification } from './notification-service'
 import { createRefund } from './payment-service'
+import { createOmiseRefund } from './omise-refund-service'
 import { Timestamp } from 'firebase-admin/firestore'
 
 /**
@@ -311,18 +312,32 @@ export async function sellerResolveDispute(
 
     // Handle specific actions
     if (action === 'refund') {
-      // Try to refund via Stripe
+      // Refund via Omise (PromptPay, Credit Card, etc.)
       const orderDoc = await adminDb.collection('orders').doc(disputeData?.orderId).get()
       const orderData = orderDoc.data()
       
+      // Omise uses chargeId (e.g., chrg_test_xxx)
       if (orderData?.paymentIntentId) {
         try {
-          await createRefund(orderData.paymentIntentId)
-          updateData.sellerResponse = `${response} (ระบบได้ทำการคืนเงินเข้าบัตรเครดิต/ช่องทางชำระเงินเดิมแล้ว)`
+          console.log('Attempting Omise refund for charge:', orderData.paymentIntentId)
+          
+          const refundResult = await createOmiseRefund({
+            chargeId: orderData.paymentIntentId,
+            reason: 'Dispute resolved - refund requested by seller'
+          })
+          
+          if (refundResult.success) {
+            updateData.sellerResponse = `${response}\n\n✅ ระบบได้ทำการคืนเงินแล้ว จำนวน ${refundResult.amount?.toFixed(2)} บาท\n- เงินจะเข้าบัญชีภายใน 5-7 วันทำการ (สำหรับบัตรเครดิต/เดบิต)\n- สำหรับ PromptPay จะได้รับเงินคืนภายใน 1-2 วันทำการ`
+          } else {
+            updateData.sellerResponse = `${response}\n\n⚠️ หมายเหตุ: ไม่สามารถคืนเงินอัตโนมัติได้ (${refundResult.error})\nกรุณาติดต่อผู้ดูแลระบบพร้อมแนบหลักฐานการชำระเงิน`
+          }
         } catch (err: any) {
           console.error('Refund failed:', err)
-          updateData.sellerResponse = `${response} (หมายเหตุ: การคืนเงินอัตโนมัติล้มเหลว กรุณาติดต่อผู้ดูแลระบบ)`
+          updateData.sellerResponse = `${response}\n\n⚠️ หมายเหตุ: การคืนเงินอัตโนมัติล้มเหลว กรุณาติดต่อผู้ดูแลระบบพร้อมแนบหลักฐานการชำระเงิน`
         }
+      } else {
+        // No payment ID found
+        updateData.sellerResponse = `${response}\n\n⚠️ ไม่พบข้อมูลการชำระเงิน กรุณาติดต่อผู้ดูแลระบบพร้อมแนบหลักฐานการชำระเงิน`
       }
     } else if (action === 'new_code') {
       // Handle multi-item code delivery
@@ -366,14 +381,18 @@ export async function sellerResolveDispute(
         let codesText = '\n\nรหัสใหม่:\n'
         deliveredItems.forEach((item, idx) => {
           codesText += `\n${idx + 1}. ${item.itemName}:\n`
-          if (item.type === 'email') {
-            codesText += `   Email: ${item.value}\n`
-          } else {
-            codesText += `   Username: ${item.value}\n`
+          if (item.email) {
+            codesText += `   Email: ${item.email}\n`
+          }
+          if (item.username) {
+            codesText += `   Username: ${item.username}\n`
           }
           codesText += `   Password: ${item.password}\n`
           if (item.emailPassword) {
             codesText += `   Email Password: ${item.emailPassword}\n`
+          }
+          if (item.additionalInfo) {
+            codesText += `   ${item.additionalInfo}\n`
           }
         })
         updateData.sellerResponse = `${response}${codesText}`

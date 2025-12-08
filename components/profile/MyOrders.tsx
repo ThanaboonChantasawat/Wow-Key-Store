@@ -97,6 +97,8 @@ interface Order {
   deliveredItems?: DeliveredItem[];
   hasDispute?: boolean;
   disputeStatus?: 'pending' | 'investigating' | 'resolved' | 'rejected';
+  disputeResolution?: 'refund' | 'new_code' | 'dismiss';
+  disputeResolved?: boolean;
 }
 
 // Simple in-memory cache for shop details
@@ -1194,6 +1196,21 @@ export function MyOrdersContent() {
                       }`}>
                         {order.disputeStatus === 'rejected' ? '❌ คำร้องถูกปฏิเสธ' :
                          '⏳ กำลังตรวจสอบปัญหา'}
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Resolved Dispute Status */}
+                  {order.disputeStatus === 'resolved' && order.disputeResolution && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className={`w-full justify-center ${
+                        order.disputeResolution === 'refund' ? 'bg-green-50 text-green-700 border-green-200' :
+                        order.disputeResolution === 'new_code' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}>
+                        {order.disputeResolution === 'refund' ? '✅ ได้รับการคืนเงินแล้ว' :
+                         order.disputeResolution === 'new_code' ? '✅ ร้านค้าส่งรหัสใหม่แล้ว' :
+                         '✅ ปัญหาได้รับการแก้ไข'}
                       </Badge>
                     </div>
                   )}
