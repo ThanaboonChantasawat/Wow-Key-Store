@@ -34,9 +34,7 @@ interface ReportProblemDialogProps {
 const problemTypes = [
   { value: 'wrong_code', label: 'รหัสผิด/ไม่ถูกต้อง' },
   { value: 'code_not_working', label: 'รหัสใช้ไม่ได้' },
-  { value: 'code_already_used', label: 'รหัสถูกใช้ไปแล้ว' },
   { value: 'no_code_received', label: 'ไม่ได้รับรหัส' },
-  { value: 'seller_unresponsive', label: 'ผู้ขายไม่ตอบ' },
   { value: 'other', label: 'อื่น ๆ' }
 ]
 

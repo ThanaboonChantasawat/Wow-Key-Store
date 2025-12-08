@@ -1216,6 +1216,8 @@ export function MyOrdersContent() {
                   )}
                   
                   {/* Action Buttons */}
+                  {/* Hide report button if refunded */}
+                  {order.disputeResolution !== 'refund' && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={(e) => {
@@ -1248,7 +1250,27 @@ export function MyOrdersContent() {
                       {(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงาน'}
                     </Button>
                   </div>
+                  )}
                   
+                  {/* Show only chat button if refunded */}
+                  {order.disputeResolution === 'refund' && (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedOrderToChat(order)
+                        setShowChatDialog(true)
+                      }}
+                      variant="outline"
+                      className="w-full border-blue-300 hover:bg-blue-50"
+                      size="sm"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      แชท
+                    </Button>
+                  )}
+                  
+                  {/* Hide confirm button if refunded */}
+                  {order.disputeResolution !== 'refund' && (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -1270,6 +1292,7 @@ export function MyOrdersContent() {
                       </>
                     )}
                   </Button>
+                  )}
                 </div>
               )}
             </div>
