@@ -1170,8 +1170,8 @@ export function MyOrdersContent() {
                 </div>
               </div>
               
-              {/* Confirm Receipt Button - Show if delivered but not confirmed */}
-              {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && (
+              {/* Confirm Receipt Button - Show if delivered but not confirmed and not refunded */}
+              {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3">
                     <div className="flex items-start gap-2">
