@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateUserProfile } from "@/lib/user-service";
-import { verifyIdToken } from "@/lib/auth-helpers";
+import { verifyIdToken, checkUserBanStatus } from "@/lib/auth-helpers";
 
 export async function POST(
   request: NextRequest,
@@ -27,14 +27,30 @@ export async function POST(
         { status: 403 }
       );
     }
+    
+    // Check if user is banned
+    const banError = await checkUserBanStatus(id);
+    if (banError) {
+      return NextResponse.json({ error: banError }, { status: 403 });
+    }
 
     const body = await request.json();
     
     // Filter allowed fields to update
-    // We should probably validate the body here
-    // For now, we pass it to the service which takes Partial<UserProfile>
+    const allowedFields = ['displayName', 'photoURL', 'phoneNumber', 'email'];
+    const updates: any = {};
     
-    await updateUserProfile(id, body);
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updates[field] = body[field];
+      }
+    }
+    
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+    
+    await updateUserProfile(id, updates);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -21,27 +21,34 @@ service cloud.firestore {
       return shopId != null && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
     }
     
-    // ✅ NEW: Check if user is banned or suspended
+    // ✅ NEW: Check if user is banned
     function isNotBanned() {
       let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       let isBanned = userData.banned == true || userData.accountStatus == 'banned';
-      let isSuspended = userData.accountStatus == 'suspended';
       
       // Check if ban has expired
       if (isBanned && userData.bannedUntil != null) {
         let bannedUntil = userData.bannedUntil;
         // If current time is past bannedUntil, user is no longer banned
-        return request.time > bannedUntil || (!isSuspended && !isBanned);
+        return request.time > bannedUntil;
       }
       
-      return !isBanned && !isSuspended;
+      return !isBanned;
     }
     
     // Users collection - อ่านได้ทุกคนที่ login, แก้ไขได้เฉพาะเจ้าของหรือ admin
     match /users/{userId} {
       allow read: if isAuthenticated() || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      
+      // Allow create if owner, but prevent setting sensitive fields
+      allow create: if isOwner(userId) && 
+        (!request.resource.data.keys().hasAny(['banned', 'accountStatus', 'role', 'balance', 'bannedUntil', 'bannedReason']));
+      
+      // Allow update if owner AND only updating lastSeen, OR if admin
+      allow update: if (isOwner(userId) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen'])) 
+        || isAdmin();
+        
       allow delete: if false; // ใช้ API route สำหรับ delete
     }
 
