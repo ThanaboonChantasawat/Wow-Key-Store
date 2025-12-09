@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, Plus, Trash2, Star, Gamepad2, X, GripVertical } from 'lucide-react'
+import { Search, Plus, Trash2, Star, Gamepad2, X, GripVertical, Flame } from 'lucide-react'
 import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
 import { getAllGames, updateGame, type Game } from '@/lib/game-service'
@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { PlayStoreGame } from '@/lib/playstore-service'
 
 export function PopularGamesManagement() {
   const { user } = useAuth()
@@ -25,11 +26,19 @@ export function PopularGamesManagement() {
   const [popularGames, setPopularGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [playstoreGames, setPlaystoreGames] = useState<PlayStoreGame[]>([])
+  const [isPlaystoreLoading, setIsPlaystoreLoading] = useState(false)
+  const [playstoreError, setPlaystoreError] = useState<string | null>(null)
+  const [playstoreSearchQuery, setPlaystoreSearchQuery] = useState('')
+  const [playstoreSelectedCategory, setPlaystoreSelectedCategory] = useState('all')
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [playstoreCurrentPage, setPlaystoreCurrentPage] = useState(1)
+  const playstoreItemsPerPage = 5
 
   useEffect(() => {
     fetchGames()
+    fetchPlaystoreGames()
   }, [])
 
   const fetchGames = async () => {
@@ -53,6 +62,45 @@ export function PopularGamesManagement() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchPlaystoreGames = async () => {
+    if (!user) return
+
+    try {
+      setIsPlaystoreLoading(true)
+      setPlaystoreError(null)
+
+      const token = await user.getIdToken()
+      const res = await fetch('/api/playstore/popular?limit=200', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        console.error('Play Store API error response:', data)
+        throw new Error(
+          data.details ||
+          data.error ||
+          'ไม่สามารถโหลดข้อมูลจาก Play Store ได้'
+        )
+      }
+
+      setPlaystoreGames(data.games || [])
+    } catch (error: any) {
+      console.error('Error fetching Play Store games:', error)
+      setPlaystoreError(error.message || 'ไม่สามารถโหลดข้อมูลจาก Play Store ได้')
+      toast({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'ไม่สามารถโหลดเกมยอดนิยมจาก Play Store ได้',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPlaystoreLoading(false)
     }
   }
 
@@ -266,8 +314,9 @@ export function PopularGamesManagement() {
         </div>
       </div>
 
-      {/* Popular Games List (Draggable) */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Popular Games List (Draggable) */}
+        <div className="space-y-3">
         {isLoading ? (
           // Loading Skeletons
           Array.from({ length: 4 }).map((_, i) => (
@@ -340,6 +389,221 @@ export function PopularGamesManagement() {
             </div>
           ))
         )}
+        </div>
+
+        {/* Popular games preview from Play Store */}
+        <div className="space-y-3">
+          <Card className="shadow-sm border border-orange-100 bg-gradient-to-b from-orange-50/60 to-white">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                    เกมยอดนิยมจาก Google Play Store
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm mt-1">
+                    ดูเทรนด์เกมยอดนิยมจาก Play Store
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchPlaystoreGames}
+                  disabled={isPlaystoreLoading}
+                  className="text-xs sm:text-sm"
+                >
+                  {isPlaystoreLoading ? 'กำลังโหลด...' : 'รีเฟรช'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {playstoreError && (
+                <p className="text-xs sm:text-sm text-red-600 mb-2">{playstoreError}</p>
+              )}
+              
+              {/* Search & Filter */}
+              {playstoreGames.length > 0 && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="ค้นหาเกม..."
+                      value={playstoreSearchQuery}
+                      onChange={(e) => {
+                        setPlaystoreSearchQuery(e.target.value)
+                        setPlaystoreCurrentPage(1)
+                      }}
+                      className="pl-9 h-9 text-sm"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600">หมวดหมู่:</span>
+                    <select
+                      value={playstoreSelectedCategory}
+                      onChange={(e) => {
+                        setPlaystoreSelectedCategory(e.target.value)
+                        setPlaystoreCurrentPage(1)
+                      }}
+                      className="flex-1 text-xs border rounded px-2 py-1 bg-white"
+                    >
+                      <option value="all">ทั้งหมด</option>
+                      {(() => {
+                        const allCategories = new Set<string>()
+                        playstoreGames.forEach(game => {
+                          if (game.category) allCategories.add(game.category)
+                        })
+                        return Array.from(allCategories).sort().map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))
+                      })()}
+                    </select>
+                  </div>
+                </div>
+              )}
+              
+              {/* Play Store Games List */}
+              {isPlaystoreLoading && playstoreGames.length === 0 ? (
+                <p className="text-sm text-gray-500 py-4">กำลังโหลดข้อมูลจาก Google Play Store...</p>
+              ) : playstoreGames.length === 0 ? (
+                <p className="text-sm text-gray-500 py-4">ยังไม่มีข้อมูลจาก Play Store</p>
+              ) : (() => {
+                // Filter logic
+                const filteredGames = playstoreGames.filter(game => {
+                  const matchSearch = game.name.toLowerCase().includes(playstoreSearchQuery.toLowerCase())
+                  const matchCategory = playstoreSelectedCategory === 'all' || game.category === playstoreSelectedCategory
+                  return matchSearch && matchCategory
+                })
+                
+                // Pagination
+                const totalPages = Math.ceil(filteredGames.length / playstoreItemsPerPage)
+                const startIdx = (playstoreCurrentPage - 1) * playstoreItemsPerPage
+                const endIdx = startIdx + playstoreItemsPerPage
+                const paginatedGames = filteredGames.slice(startIdx, endIdx)
+                
+                return (
+                  <>
+                    {filteredGames.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-4 text-center">ไม่พบเกมที่ค้นหา</p>
+                    ) : (
+                    <div className="space-y-2">
+                      {paginatedGames.map((game) => (
+                        <div
+                          key={game.id}
+                          className="flex items-center gap-3 p-2 rounded-lg bg-white/80 border border-orange-100 hover:border-orange-300 hover:bg-orange-50/60 transition-colors"
+                        >
+                          <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                            {game.coverUrl ? (
+                              <Image
+                                src={game.coverUrl}
+                                alt={game.name}
+                                fill
+                                className="object-cover"
+                                sizes="48px"
+                              />
+                            ) : (
+                              <Gamepad2 className="w-6 h-6 m-auto text-gray-400" />
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-gray-900 truncate">
+                              {game.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {game.category && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {game.category}
+                                </Badge>
+                              )}
+                              {game.rating && (
+                                <span className="text-xs text-yellow-600 flex items-center gap-0.5">
+                                  ⭐ {game.rating.toFixed(1)}
+                                </span>
+                              )}
+                              {game.installs && (
+                                <span className="text-xs text-gray-500">
+                                  {game.installs}+ ดาวน์โหลด
+                                </span>
+                              )}
+                            </div>
+                            {game.developer && (
+                              <p className="text-xs text-gray-500 truncate mt-0.5">
+                                {game.developer}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {game.price && (
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-green-600">
+                                {game.price === 'Free' ? 'ฟรี' : game.price}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                    
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span className="text-xs text-gray-600">
+                          หน้า {playstoreCurrentPage} / {totalPages} ({filteredGames.length} เกม)
+                        </span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPlaystoreCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={playstoreCurrentPage === 1}
+                            className="h-7 w-7 p-0"
+                          >
+                            ‹
+                          </Button>
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum
+                            if (totalPages <= 5) {
+                              pageNum = i + 1
+                            } else if (playstoreCurrentPage <= 3) {
+                              pageNum = i + 1
+                            } else if (playstoreCurrentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i
+                            } else {
+                              pageNum = playstoreCurrentPage - 2 + i
+                            }
+                            
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={playstoreCurrentPage === pageNum ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setPlaystoreCurrentPage(pageNum)}
+                                className="h-7 w-7 p-0 text-xs"
+                              >
+                                {pageNum}
+                              </Button>
+                            )
+                          })}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPlaystoreCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={playstoreCurrentPage === totalPages}
+                            className="h-7 w-7 p-0"
+                          >
+                            ›
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Instructions */}
