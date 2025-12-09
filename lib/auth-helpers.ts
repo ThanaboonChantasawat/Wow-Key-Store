@@ -80,8 +80,10 @@ export async function verifyAdmin(request: NextRequest) {
 /**
  * Verify user is not banned
  * Returns error message if user is banned, null if user is allowed to proceed
+ * @param userId - User ID to check
+ * @param allowSupport - If true, allows banned users to contact support team (default: false)
  */
-export async function checkUserBanStatus(userId: string): Promise<string | null> {
+export async function checkUserBanStatus(userId: string, allowSupport: boolean = false): Promise<string | null> {
   try {
     const userDoc = await adminDb.collection('users').doc(userId).get()
     
@@ -109,9 +111,21 @@ export async function checkUserBanStatus(userId: string): Promise<string | null>
           return null
         }
         
+        // ✅ Allow support contact even when banned
+        if (allowSupport) {
+          console.log('✅ Allowing banned user to contact support:', userId)
+          return null
+        }
+        
         // Ban is still active
         const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         return `บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`
+      }
+      
+      // ✅ Allow support contact even when permanently banned
+      if (allowSupport) {
+        console.log('✅ Allowing permanently banned user to contact support:', userId)
+        return null
       }
       
       // Permanent ban without expiration
@@ -120,6 +134,11 @@ export async function checkUserBanStatus(userId: string): Promise<string | null>
     
     // Check if user is suspended
     if (userData?.accountStatus === 'suspended') {
+      // ✅ Allow support contact even when suspended
+      if (allowSupport) {
+        console.log('✅ Allowing suspended user to contact support:', userId)
+        return null
+      }
       return 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงาน'
     }
     

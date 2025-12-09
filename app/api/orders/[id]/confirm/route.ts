@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { checkUserBanStatus } from '@/lib/auth-helpers'
 import admin from 'firebase-admin'
 import { createNotification } from '@/lib/notification-service'
 
@@ -15,6 +16,15 @@ export async function POST(
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      )
+    }
+
+    // ✅ Check if user is banned
+    const banError = await checkUserBanStatus(userId)
+    if (banError) {
+      return NextResponse.json(
+        { error: banError },
+        { status: 403 }
       )
     }
 

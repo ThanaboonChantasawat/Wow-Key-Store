@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { checkUserBanStatus } from '@/lib/auth-helpers'
 import admin from 'firebase-admin'
 
 export async function POST(request: NextRequest) {
@@ -27,6 +28,17 @@ export async function POST(request: NextRequest) {
     }
 
     const orderData = orderDoc.data()
+
+    // ✅ Check if user is banned
+    if (orderData?.userId) {
+      const banError = await checkUserBanStatus(orderData.userId)
+      if (banError) {
+        return NextResponse.json(
+          { error: banError },
+          { status: 403 }
+        )
+      }
+    }
 
     // Only allow canceling pending orders
     if (orderData?.paymentStatus !== 'pending') {
