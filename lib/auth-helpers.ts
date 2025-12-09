@@ -139,7 +139,11 @@ export async function checkUserBanStatus(userId: string, allowSupport: boolean =
         console.log('✅ Allowing suspended user to contact support:', userId)
         return null
       }
-      return 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงาน'
+      
+      const suspendedReason = userData.suspendedReason || 'ไม่ระบุ'
+      const suspendedAt = userData.suspendedAt?.toDate ? userData.suspendedAt.toDate() : (userData.suspendedAt ? new Date(userData.suspendedAt) : null)
+      const suspendedInfo = suspendedAt ? `\nพักการใช้งานเมื่อ: ${suspendedAt.toLocaleDateString('th-TH')}` : ''
+      return `บัญชีของคุณถูกพักการใช้งานชั่วคราว${suspendedInfo}\nเหตุผล: ${suspendedReason}\nกรุณาติดต่อทีมงานเพื่อขอปลดพัก`
     }
     
     return null

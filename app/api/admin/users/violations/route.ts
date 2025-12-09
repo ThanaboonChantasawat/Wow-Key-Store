@@ -129,6 +129,7 @@ export async function PATCH(request: NextRequest) {
       const currentViolations = userData.violations || 0
 
       await adminDb.collection('users').doc(userId).update({
+        accountStatus: 'banned', // ✅ เพิ่มการตั้ง accountStatus
         banned: true,
         bannedUntil: bannedUntil,
         bannedReason: reason,
@@ -144,6 +145,7 @@ export async function PATCH(request: NextRequest) {
     } else {
       // Unban
       await adminDb.collection('users').doc(userId).update({
+        accountStatus: 'active', // ✅ เพิ่มการตั้ง accountStatus กลับเป็น active
         banned: false,
         bannedUntil: null,
         bannedReason: '',

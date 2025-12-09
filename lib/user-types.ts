@@ -17,7 +17,12 @@ export interface UserProfile {
   violations?: number; // จำนวนครั้งที่ถูกดำเนินการ
   lastViolation?: Date; // วันที่ถูกดำเนินการล่าสุด
   
-  // ✅ Ban information
+  // ✅ Suspension information (พักการใช้งานชั่วคราว)
+  suspendedReason?: string; // เหตุผลที่ถูกพักการใช้งาน
+  suspendedBy?: string; // UID ของแอดมินที่พักการใช้งาน
+  suspendedAt?: Date; // วันที่ถูกพักการใช้งาน
+  
+  // ✅ Ban information (แบนมีกำหนดเวลาหรือถาวร)
   banned?: boolean; // สถานะการแบน
   bannedUntil?: Date; // แบนจนถึงวันที่
   bannedReason?: string; // เหตุผลที่ถูกแบน
