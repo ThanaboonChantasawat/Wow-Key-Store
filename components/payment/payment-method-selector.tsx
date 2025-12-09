@@ -48,8 +48,13 @@ export function PaymentMethodSelector({
 }: PaymentMethodSelectorProps) {
   const { user } = useAuth()
   const { toast } = useToast()
+  
+  // PromptPay requires minimum 20 THB
+  const PROMPTPAY_MIN_AMOUNT = 20
+  const isPromptPayAvailable = availablePaymentMethods.promptpay && amount >= PROMPTPAY_MIN_AMOUNT
+  
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'promptpay'>(
-    availablePaymentMethods.promptpay ? 'promptpay' : 'card'
+    isPromptPayAvailable ? 'promptpay' : 'card'
   )
   const [showPayment, setShowPayment] = useState(false)
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(orderId || null)
@@ -214,7 +219,7 @@ export function PaymentMethodSelector({
       <CardContent className="space-y-6">
         <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
           {/* PromptPay Option */}
-          {availablePaymentMethods.promptpay ? (
+          {isPromptPayAvailable ? (
             <div className={`flex items-center space-x-2 rounded-lg border-2 p-4 cursor-pointer transition-colors ${paymentMethod === 'promptpay' ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
               <RadioGroupItem value="promptpay" id="promptpay" />
               <Label 
@@ -237,7 +242,12 @@ export function PaymentMethodSelector({
               <Smartphone className="w-6 h-6 text-gray-400" />
               <div>
                 <div className="font-semibold text-gray-500">PromptPay QR Code</div>
-                <div className="text-xs text-red-500">ไม่รองรับสำหรับรายการนี้</div>
+                <div className="text-xs text-red-500">
+                  {amount < PROMPTPAY_MIN_AMOUNT 
+                    ? `ยอดขั้นต่ำ ${PROMPTPAY_MIN_AMOUNT} บาท (ปัจจุบัน ฿${amount.toLocaleString()})`
+                    : 'ไม่รองรับสำหรับรายการนี้'
+                  }
+                </div>
               </div>
             </div>
           )}

@@ -56,6 +56,14 @@ export async function createPromptPayQR(
       }
     }
 
+    // PromptPay minimum amount is 20 THB (2000 satangs)
+    if (amount < 20) {
+      return {
+        success: false,
+        error: 'ยอดชำระเงินขั้นต่ำสำหรับ PromptPay คือ 20 บาท',
+      }
+    }
+
     // Convert to satang (smallest unit)
     const amountSatang = Math.round(amount * 100)
 

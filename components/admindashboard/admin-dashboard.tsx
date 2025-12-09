@@ -99,7 +99,6 @@ export function AdminDashboard({ userId }: AdminDashboardProps) {
               {activeSection === "categories" && <AdminCategories />}
               {activeSection === "games" && <AdminGames />}
               {activeSection === "popular-games" && <PopularGamesManagement />}
-              {activeSection === "omise-settings" && <OmiseModeSettings />}
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth, db } from './firebase-config'
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore'
 
 interface AuthContextType {
   user: User | null
@@ -32,6 +32,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  const logout = useCallback(async () => {
+    try {
+      setLoading(true)
+      await signOut(auth)
+      document.cookie = 'firebase-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   // Update lastSeen every minute for logged in users
   useEffect(() => {
     if (!user || !db) return
@@ -39,7 +51,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateLastSeen = async () => {
       try {
         const userRef = doc(db, 'users', user.uid)
-        // Use setDoc with merge: true instead of updateDoc to handle missing documents
+        
+        // ตรวจสอบสถานะผู้ใช้ก่อน
+        const userDoc = await getDoc(userRef)
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+          
+          // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
+          if (userData.accountStatus === 'banned' || userData.banned === true) {
+            console.log('🚫 User is banned, logging out...')
+            alert('บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ')
+            await logout()
+            return
+          }
+          
+          if (userData.accountStatus === 'suspended') {
+            console.log('⏸ User is suspended, logging out...')
+            alert('บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อผู้ดูแลระบบ')
+            await logout()
+            return
+          }
+          
+          // ตรวจสอบวันหมดอายุการแบน
+          if (userData.bannedUntil) {
+            const bannedUntil = userData.bannedUntil.toDate ? userData.bannedUntil.toDate() : new Date(userData.bannedUntil)
+            const now = new Date()
+            
+            if (now < bannedUntil) {
+              console.log('🚫 User is still banned until:', bannedUntil)
+              const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              alert(`บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`)
+              await logout()
+              return
+            }
+          }
+        }
+        
+        // อัปเดต lastSeen
         await setDoc(userRef, {
           lastSeen: serverTimestamp()
         }, { merge: true })
@@ -58,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       clearInterval(intervalId)
     }
-  }, [user])
+  }, [user, logout])
 
   useEffect(() => {
     let isMounted = true
@@ -79,6 +127,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return
+      
+      // ถ้ามี user ตรวจสอบสถานะก่อน
+      if (user) {
+        try {
+          const userRef = doc(db, 'users', user.uid)
+          const userDoc = await getDoc(userRef)
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            
+            // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
+            if (userData.accountStatus === 'banned' || userData.banned === true) {
+              console.log('🚫 User is banned, preventing login...')
+              await signOut(auth)
+              alert('บัญชีของคุณถูกระงับการใช้งาน ไม่สามารถเข้าสู่ระบบได้\nกรุณาติดต่อผู้ดูแลระบบ')
+              setUser(null)
+              if (!isInitialized) {
+                setIsInitialized(true)
+              }
+              return
+            }
+            
+            if (userData.accountStatus === 'suspended') {
+              console.log('⏸ User is suspended, preventing login...')
+              await signOut(auth)
+              alert('บัญชีของคุณถูกพักการใช้งานชั่วคราว ไม่สามารถเข้าสู่ระบบได้\nกรุณาติดต่อผู้ดูแลระบบ')
+              setUser(null)
+              if (!isInitialized) {
+                setIsInitialized(true)
+              }
+              return
+            }
+            
+            // ตรวจสอบวันหมดอายุการแบน
+            if (userData.bannedUntil) {
+              const bannedUntil = userData.bannedUntil.toDate ? userData.bannedUntil.toDate() : new Date(userData.bannedUntil)
+              const now = new Date()
+              
+              if (now < bannedUntil) {
+                console.log('🚫 User is still banned until:', bannedUntil)
+                const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                await signOut(auth)
+                alert(`บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}\n\nไม่สามารถเข้าสู่ระบบได้`)
+                setUser(null)
+                if (!isInitialized) {
+                  setIsInitialized(true)
+                }
+                return
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking user status on auth:', error)
+        }
+      }
       
       setUser(user)
       if (!isInitialized) {
@@ -104,18 +207,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribe()
     }
   }, [isInitialized])
-
-  const logout = useCallback(async () => {
-    try {
-      setLoading(true)
-      await signOut(auth)
-      document.cookie = 'firebase-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   const value = useMemo(() => ({
     user,
