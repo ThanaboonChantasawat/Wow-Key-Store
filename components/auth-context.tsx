@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth, db } from './firebase-config'
 import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore'
+import { useToast } from '@/hooks/use-toast'
 
 interface AuthContextType {
   user: User | null
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+  const { toast } = useToast()
 
   const logout = useCallback(async () => {
     try {
@@ -60,14 +62,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
           if (userData.accountStatus === 'banned' || userData.banned === true) {
             console.log('🚫 User is banned, logging out...')
-            alert('บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ')
+            toast({
+              title: 'บัญชีถูกระงับการใช้งาน',
+              description: 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อทีมงานเพื่อขอปลดแบน',
+              variant: 'destructive',
+              duration: 8000,
+            })
             await logout()
             return
           }
           
           if (userData.accountStatus === 'suspended') {
             console.log('⏸ User is suspended, logging out...')
-            alert('บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อผู้ดูแลระบบ')
+            toast({
+              title: 'บัญชีถูกพักการใช้งานชั่วคราว',
+              description: 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงานเพื่อขอปลดพักการใช้งาน',
+              variant: 'destructive',
+              duration: 8000,
+            })
             await logout()
             return
           }
@@ -80,7 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (now < bannedUntil) {
               console.log('🚫 User is still banned until:', bannedUntil)
               const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-              alert(`บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`)
+              toast({
+                title: 'บัญชีถูกระงับชั่วคราว',
+                description: `บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}\nหากต้องการปลดแบน กรุณาติดต่อทีมงาน`,
+                variant: 'destructive',
+                duration: 10000,
+              })
               await logout()
               return
             }
@@ -106,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       clearInterval(intervalId)
     }
-  }, [user, logout])
+  }, [user, logout, toast])
 
   useEffect(() => {
     let isMounted = true
@@ -140,8 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
             if (userData.accountStatus === 'banned' || userData.banned === true) {
               console.log('🚫 User is banned, preventing login...')
+              toast({
+                title: 'ไม่สามารถเข้าสู่ระบบได้',
+                description: 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อทีมงานเพื่อขอปลดแบน',
+                variant: 'destructive',
+                duration: 8000,
+              })
               await signOut(auth)
-              alert('บัญชีของคุณถูกระงับการใช้งาน ไม่สามารถเข้าสู่ระบบได้\nกรุณาติดต่อผู้ดูแลระบบ')
               setUser(null)
               if (!isInitialized) {
                 setIsInitialized(true)
@@ -151,8 +173,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             if (userData.accountStatus === 'suspended') {
               console.log('⏸ User is suspended, preventing login...')
+              toast({
+                title: 'ไม่สามารถเข้าสู่ระบบได้',
+                description: 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงานเพื่อขอปลดพักการใช้งาน',
+                variant: 'destructive',
+                duration: 8000,
+              })
               await signOut(auth)
-              alert('บัญชีของคุณถูกพักการใช้งานชั่วคราว ไม่สามารถเข้าสู่ระบบได้\nกรุณาติดต่อผู้ดูแลระบบ')
               setUser(null)
               if (!isInitialized) {
                 setIsInitialized(true)
@@ -168,8 +195,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (now < bannedUntil) {
                 console.log('🚫 User is still banned until:', bannedUntil)
                 const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                toast({
+                  title: 'ไม่สามารถเข้าสู่ระบบได้',
+                  description: `บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}\nหากต้องการปลดแบน กรุณาติดต่อทีมงาน`,
+                  variant: 'destructive',
+                  duration: 10000,
+                })
                 await signOut(auth)
-                alert(`บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}\n\nไม่สามารถเข้าสู่ระบบได้`)
                 setUser(null)
                 if (!isInitialized) {
                   setIsInitialized(true)
@@ -206,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false
       unsubscribe()
     }
-  }, [isInitialized])
+  }, [isInitialized, toast])
 
   const value = useMemo(() => ({
     user,
