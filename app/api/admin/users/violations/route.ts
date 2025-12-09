@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin-config'
+import { adminDb, adminAuth } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
 
 /**
@@ -138,6 +138,22 @@ export async function PATCH(request: NextRequest) {
         lastViolation: new Date(),
       })
 
+      // ✅ Set Custom Claims for immediate ban enforcement
+      try {
+        const userRecord = await adminAuth.getUser(userId);
+        const currentClaims = userRecord.customClaims || {};
+        await adminAuth.setCustomUserClaims(userId, {
+          ...currentClaims,
+          banned: true
+        });
+        // Revoke refresh tokens to force re-authentication/token refresh
+        await adminAuth.revokeRefreshTokens(userId);
+        console.log(`✅ Set banned claim and revoked tokens for user ${userId}`);
+      } catch (claimError) {
+        console.error('Error setting custom claims:', claimError);
+        // Don't fail the request if claims fail, but log it
+      }
+
       return NextResponse.json({
         success: true,
         message: `แบนผู้ใช้เป็นเวลา ${banDuration} วันเรียบร้อยแล้ว`,
@@ -151,6 +167,19 @@ export async function PATCH(request: NextRequest) {
         bannedReason: '',
         bannedBy: null,
       })
+
+      // ✅ Remove Banned Custom Claim
+      try {
+        const userRecord = await adminAuth.getUser(userId);
+        const currentClaims = userRecord.customClaims || {};
+        const newClaims = { ...currentClaims };
+        delete newClaims.banned;
+        
+        await adminAuth.setCustomUserClaims(userId, newClaims);
+        console.log(`✅ Removed banned claim for user ${userId}`);
+      } catch (claimError) {
+        console.error('Error removing custom claims:', claimError);
+      }
 
       return NextResponse.json({
         success: true,

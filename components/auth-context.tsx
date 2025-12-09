@@ -52,6 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const updateLastSeen = async () => {
       try {
+        // ✅ Check Custom Claims first (force refresh for latest ban status)
+        const tokenResult = await user.getIdTokenResult(true)
+        if (tokenResult.claims.banned === true) {
+           console.log('🚫 User has banned claim, logging out...')
+           await logout()
+           return
+        }
+
         const userRef = doc(db, 'users', user.uid)
         
         // ตรวจสอบสถานะผู้ใช้ก่อน
@@ -136,6 +144,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ถ้ามี user ตรวจสอบสถานะก่อน
       if (user) {
         try {
+          // ✅ Force token refresh to get latest claims
+          const tokenResult = await user.getIdTokenResult(true)
+          if (tokenResult.claims.banned === true) {
+             console.log('🚫 User has banned claim, preventing login...')
+             await signOut(auth)
+             setUser(null)
+             if (!isInitialized) setIsInitialized(true)
+             return
+          }
+
           const userRef = doc(db, 'users', user.uid)
           const userDoc = await getDoc(userRef)
           
