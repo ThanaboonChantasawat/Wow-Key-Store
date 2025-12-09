@@ -15,7 +15,11 @@ export async function GET(request: NextRequest) {
     }
 
     const token = await verifyIdTokenString(authHeader.substring(7))
-    const userRole = token.role || 'buyer'
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userRole = (token as any).role || 'buyer'
 
     // Check admin permission
     if (!['admin', 'superadmin'].includes(userRole)) {
@@ -87,8 +91,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const token = await verifyIdTokenString(authHeader.substring(7))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const adminId = token.uid
-    const userRole = token.role || 'buyer'
+    const userRole = (token as any).role || 'buyer'
 
     // Check admin permission
     if (!['admin', 'superadmin'].includes(userRole)) {
