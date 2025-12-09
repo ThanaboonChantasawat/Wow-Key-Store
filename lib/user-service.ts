@@ -174,7 +174,7 @@ export async function upgradeToSeller(userId: string, shopName: string): Promise
  */
 export async function updateAccountStatus(
   userId: string,
-  status: 'active' | 'suspended' | 'banned'
+  status: 'active' | 'banned'
 ): Promise<void> {
   try {
     const userRef = adminDb.collection("users").doc(userId);

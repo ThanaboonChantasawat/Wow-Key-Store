@@ -17,7 +17,7 @@ export async function POST(
 		}
 
 		// Map incoming status to allowed values in updateAccountStatus
-		const allowedStatuses = ["active", "suspended", "banned"] as const;
+		const allowedStatuses = ["active", "banned"] as const;
 		if (!allowedStatuses.includes(status)) {
 			return NextResponse.json(
 				{ error: "Invalid status value" },

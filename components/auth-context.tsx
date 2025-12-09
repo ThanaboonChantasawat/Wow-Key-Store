@@ -59,24 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userDoc.exists()) {
           const userData = userDoc.data()
           
-          // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
+          // ✅ ตรวจสอบว่าถูกแบนหรือไม่
           if (userData.accountStatus === 'banned' || userData.banned === true) {
             console.log('🚫 User is banned, logging out...')
             toast({
               title: 'บัญชีถูกระงับการใช้งาน',
               description: 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อทีมงานเพื่อขอปลดแบน',
-              variant: 'destructive',
-              duration: 8000,
-            })
-            await logout()
-            return
-          }
-          
-          if (userData.accountStatus === 'suspended') {
-            console.log('⏸ User is suspended, logging out...')
-            toast({
-              title: 'บัญชีถูกพักการใช้งานชั่วคราว',
-              description: 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงานเพื่อขอปลดพักการใช้งาน',
               variant: 'destructive',
               duration: 8000,
             })
@@ -154,28 +142,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (userDoc.exists()) {
             const userData = userDoc.data()
             
-            // ✅ ตรวจสอบว่าถูกแบนหรือพักการใช้งานหรือไม่
+            // ✅ ตรวจสอบว่าถูกแบนหรือไม่
             if (userData.accountStatus === 'banned' || userData.banned === true) {
               console.log('🚫 User is banned, preventing login...')
               toast({
                 title: 'ไม่สามารถเข้าสู่ระบบได้',
                 description: 'บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อทีมงานเพื่อขอปลดแบน',
-                variant: 'destructive',
-                duration: 8000,
-              })
-              await signOut(auth)
-              setUser(null)
-              if (!isInitialized) {
-                setIsInitialized(true)
-              }
-              return
-            }
-            
-            if (userData.accountStatus === 'suspended') {
-              console.log('⏸ User is suspended, preventing login...')
-              toast({
-                title: 'ไม่สามารถเข้าสู่ระบบได้',
-                description: 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงานเพื่อขอปลดพักการใช้งาน',
                 variant: 'destructive',
                 duration: 8000,
               })

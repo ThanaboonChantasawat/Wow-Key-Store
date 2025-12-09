@@ -132,20 +132,6 @@ export async function checkUserBanStatus(userId: string, allowSupport: boolean =
       return `บัญชีของคุณถูกระงับการใช้งานถาวร\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`
     }
     
-    // Check if user is suspended
-    if (userData?.accountStatus === 'suspended') {
-      // ✅ Allow support contact even when suspended
-      if (allowSupport) {
-        console.log('✅ Allowing suspended user to contact support:', userId)
-        return null
-      }
-      
-      const suspendedReason = userData.suspendedReason || 'ไม่ระบุ'
-      const suspendedAt = userData.suspendedAt?.toDate ? userData.suspendedAt.toDate() : (userData.suspendedAt ? new Date(userData.suspendedAt) : null)
-      const suspendedInfo = suspendedAt ? `\nพักการใช้งานเมื่อ: ${suspendedAt.toLocaleDateString('th-TH')}` : ''
-      return `บัญชีของคุณถูกพักการใช้งานชั่วคราว${suspendedInfo}\nเหตุผล: ${suspendedReason}\nกรุณาติดต่อทีมงานเพื่อขอปลดพัก`
-    }
-    
     return null
   } catch (error) {
     console.error('Error checking user ban status:', error)

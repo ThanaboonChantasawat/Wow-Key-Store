@@ -113,7 +113,7 @@ export async function updateUserRole(
 // Update account status (admin function)
 export async function updateAccountStatus(
   userId: string,
-  status: 'active' | 'suspended' | 'banned'
+  status: 'active' | 'banned'
 ): Promise<void> {
   const response = await fetch(`/api/users/${userId}/status`, {
     method: 'POST',

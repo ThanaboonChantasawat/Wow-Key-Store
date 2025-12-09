@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, Shield, Crown, Ban, Check, Search, UserCircle2, Mail, Calendar, Activity, XCircle, CheckCircle, X, Edit2, Trash2, AlertCircle, Filter, AlertTriangle } from "lucide-react"
+import { User, Shield, Crown, Ban, Check, Search, UserCircle2, Mail, Calendar, Activity, XCircle, CheckCircle, X, Edit2, Trash2, AlertCircle, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -34,7 +34,7 @@ export function AdminUsers() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [newRole, setNewRole] = useState<'buyer' | 'seller' | 'admin' | 'superadmin'>('buyer')
-  const [newStatus, setNewStatus] = useState<'active' | 'suspended' | 'banned'>('active')
+  const [newStatus, setNewStatus] = useState<'active' | 'banned'>('active')
   const itemsPerPage = 10
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export function AdminUsers() {
   const openUserModal = (user: UserWithId) => {
     setSelectedUser(user)
     setNewRole(user.role as 'buyer' | 'seller' | 'admin' | 'superadmin')
-    setNewStatus(user.accountStatus as 'active' | 'suspended' | 'banned')
+    setNewStatus(user.accountStatus as 'active' | 'banned')
     setShowUserModal(true)
   }
 
@@ -222,12 +222,6 @@ export function AdminUsers() {
             ใช้งานปกติ
           </span>
         )
-      case "suspended":
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 inline-flex items-center gap-1 justify-center">
-            ⏸ พักการใช้งาน
-          </span>
-        )
       case "banned":
         return (
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 inline-flex items-center gap-1 justify-center">
@@ -306,21 +300,6 @@ export function AdminUsers() {
             <div className="min-w-0">
               <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'active' ? 'text-green-900' : 'text-gray-900'}`}>{users.filter(u => u.accountStatus === 'active').length}</div>
               <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'active' ? 'text-green-700' : 'text-gray-500'}`}>ใช้งานปกติ</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card 
-          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'suspended' ? 'bg-yellow-50 border-yellow-500 ring-2 ring-yellow-500 ring-offset-2' : 'bg-white border-transparent hover:border-yellow-200'}`}
-          onClick={() => setStatusFilter('suspended')}
-        >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'suspended' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
-              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
-            </div>
-            <div className="min-w-0">
-              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'suspended' ? 'text-yellow-900' : 'text-gray-900'}`}>{users.filter(u => u.accountStatus === 'suspended').length}</div>
-              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'suspended' ? 'text-yellow-700' : 'text-gray-500'}`}>พักการใช้งาน</div>
             </div>
           </div>
         </Card>
@@ -627,12 +606,11 @@ export function AdminUsers() {
                     </label>
                     <select
                       value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as 'active' | 'suspended' | 'banned')}
+                      onChange={(e) => setNewStatus(e.target.value as 'active' | 'banned')}
                       className="w-full px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
                       disabled={isUpdating}
                     >
                       <option value="active">✅ ใช้งานปกติ</option>
-                      <option value="suspended">⏸ พักการใช้งาน</option>
                       <option value="banned">🚫 แบน</option>
                     </select>
                   </div>
