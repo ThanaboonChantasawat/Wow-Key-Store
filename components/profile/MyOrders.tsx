@@ -192,7 +192,7 @@ export function MyOrdersContent() {
               const shopData = await getShopById(order.shopId)
               if (shopData) {
                 shopCache.set(order.shopId, shopData)
-                shopAvatar = shopData.avatar || shopData.logoUrl || null
+                shopAvatar = shopData.logoUrl || null
                 console.log('Shop data loaded:', { shopId: order.shopId, hasAvatar: !!shopAvatar })
               } else {
                 console.warn('Shop data not found for:', order.shopId)
@@ -202,7 +202,7 @@ export function MyOrdersContent() {
             }
           } else {
             const shopData = shopCache.get(order.shopId)
-            shopAvatar = shopData?.avatar || shopData?.logoUrl || null
+            shopAvatar = shopData?.logoUrl || null
           }
         }
         
