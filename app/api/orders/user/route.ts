@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const querySnapshot = await q.get()
     console.log('[Orders API] Query returned', querySnapshot.size, 'orders (before filtering)')
     
-    // Filter out cancelled, expired, and pending payment orders
+    // Filter out cancelled, expired, and very old pending payment orders
     const now = Date.now()
     const fifteenMinutesAgo = now - (15 * 60 * 1000) // 15 minutes in milliseconds
     
@@ -58,26 +58,24 @@ export async function GET(request: NextRequest) {
         return false
       }
       
-      // Exclude ALL pending payment orders (not paid yet)
+      // For pending payment orders, only exclude if older than 15 minutes
       if (data.paymentStatus === 'pending') {
-        console.log(`  ↳ Excluded: pending payment`)
-        
-        // Auto-expire old pending orders (older than 15 minutes)
         if (data.createdAt) {
           const createdAt = data.createdAt.toDate ? data.createdAt.toDate().getTime() : new Date(data.createdAt).getTime()
           
           if (createdAt < fifteenMinutesAgo) {
-            console.log(`  ↳ Also marking as expired (old pending order)`)
+            console.log(`  ↳ Excluded: old pending payment (>15 min), marking as expired`)
             // Mark as expired (fire and forget - don't wait)
             adminDb.collection('orders').doc(doc.id).update({
               paymentStatus: 'expired',
               updatedAt: new Date().toISOString(),
             }).catch(err => console.error('Failed to mark order as expired:', err))
+            return false
+          } else {
+            console.log(`  ↳ Included: recent pending payment (<15 min)`)
+            return true
           }
         }
-        
-        // Don't show ANY pending payment orders
-        return false
       }
       
       console.log(`  ↳ Included`)

@@ -55,16 +55,19 @@ export async function GET(
     // Get total sales from orders
     const ordersSnapshot = await adminDb
       .collection('orders')
-      .where('items', 'array-contains', { productId: id })
-      .where('status', 'in', ['completed', 'shipped', 'delivered'])
+      .where('status', 'in', ['processing', 'completed'])
       .get()
 
     let totalSales = 0
     ordersSnapshot.docs.forEach((doc) => {
       const order = doc.data()
-      const item = order.items?.find((i: any) => i.productId === id)
-      if (item) {
-        totalSales += item.quantity || 1
+      // Loop through items to find matching productId
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          if (item.productId === id || item.gameId === id) {
+            totalSales += item.quantity || 1
+          }
+        })
       }
     })
 

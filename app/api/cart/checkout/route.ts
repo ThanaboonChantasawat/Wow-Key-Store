@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       
       // Check if order was created within last 10 minutes
       if (createdAt > tenMinutesAgo) {
-        // Check if it has the same cart items
+        // Check if it has the same cart items AND same shops
         const existingCartItemIds = orderData.cartItemIds || []
         
         // Sort both arrays for comparison
@@ -79,25 +79,73 @@ export async function POST(request: NextRequest) {
           sortedExisting.length === sortedNew.length &&
           sortedExisting.every((id: string, index: number) => id === sortedNew[index])
         
-        if (hasSameItems) {
+        // IMPORTANT: For multi-shop orders, also check if they have the same shops
+        // to avoid treating separate shop orders as duplicates
+        let hasSameShops = true
+        if (orderData.shopId) {
+          // New format: single shop per order - duplicate only if exact same shop
+          const newShopIds = new Set(items.map(item => item.shopId))
+          hasSameShops = newShopIds.size === 1 && newShopIds.has(orderData.shopId)
+        }
+        
+        if (hasSameItems && hasSameShops) {
           console.log('⚠️ DUPLICATE DETECTED! Found existing pending order:', doc.id)
           console.log('⚠️ Returning existing order instead of creating new one')
           
-          // Calculate grand total and platform fee from shops
-          const grandTotal = orderData.totalAmount || 0
-          const totalPlatformFee = orderData.platformFee || 0
-          const orders = orderData.shops?.map((shop: any) => ({
-            shopId: shop.shopId,
-            shopName: shop.shopName,
-            items: shop.items || [],
-            totalAmount: shop.amount || 0,
-            platformFee: shop.platformFee || 0,
-            sellerAmount: shop.sellerAmount || 0,
-          })) || []
+          // For old format (single order with shops array), return as is
+          if (orderData.shops && Array.isArray(orderData.shops)) {
+            const grandTotal = orderData.totalAmount || 0
+            const totalPlatformFee = orderData.platformFee || 0
+            const orders = orderData.shops.map((shop: any) => ({
+              orderId: doc.id, // Use same orderId since it's combined
+              shopId: shop.shopId,
+              shopName: shop.shopName,
+              items: shop.items || [],
+              totalAmount: shop.amount || 0,
+              platformFee: shop.platformFee || 0,
+              sellerAmount: shop.sellerAmount || 0,
+            }))
+            
+            return NextResponse.json({
+              orderIds: [doc.id],
+              orders,
+              grandTotal,
+              totalPlatformFee,
+            })
+          }
+          
+          // For new format (separate orders), find all related orders
+          const relatedOrders = await adminDb.collection('orders')
+            .where('userId', '==', userId)
+            .where('paymentStatus', '==', 'pending')
+            .where('type', '==', 'cart_checkout')
+            .get()
+          
+          const ordersList = relatedOrders.docs
+            .filter(d => {
+              const data = d.data()
+              const orderCreatedAt = new Date(data.createdAt)
+              return orderCreatedAt > tenMinutesAgo
+            })
+            .map(d => {
+              const data = d.data()
+              return {
+                orderId: d.id,
+                shopId: data.shopId,
+                shopName: data.shopName,
+                items: data.items || [],
+                totalAmount: data.totalAmount || 0,
+                platformFee: data.platformFee || 0,
+                sellerAmount: data.sellerAmount || 0,
+              }
+            })
+          
+          const grandTotal = ordersList.reduce((sum, o) => sum + o.totalAmount, 0)
+          const totalPlatformFee = ordersList.reduce((sum, o) => sum + o.platformFee, 0)
           
           return NextResponse.json({
-            orderId: doc.id,
-            orders,
+            orderIds: ordersList.map(o => o.orderId),
+            orders: ordersList,
             grandTotal,
             totalPlatformFee,
             isDuplicate: true, // Flag to indicate this was a duplicate
@@ -161,19 +209,44 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(`Shop data for ${item.shopId}:`, shopData.shopName)
-      console.log(`Bank account check - bankAccountNumber: ${shopData.bankAccountNumber}, promptPayId: ${shopData.promptPayId}`)
       
-      // Check if shop has bank account or PromptPay setup for payouts
-      const hasBankAccount = shopData.bankAccountNumber || shopData.promptPayId
-      if (!hasBankAccount) {
-        console.error(`❌ Shop ${shopData.shopName} (${item.shopId}) has no payment method configured`)
+      // Check if shop has VALID bank account or PromptPay setup for payouts using the new bankAccounts array
+      const bankAccounts = shopData.bankAccounts || []
+      const hasVerifiedAccount = bankAccounts.some((acc: any) => acc.isEnabled && acc.verificationStatus === 'verified')
+      
+      console.log(`Checking payment setup for shop ${shopData.shopName}:`)
+      console.log(`  - Bank Accounts array:`, bankAccounts.length)
+      console.log(`  - Has verified account:`, hasVerifiedAccount)
+      
+      // Fallback to legacy check if no new accounts found (for backward compatibility)
+      const hasLegacyBankAccount = shopData.bankAccountNumber && 
+                                  shopData.bankAccountNumber.trim() !== '' &&
+                                  shopData.bankName && 
+                                  shopData.bankName.trim() !== '' &&
+                                  shopData.bankAccountName && 
+                                  shopData.bankAccountName.trim() !== ''
+      
+      console.log(`  - Legacy bank account:`, hasLegacyBankAccount)
+      
+      const hasLegacyPromptPay = shopData.promptPayId && 
+                                shopData.promptPayId.trim() !== ''
+      
+      console.log(`  - Legacy PromptPay:`, hasLegacyPromptPay)
+      console.log(`    • PromptPay ID:`, shopData.promptPayId || 'Not set')
+
+      const isValidShop = hasVerifiedAccount || hasLegacyBankAccount || hasLegacyPromptPay
+      
+      console.log(`  - Final validation:`, isValidShop ? '✅ PASSED' : '❌ FAILED')
+      
+      if (!isValidShop) {
+        console.error(`❌ Shop ${shopData.shopName} (${item.shopId}) has no valid payment method configured`)
         return NextResponse.json(
-          { error: `ร้านค้า ${shopData.shopName} ยังไม่ได้ตั้งค่าการรับชำระเงิน กรุณาติดต่อผู้ขาย` },
+          { error: `ร้านค้า ${shopData.shopName} ยังไม่ได้ตั้งค่าบัญชีรับเงินที่สมบูรณ์ กรุณาติดต่อผู้ขาย` },
           { status: 400 }
         )
       }
       
-      console.log(`✅ Shop ${shopData.shopName} has payment method configured`)
+      console.log(`✅ Shop ${shopData.shopName} has valid payment method configured`)
 
       // Add to group
       if (!shopGroups.has(item.shopId)) {
@@ -213,61 +286,60 @@ export async function POST(request: NextRequest) {
     console.log('Grand total (THB):', grandTotal)
     console.log('Total platform fee (THB):', totalPlatformFee)
 
-    // Create a main order document in Firestore
-    const orderRef = adminDb.collection('orders').doc()
-    const orderId = orderRef.id
-
-    // For single shop orders, also set shopId and sellerAmount at root level
-    // This makes it easier for balance queries
+    // Create SEPARATE order documents for EACH shop
     const shopsArray = Array.from(shopGroups.values())
-    const isSingleShop = shopsArray.length === 1
-    const rootShopId = isSingleShop ? shopsArray[0].shopId : undefined
-    const rootSellerAmount = isSingleShop ? shopsArray[0].sellerAmount : undefined
+    const createdOrders: any[] = []
+    
+    console.log(`Creating ${shopsArray.length} separate orders (one per shop)`)
 
-    const orderData: any = {
-      id: orderId,
-      userId,
-      type: 'cart_checkout',
-      shops: shopsArray.map(g => ({
-        shopId: g.shopId,
-        sellerId: g.sellerId,
-        shopName: g.shopName,
-        amount: g.totalAmount,
-        platformFee: g.platformFee,
-        sellerAmount: g.sellerAmount,
-        items: g.items.map(i => ({
+    for (const shop of shopsArray) {
+      const orderRef = adminDb.collection('orders').doc()
+      const orderId = orderRef.id
+
+      const orderData: any = {
+        id: orderId,
+        userId,
+        shopId: shop.shopId,
+        shopName: shop.shopName,
+        sellerId: shop.sellerId,
+        type: 'cart_checkout',
+        items: shop.items.map(i => ({
           productId: i.productId,
           name: i.name,
           price: i.price,
           quantity: i.quantity || 1,
         })),
-      })),
-      totalAmount: grandTotal,
-      platformFee: totalPlatformFee,
-      paymentStatus: 'pending',
-      paymentMethod: 'pending', // Will be updated when customer chooses payment method
-      cartItemIds: cartItemIds || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+        totalAmount: shop.totalAmount,
+        platformFee: shop.platformFee,
+        sellerAmount: shop.sellerAmount,
+        paymentStatus: 'pending',
+        status: 'pending',
+        paymentMethod: 'pending', // Will be updated when customer chooses payment method
+        cartItemIds: cartItemIds || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
 
-    // Add root-level shopId and sellerAmount for single-shop orders
-    if (isSingleShop && rootShopId) {
-      orderData.shopId = rootShopId
-      orderData.sellerId = shopsArray[0].sellerId
-      orderData.sellerAmount = rootSellerAmount
-      console.log(`✅ Single shop order - added root shopId: ${rootShopId}, sellerAmount: ${rootSellerAmount}`)
+      await orderRef.set(orderData)
+      console.log(`✅ Order created for shop ${shop.shopName}:`, orderId)
+      
+      createdOrders.push({
+        orderId,
+        shopId: shop.shopId,
+        shopName: shop.shopName,
+        items: shop.items,
+        totalAmount: shop.totalAmount,
+        platformFee: shop.platformFee,
+        sellerAmount: shop.sellerAmount,
+      })
     }
-
-    await orderRef.set(orderData)
-    console.log('Order created:', orderId)
 
     // DON'T clear cart items here - they will be cleared after successful payment
     // This allows users to go back without losing their cart
 
     return NextResponse.json({
-      orderId,
-      orders: Array.from(shopGroups.values()),
+      orderIds: createdOrders.map(o => o.orderId), // Return array of order IDs
+      orders: createdOrders,
       grandTotal,
       totalPlatformFee,
     })

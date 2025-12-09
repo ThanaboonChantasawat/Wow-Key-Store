@@ -48,7 +48,7 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <Navbar/>
-            <main className="flex-1 min-h-0">
+            <main className="flex-1 min-h-0" suppressHydrationWarning>
               {children}
             </main>
             <Footer />

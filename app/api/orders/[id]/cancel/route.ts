@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import * as admin from 'firebase-admin'
 // Note: Stripe is no longer used; keep optional lazy initialization if needed
 // Initialize Omise lazily inside handler to avoid build-time errors
 

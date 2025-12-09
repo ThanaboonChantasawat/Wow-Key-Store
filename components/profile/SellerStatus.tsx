@@ -19,21 +19,40 @@ export function SellerStatusContent() {
   const { user, isInitialized } = useAuth();
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasShop, setHasShop] = useState<boolean | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const loadShop = async () => {
       if (!user) {
         setLoading(false);
+        setHasShop(false);
         return;
       }
 
       try {
+        // First check if user has a shopId in their profile to avoid unnecessary API call
+        const userProfileRes = await fetch(`/api/users/${user.uid}`);
+        if (userProfileRes.ok) {
+          const userProfile = await userProfileRes.json();
+          if (!userProfile.shopId) {
+            // User doesn't have a shop - no need to call shop API
+            setHasShop(false);
+            setShop(null);
+            setLoading(false);
+            return;
+          }
+          setHasShop(true);
+        }
+
+        // User has a shop, fetch the details
         const shopData = await getShopByOwnerId(user.uid);
         setShop(shopData);
+        setHasShop(shopData !== null);
       } catch (error) {
         console.error("Error loading shop:", error);
         setShop(null);
+        setHasShop(false);
       } finally {
         setLoading(false);
       }

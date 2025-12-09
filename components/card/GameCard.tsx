@@ -1,6 +1,6 @@
 'use client'
 
-import { ShoppingBag, Loader2, Heart } from "lucide-react";
+import { Loader2, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
@@ -137,12 +137,13 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4  gap-4 sm:gap-5 lg:gap-6">
       
       {displayGames.map((game) => (
-        <div
-          key={game.id}
-          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl hover:shadow-orange-100 transition-all duration-300 flex flex-col h-full group border-2 border-gray-200 hover:border-[#ff9800] hover:scale-[1.02]"
+        <Link 
+          key={game.id} 
+          href={`/products/${game.id}`}
+          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl hover:shadow-orange-100 transition-all duration-300 flex flex-col h-full group border-2 border-gray-200 hover:border-[#ff9800] hover:scale-[1.02] cursor-pointer"
         >
           {/* Image Container with Overlay */}
           <div className="relative w-full aspect-square overflow-hidden flex-shrink-0 bg-gradient-to-br from-gray-900 to-gray-800">
@@ -155,8 +156,7 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
               </div>
             )}
             
-            <Link href={`/products/${game.id}`}>
-              <Image
+            <Image
                 src={(() => {
                   console.log(`GameCard - ${game.name} raw gameImages:`, game.gameImages);
                   
@@ -207,12 +207,35 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
               />
               {/* Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </Link>
             
             {/* Price Badge */}
             <div className="absolute top-3 right-3 bg-gradient-to-r from-[#ff9800] to-[#f57c00] text-white px-3 py-2 rounded-lg shadow-lg font-bold text-sm sm:text-base">
               ฿{game.price.toLocaleString()}
             </div>
+
+            {/* Shop Name Badge */}
+            {(game as GameWithCategories & { shopName?: string }).shopName && (
+              <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg flex items-center gap-2.5 max-w-[calc(100%-1.5rem)]">
+                {(game as GameWithCategories & { shopLogoUrl?: string }).shopLogoUrl ? (
+                  <Image
+                    src={(game as GameWithCategories & { shopLogoUrl?: string }).shopLogoUrl!}
+                    alt="Shop Logo"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-md object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-md bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                <span className="text-sm font-semibold text-gray-800 truncate">
+                  {(game as GameWithCategories & { shopName?: string }).shopName}
+                </span>
+              </div>
+            )}
 
             {/* Favorite Button */}
             <button
@@ -233,11 +256,9 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
 
           {/* Content */}
           <div className="p-3 sm:p-4 lg:p-5 flex-grow flex flex-col">
-            <Link href={`/products/${game.id}`}>
-              <h4 className="font-bold text-base sm:text-lg text-gray-900 mb-2 line-clamp-2 hover:text-[#ff9800] transition-colors text-center min-h-[3rem]">
-                {game.name}
-              </h4>
-            </Link>
+            <h4 className="font-bold text-base sm:text-lg text-gray-900 mb-2 line-clamp-2 hover:text-[#ff9800] transition-colors text-center min-h-[3rem]">
+              {game.name}
+            </h4>
             
             <p className="text-sm sm:text-base text-gray-500 text-center line-clamp-3 mb-3 overflow-hidden text-ellipsis min-h-[4rem]">
               {game.description && game.description.length > 150
@@ -261,16 +282,8 @@ const GameCard = ({ games: propGames, loading: propLoading, error: propError, li
                 )}
               </div>
             )}
-            
-            {/* Action Button */}
-            <Link href={`/products/${game.id}`} className="mt-auto">
-              <button className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white py-3 rounded-lg flex items-center justify-center transition-all duration-300 font-medium text-sm sm:text-base shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:scale-95">
-                <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                <span>ดูรายละเอียด</span>
-              </button>
-            </Link>
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );

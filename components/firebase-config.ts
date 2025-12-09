@@ -2,7 +2,7 @@
 
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -17,7 +17,28 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
 
+// Initialize Firestore with optimized settings to prevent QUIC errors
+let db: ReturnType<typeof getFirestore>
+if (getApps().length === 1) {
+  // Only initialize once to avoid "Firestore has already been initialized" error
+  try {
+    db = initializeFirestore(app, {
+      // Use long-polling instead of QUIC/WebChannel to avoid ERR_QUIC_PROTOCOL_ERROR
+      experimentalAutoDetectLongPolling: true,
+      // Enable offline persistence with multi-tab support
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    })
+  } catch (error) {
+    console.warn('Firestore already initialized, using existing instance')
+    db = getFirestore(app)
+  }
+} else {
+  db = getFirestore(app)
+}
+
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+export { db }
 export const storage = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()

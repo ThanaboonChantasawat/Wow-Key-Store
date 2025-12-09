@@ -338,6 +338,7 @@ export function CartContent() {
         shopId: item.shopId,
         price: item.price,
         name: item.name,
+        quantity: item.quantity,
       }))
       
       const response = await fetch('/api/cart/validate-checkout', {
@@ -498,7 +499,17 @@ export function CartContent() {
                               {item.name}
                             </h3>
                           </Link>
-                          <p className="text-sm text-gray-500 mb-2">{item.category}</p>
+                          <p className="text-sm text-gray-500 mb-1">{item.category}</p>
+                          {item.stock < 10 && item.stock > 0 && (
+                            <p className="text-xs text-orange-600 font-medium mb-2">
+                              ⚠️ เหลือเพียง {item.stock} ชิ้น
+                            </p>
+                          )}
+                          {item.stock === 0 && (
+                            <p className="text-xs text-red-600 font-bold mb-2">
+                              ❌ สินค้าหมด
+                            </p>
+                          )}
                           
                           <div className="flex flex-wrap items-center justify-between gap-4 mt-2">
                             <p className="text-xl font-bold text-[#ff9800]">

@@ -5,9 +5,13 @@ import { adminDb } from '@/lib/firebase-admin-config'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderId, amount, customerEmail, customerName } = body
+    const { orderId, orderIds, amount, customerEmail, customerName } = body
 
-    if (!orderId) {
+    // Support both single orderId and multiple orderIds
+    const orderIdsList = orderIds || (orderId ? [orderId] : [])
+    const primaryOrderId = orderIdsList[0]
+
+    if (!primaryOrderId) {
       return NextResponse.json(
         { error: 'Order ID is required' },
         { status: 400 }
@@ -21,10 +25,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🔷 Creating PromptPay QR for order:', orderId)
+    console.log('🔷 Creating PromptPay QR for orders:', orderIdsList)
 
-    // Get order details
-    const orderDoc = await adminDb.collection('orders').doc(orderId).get()
+    // Get order details (use primary order)
+    const orderDoc = await adminDb.collection('orders').doc(primaryOrderId).get()
     
     if (!orderDoc.exists) {
       return NextResponse.json(
@@ -46,8 +50,9 @@ export async function POST(request: NextRequest) {
     // Create PromptPay QR
     const qrResult = await createPromptPayQR({
       amount,
-      orderId,
-      description: `Payment for Order #${orderId}`,
+      orderId: primaryOrderId,
+      orderIds: orderIdsList,
+      description: `Payment for ${orderIdsList.length} order(s)`,
       customerEmail,
       customerName,
     })
@@ -62,16 +67,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update order with charge ID
-    await adminDb.collection('orders').doc(orderId).update({
-      promptPayChargeId: qrResult.chargeId,
-      promptPayQRCreatedAt: new Date(),
-      promptPayQRExpiresAt: qrResult.expiresAt,
-      paymentMethod: 'promptpay',
-      updatedAt: new Date(),
-    })
+    // Update all orders with charge ID
+    const batch = adminDb.batch()
+    for (const oid of orderIdsList) {
+      const ref = adminDb.collection('orders').doc(oid)
+      batch.update(ref, {
+        promptPayChargeId: qrResult.chargeId,
+        promptPayQRCreatedAt: new Date(),
+        promptPayQRExpiresAt: qrResult.expiresAt,
+        paymentMethod: 'promptpay',
+        updatedAt: new Date(),
+      })
+    }
+    await batch.commit()
 
-    console.log('✅ QR Code created for order:', orderId)
+    console.log('✅ QR Code created for orders:', orderIdsList)
 
     const responseData = {
       success: true,

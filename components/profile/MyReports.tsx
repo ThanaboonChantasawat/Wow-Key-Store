@@ -32,11 +32,14 @@ interface Report {
   targetId: string
   targetUserId: string
   targetUserName: string
+  targetUserImage?: string | null
   targetContent: string
   productId?: string | null
   productName?: string | null
+  productImage?: string | null
   shopId?: string | null
   shopName?: string | null
+  shopImage?: string | null
   shopOwnerId?: string | null
   reason: string
   description: string
@@ -56,7 +59,12 @@ export function MyReportsContent() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed' | 'resolved' | 'rejected'>('all')
 
   useEffect(() => {
-    if (!user) return
+    console.log('🚀 MyReportsContent mounted, user:', user?.uid || 'no user')
+    if (!user) {
+      console.log('⏳ Waiting for user to be authenticated...')
+      return
+    }
+    console.log('✅ User authenticated, fetching reports...')
     fetchReports()
   }, [user])
 
@@ -64,15 +72,30 @@ export function MyReportsContent() {
     if (!user) return
 
     try {
+      console.log('🔍 Fetching reports for user:', user.uid)
       const response = await fetch(`/api/reports/my-reports?userId=${user.uid}`)
+      console.log('📡 Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
-        const reportsWithDates = data.reports.map((r: any) => ({
-          ...r,
-          createdAt: new Date(r.createdAt),
-          reviewedAt: r.reviewedAt ? new Date(r.reviewedAt) : undefined
-        }))
+        console.log('📦 Reports data:', data.reports)
+        
+        const reportsWithDates = data.reports.map((r: any) => {
+          console.log('🖼️ Report images:', {
+            id: r.id,
+            productImage: r.productImage,
+            shopImage: r.shopImage,
+            targetUserImage: r.targetUserImage
+          })
+          return {
+            ...r,
+            createdAt: new Date(r.createdAt),
+            reviewedAt: r.reviewedAt ? new Date(r.reviewedAt) : undefined
+          }
+        })
         setReports(reportsWithDates)
+      } else {
+        console.error('❌ Failed to fetch reports:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching reports:', error)
@@ -376,12 +399,30 @@ export function MyReportsContent() {
                   <CardContent className="p-0">
                     <div className="p-6">
                       <div className="flex flex-col md:flex-row md:items-start gap-6">
-                        {/* Icon & Type */}
-                        <div className="flex-shrink-0">
-                          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                            {getReportedTypeIcon(report.targetType)}
+                        {/* Product/Shop Image */}
+                        {(report.productImage || report.shopImage) && (
+                          <div className="flex-shrink-0">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-md">
+                              <img
+                                src={report.productImage || report.shopImage || '/placeholder.png'}
+                                alt={report.productName || report.shopName || 'รูปภาพ'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder.png'
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
+
+                        {/* Icon & Type (show only if no image) */}
+                        {!report.productImage && !report.shopImage && (
+                          <div className="flex-shrink-0">
+                            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                              {getReportedTypeIcon(report.targetType)}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Main Content */}
                         <div className="flex-1 min-w-0">
@@ -400,18 +441,30 @@ export function MyReportsContent() {
 
                           <div className="space-y-3">
                             <div>
-                              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                                รายงาน{getReportedTypeLabel(report.targetType)}
-                                <span className="font-normal text-gray-500">ของ</span>
-                                <span className="text-[#ff9800]">{report.targetUserName}</span>
-                              </h4>
+                              <div className="flex items-center gap-2 mb-2">
+                                {report.targetUserImage && (
+                                  <img
+                                    src={report.targetUserImage}
+                                    alt={report.targetUserName}
+                                    className="w-6 h-6 rounded-full border border-gray-300"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none'
+                                    }}
+                                  />
+                                )}
+                                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                  รายงาน{getReportedTypeLabel(report.targetType)}
+                                  <span className="font-normal text-gray-500">ของ</span>
+                                  <span className="text-[#ff9800]">{report.targetUserName}</span>
+                                </h4>
+                              </div>
                               
                               {(report.productName || report.shopName) && (
                                 <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                                  <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">
-                                    {report.productName ? 'สินค้า' : 'ร้านค้า'}
+                                  <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
+                                    {report.productName ? '📦 สินค้า' : '🏪 ร้านค้า'}
                                   </span>
-                                  {report.productName || report.shopName}
+                                  <span className="font-medium">{report.productName || report.shopName}</span>
                                 </div>
                               )}
                             </div>

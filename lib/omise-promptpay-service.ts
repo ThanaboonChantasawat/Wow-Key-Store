@@ -19,7 +19,8 @@ const getOmise = async () => {
 
 export interface PromptPayQRRequest {
   amount: number                    // จำนวนเงิน (บาท)
-  orderId: string                   // Order ID
+  orderId: string                   // Primary Order ID
+  orderIds?: string[]               // All Order IDs (for multi-shop checkout)
   description?: string              // คำอธิบาย
   customerEmail?: string            // อีเมลลูกค้า
   customerName?: string             // ชื่อลูกค้า
@@ -44,7 +45,8 @@ export async function createPromptPayQR(
 ): Promise<PromptPayQRResponse> {
   try {
     const omise = await getOmise()
-    const { amount, orderId, description, customerEmail, customerName } = request
+    const { amount, orderId, orderIds, description, customerEmail, customerName } = request
+    const allOrderIds = orderIds || [orderId]
 
     // Validate amount
     if (!amount || amount <= 0) {
@@ -140,6 +142,7 @@ export async function createPromptPayQR(
       description: description || `Order #${orderId}`,
       metadata: {
         orderId,
+        orderIds: JSON.stringify(allOrderIds), // Store all order IDs
         customerEmail: customerEmail || '',
         customerName: customerName || '',
       },

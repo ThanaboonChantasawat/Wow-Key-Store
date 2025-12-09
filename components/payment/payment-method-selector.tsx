@@ -53,6 +53,8 @@ export function PaymentMethodSelector({
   )
   const [showPayment, setShowPayment] = useState(false)
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(orderId || null)
+  const [createdOrderIds, setCreatedOrderIds] = useState<string[]>([])
+  const [grandTotal, setGrandTotal] = useState<number>(amount)
   const [creatingOrder, setCreatingOrder] = useState(false)
 
   const handleProceed = async () => {
@@ -114,9 +116,19 @@ export function PaymentMethodSelector({
 
       const data = await response.json()
       
-      console.log('✅ Order created:', data.orderId)
+      // Handle both old format (single orderId) and new format (multiple orderIds)
+      const orderId = data.orderId || (data.orderIds && data.orderIds.length > 0 ? data.orderIds[0] : null)
+      const orderIds = data.orderIds || (data.orderId ? [data.orderId] : [])
+      const total = data.grandTotal || data.totalAmount || amount
       
-      setCreatedOrderId(data.orderId)
+      console.log('✅ Order created:', orderId)
+      console.log('✅ All Order IDs:', orderIds)
+      console.log('✅ Grand Total:', total)
+      console.log('✅ Number of shops:', orderIds.length)
+      
+      setCreatedOrderId(orderId)
+      setCreatedOrderIds(orderIds)
+      setGrandTotal(total)
       setShowPayment(true)
     } catch (err: any) {
       console.error('Create order error:', err)
@@ -133,18 +145,24 @@ export function PaymentMethodSelector({
   // If showing payment, render appropriate component
   if (showPayment && createdOrderId) {
     const handleBackToSelection = () => {
-      // If this is a cart order that we created, we should cancel it
-      if (!orderId && createdOrderId) {
-        // Cancel the order via API (optional - could also just let it expire)
-        fetch('/api/orders/cancel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: createdOrderId }),
-        }).catch(err => console.error('Failed to cancel order:', err))
+      // If this is a cart order that we created, we should cancel all orders
+      if (!orderId && createdOrderIds.length > 0) {
+        // Cancel all created orders
+        createdOrderIds.forEach(id => {
+          fetch(`/api/orders/${id}/cancel`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              userId: user?.uid,
+              reason: 'ยกเลิกจากหน้าชำระเงิน' 
+            }),
+          }).catch(err => console.error('Failed to cancel order:', err))
+        })
       }
       
       setShowPayment(false)
       setCreatedOrderId(orderId || null)
+      setCreatedOrderIds([])
     }
     
     if (paymentMethod === 'promptpay') {
@@ -159,12 +177,13 @@ export function PaymentMethodSelector({
           </Button>
           <PromptPayQRPayment
             orderId={createdOrderId}
-            amount={amount}
+            orderIds={createdOrderIds}
+            amount={grandTotal}
             onPaymentSuccess={onPaymentSuccess}
           />
         </div>
       )
-    } else {
+    } else if (paymentMethod === 'card') {
       return (
         <div className="space-y-4">
           <Button
@@ -172,11 +191,11 @@ export function PaymentMethodSelector({
             onClick={handleBackToSelection}
             className="mb-4"
           >
-            ← เปลี่ยนวิธีชำระเงิน
+            {'← เปลี่ยนวิธีชำระเงิน'}
           </Button>
           <OmiseCreditCardPayment
             orderId={createdOrderId}
-            amount={amount}
+            amount={grandTotal}
             onPaymentSuccess={onPaymentSuccess}
           />
         </div>

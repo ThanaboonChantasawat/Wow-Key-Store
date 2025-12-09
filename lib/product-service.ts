@@ -16,6 +16,8 @@ import { db } from "@/components/firebase-config"
 export interface Product {
   id: string
   shopId: string
+  shopName?: string
+  shopLogoUrl?: string
   gameId: string
   gameName: string
   name: string

@@ -14,8 +14,32 @@ export async function GET(req: Request) {
     }
 
     const snapshot = await query.get()
+    
+    // Fetch shop names for all products
+    const shopIds = new Set<string>()
+    snapshot.docs.forEach((doc: any) => {
+      const shopId = doc.data().shopId
+      if (shopId) shopIds.add(shopId)
+    })
+    
+    const shopNames: { [key: string]: string } = {}
+    const shopLogos: { [key: string]: string } = {}
+    for (const shopId of shopIds) {
+      try {
+        const shopDoc = await adminDb.collection('shops').doc(shopId).get()
+        if (shopDoc.exists) {
+          const shopData = shopDoc.data()
+          shopNames[shopId] = shopData?.shopName || 'ไม่ระบุร้านค้า'
+          shopLogos[shopId] = shopData?.logoUrl || ''
+        }
+      } catch (err) {
+        console.error(`Error fetching shop ${shopId}:`, err)
+      }
+    }
+    
     const products = snapshot.docs.map((doc: any) => {
       const data = doc.data()
+      const shopId = data.shopId || ''
       return {
         id: doc.id,
         name: data.name || '',
@@ -24,8 +48,9 @@ export async function GET(req: Request) {
         images: Array.isArray(data.images) ? data.images : [],
         gameId: data.gameId || '',
         gameName: data.gameName || '',
-        shopId: data.shopId || '',
-        shopName: data.shopName || '',
+        shopId: shopId,
+        shopName: shopNames[shopId] || data.shopName || 'ไม่ระบุร้านค้า',
+        shopLogoUrl: shopLogos[shopId] || '',
         status: data.status || 'active',
         stock: data.stock || 0,
         sold: data.sold || 0,

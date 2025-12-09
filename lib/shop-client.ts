@@ -10,11 +10,15 @@ export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
       return data.shop || data; // Handle both formats
     }
     if (response.status === 404) {
+      // 404 is expected when user doesn't have a shop yet - not an error
       return null;
     }
     throw new Error('Failed to fetch shop');
   } catch (error) {
-    console.error("Error fetching shop by owner:", error);
+    // Only log actual errors, not 404s which are expected
+    if (error instanceof Error && !error.message.includes('404')) {
+      console.error("Error fetching shop by owner:", error);
+    }
     return null;
   }
 }

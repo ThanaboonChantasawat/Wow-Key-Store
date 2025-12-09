@@ -54,59 +54,87 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true })
       }
 
-      // Update order status
-      const orderRef = adminDb.collection('orders').doc(orderId)
-      const orderDoc = await orderRef.get()
+      // Get all order IDs (support multi-shop checkout)
+      const orderIdsJson = metadata?.orderIds
+      const allOrderIds: string[] = orderIdsJson ? JSON.parse(orderIdsJson) : [orderId]
+      
+      console.log('📦 Updating orders:', allOrderIds)
 
-      if (!orderDoc.exists) {
-        console.error('❌ Order not found:', orderId)
-        return NextResponse.json({ received: true })
+      // Collect cart item IDs from all orders
+      const allCartItemIds = new Set<string>()
+      let userId: string | null = null
+
+      // Process all orders
+      for (const currentOrderId of allOrderIds) {
+        const orderRef = adminDb.collection('orders').doc(currentOrderId)
+        const orderDoc = await orderRef.get()
+
+        if (!orderDoc.exists) {
+          console.error('❌ Order not found:', currentOrderId)
+          continue
+        }
+
+        const orderData = orderDoc.data()
+        
+        // Collect userId (same for all orders)
+        if (!userId && orderData?.userId) {
+          userId = orderData.userId
+        }
+        
+        // Collect cart item IDs
+        if (orderData?.cartItemIds && Array.isArray(orderData.cartItemIds)) {
+          orderData.cartItemIds.forEach((id: string) => allCartItemIds.add(id))
+        }
+
+        // Prevent double processing
+        if (orderData?.paymentStatus === 'completed') {
+          console.log('⚠️ Order already completed:', currentOrderId)
+          continue
+        }
+
+        // Update order
+        await orderRef.update({
+          paymentStatus: 'completed',
+          status: 'processing',
+          omiseChargeId: chargeId,
+          omiseStatus: status,
+          omisePaid: paid,
+          paidAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        })
+
+        console.log('✅ Order updated:', currentOrderId)
       }
 
-      const orderData = orderDoc.data()
-
-      // Prevent double processing
-      if (orderData?.paymentStatus === 'completed') {
-        console.log('⚠️ Order already completed:', orderId)
-        return NextResponse.json({ received: true })
-      }
-
-      // Update main order
-      await orderRef.update({
-        paymentStatus: 'completed',
-        status: 'pending',
-        omiseChargeId: chargeId,
-        omiseStatus: status,
-        omisePaid: paid,
-        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      })
-
-      console.log('✅ Main order updated:', orderId)
-
-      // Update stock for purchased items
+      // Update stock for ALL purchased items across all orders
       try {
-        console.log('📦 Updating stock for purchased items...')
+        console.log('📦 [WEBHOOK] Updating stock for purchased items across all orders...')
+        console.log('📋 [WEBHOOK] Processing', allOrderIds.length, 'orders for stock updates')
         const batch = adminDb.batch()
         let updateCount = 0
 
         // Helper to add stock update to batch
-        const addStockUpdate = async (productId: string, quantity: number) => {
-          if (!productId) return
+        const addStockUpdate = async (productId: string, quantity: number, orderContext: string) => {
+          if (!productId) {
+            console.warn(`⚠️ [WEBHOOK] No productId provided for ${orderContext}`)
+            return
+          }
           
           const productRef = adminDb.collection('products').doc(productId)
           const productDoc = await productRef.get()
           
           if (!productDoc.exists) {
-            console.warn(`⚠️ Product ${productId} not found, skipping stock update`)
+            console.warn(`⚠️ [WEBHOOK] Product ${productId} not found, skipping stock update (${orderContext})`)
             return
           }
           
-          const currentStock = productDoc.data()?.stock
+          const productData = productDoc.data()
+          const currentStock = productData?.stock
+          const productName = productData?.name || 'Unknown'
           
           // Skip stock update for unlimited items
           if (currentStock === 'unlimited' || currentStock === -1) {
-            console.log(`ℹ️ Product ${productId} has unlimited stock, skipping decrement`)
+            console.log(`ℹ️ [WEBHOOK] Product "${productName}" (${productId}) has unlimited stock, updating soldCount only (${orderContext})`)
             // Still update soldCount
             batch.update(productRef, {
               soldCount: admin.firestore.FieldValue.increment(quantity)
@@ -117,69 +145,105 @@ export async function POST(request: NextRequest) {
           
           // For numbered stock, decrement and update soldCount
           if (typeof currentStock === 'number') {
-            console.log(`📦 Decrementing stock for ${productId}: ${currentStock} -> ${currentStock - quantity}`)
+            const newStock = currentStock - quantity
+            console.log(`📦 [WEBHOOK] "${productName}" (${productId}): ${currentStock} -> ${newStock} (qty: ${quantity}) (${orderContext})`)
             batch.update(productRef, {
               stock: admin.firestore.FieldValue.increment(-quantity),
               soldCount: admin.firestore.FieldValue.increment(quantity)
             })
             updateCount++
           } else {
-            console.warn(`⚠️ Product ${productId} has invalid stock type: ${typeof currentStock}`)
+            console.warn(`⚠️ [WEBHOOK] Product ${productId} has invalid stock type: ${typeof currentStock} (${orderContext})`)
           }
         }
 
-        // Case 1: Cart checkout order with shops array
-        if (orderData.type === 'cart_checkout' && orderData.shops && Array.isArray(orderData.shops)) {
-          for (const shop of orderData.shops) {
-            if (shop.items && Array.isArray(shop.items)) {
-              for (const item of shop.items) {
-                const qty = item.quantity || 1
-                await addStockUpdate(item.productId, qty)
+        // Process all orders to update stock
+        for (const currentOrderId of allOrderIds) {
+          console.log(`🔍 [WEBHOOK] Processing order ${currentOrderId} for stock updates...`)
+          const orderDoc = await adminDb.collection('orders').doc(currentOrderId).get()
+          if (!orderDoc.exists) {
+            console.warn(`⚠️ [WEBHOOK] Order ${currentOrderId} not found, skipping`)
+            continue
+          }
+          
+          const orderData = orderDoc.data()
+          console.log(`📄 [WEBHOOK] Order ${currentOrderId} type:`, orderData.type || 'N/A', 'shops:', orderData.shops?.length, 'items:', orderData.items?.length)
+          
+          // Case 1: Cart checkout order with shops array (legacy format)
+          if (orderData.type === 'cart_checkout' && orderData.shops && Array.isArray(orderData.shops)) {
+            console.log(`🏪 [WEBHOOK] Processing legacy format with ${orderData.shops.length} shops`)
+            for (const shop of orderData.shops) {
+              if (shop.items && Array.isArray(shop.items)) {
+                for (const item of shop.items) {
+                  const qty = item.quantity || 1
+                  console.log(`🔢 [WEBHOOK] Legacy item quantity: ${item.quantity} → using: ${qty}`, item)
+                  await addStockUpdate(item.productId, qty, `Order ${currentOrderId} - Legacy Shop ${shop.shopId}`)
+                }
               }
             }
           }
-        }
-        // Case 2: Direct order (if any)
-        else if (orderData.items && Array.isArray(orderData.items)) {
-          for (const item of orderData.items) {
-            const qty = item.quantity || 1
-            await addStockUpdate(item.productId, qty)
+          // Case 2: New format - direct items array
+          else if (orderData.items && Array.isArray(orderData.items)) {
+            console.log(`📦 [WEBHOOK] Processing new format with ${orderData.items.length} items`)
+            for (const item of orderData.items) {
+              const qty = item.quantity || 1
+              console.log(`🔢 [WEBHOOK] New format item quantity: ${item.quantity} → using: ${qty}`, item)
+              await addStockUpdate(item.productId, qty, `Order ${currentOrderId} - Shop ${orderData.shopId}`)
+            }
+          } else {
+            console.warn(`⚠️ [WEBHOOK] Order ${currentOrderId} has no recognizable items format`)
           }
         }
 
         if (updateCount > 0) {
           await batch.commit()
-          console.log(`✅ Updated stock for ${updateCount} items`)
+          console.log(`✅ [WEBHOOK] Stock updated for ${updateCount} products across ${allOrderIds.length} orders`)
+        } else {
+          console.warn(`⚠️ [WEBHOOK] No stock updates were made (updateCount: 0)`)
         }
       } catch (stockError) {
         console.error('❌ Failed to update stock:', stockError)
         // Don't fail the webhook, just log error
       }
 
-      // 🔔 Notify buyer - payment successful
+      // 🔔 Notify buyer - payment successful (use first order for user info)
       try {
-        if (orderData && orderData.userId) {
+        const firstOrderDoc = await adminDb.collection('orders').doc(allOrderIds[0]).get()
+        const firstOrderData = firstOrderDoc.data()
+        
+        if (firstOrderData && firstOrderData.userId) {
+          const message = allOrderIds.length > 1 
+            ? `การชำระเงินสำหรับ ${allOrderIds.length} คำสั่งซื้อเสร็จสมบูรณ์แล้ว`
+            : `การชำระเงินสำหรับคำสั่งซื้อ #${allOrderIds[0].slice(-8)} เสร็จสมบูรณ์แล้ว`
+          
           await createNotification(
-            orderData.userId,
+            firstOrderData.userId,
             'payment_received',
             '💳 การชำระเงินสำเร็จ',
-            `การชำระเงินสำหรับคำสั่งซื้อ #${orderId.slice(-8)} เสร็จสมบูรณ์แล้ว`,
-            `/receipt?orderId=${orderId}`
+            message,
+            `/profile?tab=orders`
           )
         }
       } catch (notifError) {
         console.error("Error sending payment notification to buyer:", notifError)
       }
 
-      // 🔔 Notify sellers - new order
+      // 🔔 Notify sellers - new orders
       try {
-        if (orderData) {
-          // For direct orders (single shop)
+        const notifiedSellers = new Set<string>()
+        
+        for (const currentOrderId of allOrderIds) {
+          const orderDoc = await adminDb.collection('orders').doc(currentOrderId).get()
+          if (!orderDoc.exists) continue
+          
+          const orderData = orderDoc.data()
+          
+          // For new format orders (single shop per order)
           if (orderData.shopId) {
             const shopDoc = await adminDb.collection('shops').doc(orderData.shopId).get()
             const shopData = shopDoc.data()
             
-            if (shopData && shopData.ownerId) {
+            if (shopData && shopData.ownerId && !notifiedSellers.has(shopData.ownerId)) {
               await createNotification(
                 shopData.ownerId,
                 'new_order',
@@ -187,17 +251,18 @@ export async function POST(request: NextRequest) {
                 `มีคำสั่งซื้อใหม่สำหรับร้าน "${orderData.shopName}" จำนวนเงิน ${orderData.sellerAmount} บาท`,
                 `/seller?tab=orders`
               )
+              notifiedSellers.add(shopData.ownerId)
             }
           }
 
-          // For cart checkout orders (multiple shops)
+          // For legacy cart checkout orders (multiple shops in one order)
           if (orderData.shops && Array.isArray(orderData.shops)) {
             for (const shop of orderData.shops) {
               if (shop.shopId) {
                 const shopDoc = await adminDb.collection('shops').doc(shop.shopId).get()
                 const shopData = shopDoc.data()
                 
-                if (shopData && shopData.ownerId) {
+                if (shopData && shopData.ownerId && !notifiedSellers.has(shopData.ownerId)) {
                   await createNotification(
                     shopData.ownerId,
                     'new_order',
@@ -312,16 +377,15 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Clear cart items after successful payment
-      if (orderData?.cartItemIds && Array.isArray(orderData.cartItemIds) && orderData.cartItemIds.length > 0) {
+      // Clear cart items after successful payment (for all orders)
+      if (userId && allCartItemIds.size > 0) {
         try {
-          const userId = orderData.userId
-          console.log('🧹 Clearing cart items for user:', userId, 'items:', orderData.cartItemIds)
+          console.log('🧹 Clearing cart items for user:', userId, 'items:', Array.from(allCartItemIds))
           
           const batch = adminDb.batch()
           let deletedCount = 0
           
-          for (const itemId of orderData.cartItemIds) {
+          for (const itemId of allCartItemIds) {
             // Cart uses individual documents with pattern: {userId}_{itemId}
             const cartItemRef = adminDb.collection('cart').doc(`${userId}_${itemId}`)
             batch.delete(cartItemRef)

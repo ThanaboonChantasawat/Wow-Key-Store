@@ -35,6 +35,55 @@ export async function POST(request: NextRequest) {
 
     console.log(`Validating ${items.length} items for user ${userId}`)
 
+    // First, validate stock availability for all items
+    for (const item of items) {
+      console.log(`Checking stock for product: ${item.productId}, name: ${item.name}, quantity: ${item.quantity}`)
+      
+      const productRef = adminDb.collection('products').doc(item.productId)
+      const productDoc = await productRef.get()
+
+      if (!productDoc.exists) {
+        console.error(`Product ${item.productId} not found`)
+        return NextResponse.json(
+          { error: `สินค้า "${item.name}" ไม่พบในระบบ` },
+          { status: 404 }
+        )
+      }
+
+      const productData = productDoc.data()
+      if (!productData) {
+        console.error(`Product ${item.productId} has invalid data`)
+        return NextResponse.json(
+          { error: `สินค้า "${item.name}" มีข้อมูลไม่ถูกต้อง` },
+          { status: 500 }
+        )
+      }
+
+      // Check stock - handle both number and string types
+      const requestedQty = item.quantity || 1
+      let currentStock = 0
+      
+      if (productData.stock === 'unlimited' || productData.stock === -1) {
+        currentStock = 999999
+      } else if (typeof productData.stock === 'number') {
+        currentStock = productData.stock
+      } else if (typeof productData.stock === 'string') {
+        currentStock = parseInt(productData.stock, 10) || 0
+      }
+      
+      console.log(`Stock info - Product: ${item.name}, Requested: ${requestedQty}, Available: ${currentStock}, Type: ${typeof productData.stock}, Raw value: ${productData.stock}`)
+
+      if (currentStock < requestedQty) {
+        console.error(`Insufficient stock for ${item.name}: requested ${requestedQty}, available ${currentStock}`)
+        return NextResponse.json(
+          { error: `สินค้า "${item.name}" มีไม่เพียงพอ (เหลือ ${currentStock} ชิ้น)` },
+          { status: 400 }
+        )
+      }
+
+      console.log(`✅ Stock check passed for ${item.name}: ${requestedQty}/${currentStock}`)
+    }
+
     // Validate each shop has payment method configured
     const shopIds = [...new Set(items.map((item: CheckoutItem) => item.shopId))]
     
@@ -66,6 +115,10 @@ export async function POST(request: NextRequest) {
       const bankAccounts = shopData.bankAccounts || []
       const hasVerifiedAccount = bankAccounts.some((acc: any) => acc.isEnabled && acc.verificationStatus === 'verified')
       
+      console.log(`Checking payment setup for shop ${shopData.shopName}:`)
+      console.log(`  - Bank Accounts array:`, bankAccounts.length)
+      console.log(`  - Has verified account:`, hasVerifiedAccount)
+      
       // Fallback to legacy check if no new accounts found (for backward compatibility)
       const hasLegacyBankAccount = shopData.bankAccountNumber && 
                                   shopData.bankAccountNumber.trim() !== '' &&
@@ -74,11 +127,20 @@ export async function POST(request: NextRequest) {
                                   shopData.bankAccountName && 
                                   shopData.bankAccountName.trim() !== ''
       
+      console.log(`  - Legacy bank account:`, hasLegacyBankAccount)
+      console.log(`    • Account Number:`, shopData.bankAccountNumber ? '✓' : '✗')
+      console.log(`    • Bank Name:`, shopData.bankName ? '✓' : '✗')
+      console.log(`    • Account Name:`, shopData.bankAccountName ? '✓' : '✗')
+      
       const hasLegacyPromptPay = shopData.promptPayId && 
-                                shopData.promptPayId.trim() !== '' &&
-                                shopData.promptPayId.length >= 10
+                                shopData.promptPayId.trim() !== ''
+      
+      console.log(`  - Legacy PromptPay:`, hasLegacyPromptPay)
+      console.log(`    • PromptPay ID:`, shopData.promptPayId || 'Not set')
 
       const isValidShop = hasVerifiedAccount || hasLegacyBankAccount || hasLegacyPromptPay
+      
+      console.log(`  - Final validation:`, isValidShop ? '✅ PASSED' : '❌ FAILED')
       
       if (!isValidShop) {
         console.error(`❌ Shop ${shopData.shopName} (${shopId}) has no valid payment method configured`)

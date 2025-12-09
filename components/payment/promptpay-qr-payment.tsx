@@ -11,6 +11,7 @@ import Image from "next/image"
 
 interface PromptPayQRProps {
   orderId: string
+  orderIds?: string[]
   amount: number
   onPaymentSuccess?: () => void
   onPaymentFailed?: () => void
@@ -18,6 +19,7 @@ interface PromptPayQRProps {
 
 export function PromptPayQRPayment({ 
   orderId, 
+  orderIds,
   amount, 
   onPaymentSuccess, 
   onPaymentFailed 
@@ -34,7 +36,7 @@ export function PromptPayQRPayment({
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
   const [redirecting, setRedirecting] = useState(false)
 
-  console.log('🔷 PromptPayQRPayment mounted with:', { orderId, amount })
+  console.log('🔷 PromptPayQRPayment mounted with:', { orderId, orderIds, amount })
 
   // Validate orderId
   if (!orderId) {
@@ -51,10 +53,22 @@ export function PromptPayQRPayment({
     )
   }
 
-  // Create QR Code on mount
+  // Create QR Code on mount - only run once
   useEffect(() => {
-    createQR()
-  }, [orderId])
+    let isMounted = true
+    
+    const initQR = async () => {
+      if (isMounted && !qrCodeUrl) {
+        await createQR()
+      }
+    }
+    
+    initQR()
+    
+    return () => {
+      isMounted = false
+    }
+  }, []) // Empty dependency - only run once on mount
 
   // Start checking payment status
   useEffect(() => {
@@ -99,6 +113,7 @@ export function PromptPayQRPayment({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
+          orderIds,
           amount,
         }),
       })
@@ -202,7 +217,10 @@ export function PromptPayQRPayment({
       const res = await fetch('/api/payment/test-bypass', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ 
+          orderId,
+          orderIds: orderIds || [orderId]
+        }),
       })
       
       if (res.ok) {

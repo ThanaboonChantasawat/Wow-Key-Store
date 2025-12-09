@@ -30,8 +30,10 @@ export default function ProductList({ products, loading, error }: ProductListPro
       : [],
     categoryIds: [],
     categories: [],
-    shopId: product.shopId // Add shopId to identify as product
-  } as GameWithCategories & { shopId: string }))
+    shopId: product.shopId, // Add shopId to identify as product
+    shopName: product.shopName, // Add shopName to display in card
+    shopLogoUrl: product.shopLogoUrl // Add shop logo
+  } as GameWithCategories & { shopId: string; shopName?: string; shopLogoUrl?: string }))
 
   if (loading) {
     return (

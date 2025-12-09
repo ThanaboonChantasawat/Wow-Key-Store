@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -59,6 +60,7 @@ interface OrderItem {
   gameId?: string
   gameName?: string
   quantity?: number
+  productImage?: string | null
 }
 
 interface DeliveredItem {
@@ -76,6 +78,7 @@ interface Order {
   userId: string
   shopId: string
   shopName: string
+  shopAvatar?: string
   items: OrderItem[]
   totalAmount: number
   platformFee: number
@@ -178,8 +181,65 @@ export function MyOrdersContent() {
       const data = await response.json()
       // console.log('Orders data:', data)
       
+      // Enrich orders with shop avatar and product images
+      const enrichedOrders = await Promise.all((data.orders || []).map(async (order: Order) => {
+        // Fetch shop details if shopId exists
+        let shopAvatar = null
+        if (order.shopId) {
+          if (!shopCache.has(order.shopId)) {
+            try {
+              console.log('Fetching shop data for:', order.shopId)
+              const shopData = await getShopById(order.shopId)
+              if (shopData) {
+                shopCache.set(order.shopId, shopData)
+                shopAvatar = shopData.avatar || shopData.logoUrl || null
+                console.log('Shop data loaded:', { shopId: order.shopId, hasAvatar: !!shopAvatar })
+              } else {
+                console.warn('Shop data not found for:', order.shopId)
+              }
+            } catch (err) {
+              console.error('Failed to fetch shop:', order.shopId, err)
+            }
+          } else {
+            const shopData = shopCache.get(order.shopId)
+            shopAvatar = shopData?.avatar || shopData?.logoUrl || null
+          }
+        }
+        
+        // Fetch product images for each item
+        const itemsWithImages = await Promise.all((order.items || []).map(async (item) => {
+          let productImage = null
+          const productId = item.gameId || item.productId
+          
+          if (productId) {
+            try {
+              const productRes = await fetch(`/api/products/${productId}`)
+              if (productRes.ok) {
+                const productData = await productRes.json()
+                productImage = productData.images?.[0] || productData.imageUrl || null
+                console.log('Product image loaded:', { productId, hasImage: !!productImage })
+              }
+            } catch (err) {
+              console.error('Failed to fetch product image:', productId, err)
+            }
+          }
+          
+          return {
+            ...item,
+            productImage
+          }
+        }))
+        
+        // Add shopAvatar and enriched items to order
+        return {
+          ...order,
+          shopAvatar,
+          items: itemsWithImages
+        }
+      }))
+      
       // Check for duplicates
-      const orderIds = data.orders?.map((o: Order) => o.id) || []
+      const orderIds = enrichedOrders?.map((o: Order) => o.id) || []
       const uniqueIds = new Set(orderIds)
       if (orderIds.length !== uniqueIds.size) {
         console.warn('⚠️ Duplicate orders detected!', {
@@ -189,21 +249,42 @@ export function MyOrdersContent() {
         })
       }
       
-      setOrders(data.orders || [])
+      setOrders(enrichedOrders || [])
       
-      // Debug: Log first order details
-      if (data.orders && data.orders.length > 0 && showLoading) {
+      // Debug: Log all orders summary
+      if (enrichedOrders && enrichedOrders.length > 0 && showLoading) {
+        console.log('📋 Total orders received:', enrichedOrders.length)
+        console.log('📊 Orders by status:', {
+          pending: enrichedOrders.filter((o: Order) => o.status === 'pending').length,
+          processing: enrichedOrders.filter((o: Order) => o.status === 'processing').length,
+          completed: enrichedOrders.filter((o: Order) => o.status === 'completed').length,
+          cancelled: enrichedOrders.filter((o: Order) => o.status === 'cancelled').length,
+        })
+        
+        // Log cancelled orders details
+        const cancelledOrders = enrichedOrders.filter((o: Order) => o.status === 'cancelled')
+        if (cancelledOrders.length > 0) {
+          console.log('❌ Cancelled orders:', cancelledOrders.map((o: any) => ({
+            id: o.id.substring(0, 12),
+            shopName: o.shopName,
+            totalAmount: o.totalAmount,
+            cancelledAt: o.cancelledAt,
+            cancelReason: o.cancelReason,
+          })))
+        }
+        
         console.log('🔍 First order details:', {
-          id: data.orders[0].id?.substring(0, 12),
-          status: data.orders[0].status,
-          paymentStatus: data.orders[0].paymentStatus,
-          shopName: data.orders[0].shopName,
+          id: enrichedOrders[0].id?.substring(0, 12),
+          status: enrichedOrders[0].status,
+          paymentStatus: enrichedOrders[0].paymentStatus,
+          shopName: enrichedOrders[0].shopName,
+          shopAvatar: enrichedOrders[0].shopAvatar,
         })
       }
       
       // Check if there are orders waiting for confirmation (only show toast on initial load)
       if (showLoading) {
-        const pendingConfirmation = (data.orders || []).filter(
+        const pendingConfirmation = (enrichedOrders || []).filter(
           (order: Order) => 
             order.status === 'processing' && 
             order.gameCodeDeliveredAt && 
@@ -284,7 +365,17 @@ export function MyOrdersContent() {
 
     // Filter by status
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter)
+      if (statusFilter === 'processing') {
+        // Include legacy orders (without status) that have completed payment
+        // Also include new orders with pending status (waiting for payment/being processed)
+        filtered = filtered.filter(order => 
+          order.status === 'processing' || 
+          order.status === 'pending' ||
+          (!order.status && order.paymentStatus === 'completed')
+        )
+      } else {
+        filtered = filtered.filter(order => order.status === statusFilter)
+      }
     }
 
     // Search by order ID, shop name, or product name
@@ -320,7 +411,13 @@ export function MyOrdersContent() {
   const statusCounts = useMemo(() => {
     return {
       all: orders.length,
-      processing: orders.filter(o => o.status === 'processing').length,
+      // Include legacy orders (without status) that have completed payment as processing
+      // Also include new orders with pending status (waiting for payment)
+      processing: orders.filter(o => 
+        o.status === 'processing' || 
+        o.status === 'pending' ||
+        (!o.status && o.paymentStatus === 'completed')
+      ).length,
       completed: orders.filter(o => o.status === 'completed').length,
       cancelled: orders.filter(o => o.status === 'cancelled').length,
       waitingConfirmation: orders.filter(o => o.gameCodeDeliveredAt && !o.buyerConfirmed && o.status !== 'cancelled').length,
@@ -418,8 +515,12 @@ export function MyOrdersContent() {
   }
 
   const toggleSelectAll = () => {
-    // Bulk cancel: Get list of orders that can be cancelled (only processing status now)
-  const cancellableOrders = paginatedOrders.filter(o => o.status === 'processing')
+    // Bulk cancel: Get list of orders that can be cancelled (processing/pending status + legacy orders with completed payment)
+    const cancellableOrders = paginatedOrders.filter(o => 
+      o.status === 'processing' || 
+      o.status === 'pending' ||
+      (!o.status && o.paymentStatus === 'completed')
+    )
     if (selectedOrderIds.size === cancellableOrders.length && cancellableOrders.length > 0) {
       // Unselect all
       setSelectedOrderIds(new Set())
@@ -530,8 +631,13 @@ export function MyOrdersContent() {
   }
 
   const openCancelModal = (order: Order) => {
-    // Allow cancelling pending and processing orders
-    if (order.status !== 'pending' && order.status !== 'processing') {
+    // Allow cancelling pending and processing orders (both new and legacy formats)
+    // Legacy orders might not have status field, so check paymentStatus instead
+    const isCancellable = 
+      (order.status === 'pending' || order.status === 'processing' || !order.status) && 
+      order.paymentStatus !== 'completed'
+      
+    if (!isCancellable) {
       toast({
         title: "ไม่สามารถยกเลิกได้",
         description: "ไม่สามารถยกเลิกคำสั่งซื้อนี้ได้ เนื่องจากเสร็จสิ้นแล้วหรือถูกยกเลิกไปแล้ว",
@@ -615,6 +721,7 @@ export function MyOrdersContent() {
   const openOrderDetail = async (order: Order) => {
     setSelectedOrderDetail(order)
     setShowOrderDetailModal(true)
+    setSelectedShop(null) // Reset shop data to prevent showing old avatar
 
     // โหลดข้อมูลรีวิวของคำสั่งซื้อนี้สำหรับผู้ใช้ปัจจุบัน
     if (user) {
@@ -903,63 +1010,63 @@ export function MyOrdersContent() {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         <Card 
-          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
+          className={`p-2 sm:p-3 md:p-4 lg:p-5 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'all' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500 ring-offset-2' : 'bg-white border-transparent hover:border-orange-200'}`}
           onClick={() => setStatusFilter('all')}
         >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-lg md:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'all' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
             </div>
-            <div className="min-w-0">
-              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{statusCounts.all}</div>
-              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
+            <div className="min-w-0 flex-1">
+              <div className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold ${statusFilter === 'all' ? 'text-orange-900' : 'text-gray-900'}`}>{statusCounts.all}</div>
+              <div className={`text-[10px] sm:text-xs md:text-sm font-medium truncate ${statusFilter === 'all' ? 'text-orange-700' : 'text-gray-500'}`}>ทั้งหมด</div>
             </div>
           </div>
         </Card>
 
         <Card 
-          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'processing' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
+          className={`p-2 sm:p-3 md:p-4 lg:p-5 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'processing' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 ring-offset-2' : 'bg-white border-transparent hover:border-blue-200'}`}
           onClick={() => setStatusFilter('processing')}
         >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'processing' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-              <Package className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-lg md:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'processing' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <Package className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
             </div>
-            <div className="min-w-0">
-              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'processing' ? 'text-blue-900' : 'text-gray-900'}`}>{statusCounts.processing}</div>
-              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'processing' ? 'text-blue-700' : 'text-gray-500'}`}>กำลังดำเนินการ</div>
+            <div className="min-w-0 flex-1">
+              <div className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold ${statusFilter === 'processing' ? 'text-blue-900' : 'text-gray-900'}`}>{statusCounts.processing}</div>
+              <div className={`text-[10px] sm:text-xs md:text-sm font-medium truncate ${statusFilter === 'processing' ? 'text-blue-700' : 'text-gray-500'}`}>กำลังดำเนินการ</div>
             </div>
           </div>
         </Card>
 
         <Card 
-          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'completed' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
+          className={`p-2 sm:p-3 md:p-4 lg:p-5 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'completed' ? 'bg-green-50 border-green-500 ring-2 ring-green-500 ring-offset-2' : 'bg-white border-transparent hover:border-green-200'}`}
           onClick={() => setStatusFilter('completed')}
         >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'completed' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-lg md:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'completed' ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
             </div>
-            <div className="min-w-0">
-              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'completed' ? 'text-green-900' : 'text-gray-900'}`}>{statusCounts.completed}</div>
-              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'completed' ? 'text-green-700' : 'text-gray-500'}`}>สำเร็จ</div>
+            <div className="min-w-0 flex-1">
+              <div className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold ${statusFilter === 'completed' ? 'text-green-900' : 'text-gray-900'}`}>{statusCounts.completed}</div>
+              <div className={`text-[10px] sm:text-xs md:text-sm font-medium truncate ${statusFilter === 'completed' ? 'text-green-700' : 'text-gray-500'}`}>สำเร็จ</div>
             </div>
           </div>
         </Card>
 
         <Card 
-          className={`p-3 sm:p-4 lg:p-6 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'cancelled' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
+          className={`p-2 sm:p-3 md:p-4 lg:p-5 border-2 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${statusFilter === 'cancelled' ? 'bg-red-50 border-red-500 ring-2 ring-red-500 ring-offset-2' : 'bg-white border-transparent hover:border-red-200'}`}
           onClick={() => setStatusFilter('cancelled')}
         >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'cancelled' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-lg md:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 transition-colors ${statusFilter === 'cancelled' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
             </div>
-            <div className="min-w-0">
-              <div className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${statusFilter === 'cancelled' ? 'text-red-900' : 'text-gray-900'}`}>{statusCounts.cancelled}</div>
-              <div className={`text-xs sm:text-sm font-medium truncate ${statusFilter === 'cancelled' ? 'text-red-700' : 'text-gray-500'}`}>ยกเลิก</div>
+            <div className="min-w-0 flex-1">
+              <div className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold ${statusFilter === 'cancelled' ? 'text-red-900' : 'text-gray-900'}`}>{statusCounts.cancelled}</div>
+              <div className={`text-[10px] sm:text-xs md:text-sm font-medium truncate ${statusFilter === 'cancelled' ? 'text-red-700' : 'text-gray-500'}`}>ยกเลิก</div>
             </div>
           </div>
         </Card>
@@ -967,43 +1074,56 @@ export function MyOrdersContent() {
 
       {/* Bulk Actions Bar */}
       {selectedOrderIds.size > 0 && (
-        <Card className="border-2 border-orange-300 bg-orange-50">
+        <Card className="border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50">
           <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-orange-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold text-sm sm:text-base">
-                  {selectedOrderIds.size}
-                </div>
-                <span className="font-semibold text-gray-900 text-sm sm:text-base">เลือกแล้ว {selectedOrderIds.size} รายการ</span>
+            <div className="flex flex-col gap-3 sm:gap-4">
+              {/* Info Message */}
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs sm:text-sm text-gray-700 flex-1">
+                  <span className="font-semibold">วิธียกเลิกสินค้า:</span> เลือกสินค้าที่ต้องการยกเลิกโดยกดที่ช่องทำเครื่องหมาย จากนั้นกดปุ่ม "ยกเลิกคำสั่งซื้อที่เลือก"
+                </p>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedOrderIds(new Set())}
-                  className="flex-1 sm:flex-none text-xs sm:text-sm"
-                >
-                  ยกเลิกการเลือก
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={openBulkCancelModal}
-                  disabled={bulkCancelling}
-                  className="flex-1 sm:flex-none text-xs sm:text-sm"
-                >
-                  {bulkCancelling ? (
-                    <>
-                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin" />
-                      กำลังยกเลิก...
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                      ยกเลิกทั้งหมด
-                    </>
-                  )}
-                </Button>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-orange-600 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0">
+                    {selectedOrderIds.size}
+                  </div>
+                  <span className="font-semibold text-gray-900 text-xs sm:text-sm">เลือกแล้ว {selectedOrderIds.size} รายการ</span>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOrderIds(new Set())}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    ยกเลิกการเลือก
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={openBulkCancelModal}
+                    disabled={bulkCancelling}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    {bulkCancelling ? (
+                      <>
+                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
+                        <span className="hidden xs:inline">กำลังยกเลิก...</span>
+                        <span className="xs:hidden">กำลัง...</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                        <span className="hidden xs:inline">ยกเลิกทั้งหมด</span>
+                        <span className="xs:hidden">ยกเลิก</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1049,18 +1169,30 @@ export function MyOrdersContent() {
         </Card>
       ) : (
         <>
-          {/* Select All Checkbox (for processing orders only) */}
-          {paginatedOrders.some(o => o.status === 'processing') && (
+          {/* Select All Checkbox (for cancellable orders: pending and processing) */}
+          {paginatedOrders.some(o => o.status === 'processing' || o.status === 'pending' || (!o.status && o.paymentStatus === 'completed')) && (
             <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg border">
               <input
                 type="checkbox"
-                checked={paginatedOrders.filter(o => o.status === 'processing').length > 0 && 
-                         paginatedOrders.filter(o => o.status === 'processing').every(o => selectedOrderIds.has(o.id))}
+                checked={paginatedOrders.filter(o => 
+                  o.status === 'processing' || 
+                  o.status === 'pending' || 
+                  (!o.status && o.paymentStatus === 'completed')
+                ).length > 0 && 
+                         paginatedOrders.filter(o => 
+                           o.status === 'processing' || 
+                           o.status === 'pending' || 
+                           (!o.status && o.paymentStatus === 'completed')
+                         ).every(o => selectedOrderIds.has(o.id))}
                 onChange={toggleSelectAll}
                 className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer"
               />
               <span className="text-xs sm:text-sm font-medium text-gray-700">
-                เลือกทั้งหมดในหน้านี้ ({paginatedOrders.filter(o => o.status === 'processing').length} รายการที่ยกเลิกได้)
+                เลือกทั้งหมดในหน้านี้ ({paginatedOrders.filter(o => 
+                  o.status === 'processing' || 
+                  o.status === 'pending' || 
+                  (!o.status && o.paymentStatus === 'completed')
+                ).length} รายการที่ยกเลิกได้)
               </span>
             </div>
           )}
@@ -1073,128 +1205,165 @@ export function MyOrdersContent() {
               return (
         <Card 
           key={order.id} 
-          className={`hover:shadow-lg transition-all duration-200 ${
-            selectedOrderIds.has(order.id) ? 'ring-2 ring-orange-500 bg-orange-50/30' : ''
+          className={`hover:shadow-xl transition-all duration-300 border-l-4 ${
+            selectedOrderIds.has(order.id) 
+              ? 'ring-2 ring-orange-500 bg-orange-50/30 border-l-orange-500' 
+              : order.status === 'completed' 
+                ? 'border-l-green-500' 
+                : order.status === 'cancelled' 
+                  ? 'border-l-red-500' 
+                  : 'border-l-blue-500'
           }`}
         >
-          <CardContent className="p-3 sm:p-4 md:p-6">
-            <div className="flex gap-2 sm:gap-3">
-              {/* Checkbox - for processing orders only */}
-              {order.status === 'processing' && (
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex gap-3 sm:gap-4">
+              {/* Checkbox - for processing/pending orders */}
+              {(order.status === 'processing' || order.status === 'pending' || (!order.status && order.paymentStatus === 'completed')) && (
                 <div 
-                  className="flex items-start pt-1"
+                  className="flex items-start pt-2"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <input
                     type="checkbox"
                     checked={selectedOrderIds.has(order.id)}
                     onChange={() => toggleSelectOrder(order.id)}
-                    className="w-4 h-4 sm:w-5 sm:h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer mt-1"
+                    className="w-5 h-5 text-[#ff9800] rounded border-gray-300 focus:ring-[#ff9800] cursor-pointer"
                   />
                 </div>
               )}
               
-              {/* Order Content */}
+              {/* Product Image - Larger */}
               <div 
-                className="flex-1 cursor-pointer"
+                className="flex-shrink-0 cursor-pointer"
                 onClick={() => openOrderDetail(order)}
               >
-                <div className="flex flex-col gap-2 sm:gap-3">
-                  {/* Left Section - Order Info */}
-                  <div className="flex-1 space-y-2">
-                {/* Shop Name */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />
-                  <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{shopName}</span>
-                </div>
-                
-                {/* Game Name & Items - Enhanced Display - Always show */}
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-2 sm:p-2.5">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="bg-gradient-to-br from-[#ff9800] to-orange-600 p-1 sm:p-1.5 rounded-md flex-shrink-0">
-                      <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-white border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow">
+                  {items[0]?.productImage ? (
+                    <Image
+                      src={items[0].productImage}
+                      alt={items[0]?.name || 'สินค้า'}
+                      fill
+                      className="object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/landscape-placeholder-svgrepo-com.svg'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                      <Package className="w-10 h-10 text-gray-400" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      {items[0]?.gameName && (
-                        <p className="text-xs sm:text-sm font-bold text-[#ff9800] truncate">
-                          🎮 {items[0].gameName}
-                        </p>
-                      )}
-                      <p className={`text-xs line-clamp-2 ${items[0]?.gameName ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
-                        {items[0]?.name || 'สินค้า'}
-                        {items.length > 1 && (
-                          <span className="ml-1 text-[#ff9800] font-medium">
-                            +{items.length - 1} รายการอื่น
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Date */}
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="truncate text-xs">{formatDate(order.createdAt)}</span>
-                </div>
-              </div>
-
-              {/* Status & Summary Section */}
-              <div className="flex items-center justify-between gap-2">
-                {/* Summary */}
-                <div className="text-xs text-gray-400">
-                  {items.length} รายการ • ฿{order.totalAmount.toLocaleString()}
-                </div>
-                
-                {/* Status Badges */}
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  {/* Show payment status for pending orders too */}
-                  {order.status !== 'cancelled' && getPaymentStatusBadge(order.paymentStatus, order)}
-                  
-                  {/* Buyer Confirmation Badge - Hide if refunded */}
-                  {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
-                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-300 text-xs">
-                      <AlertTriangle className="w-3 h-3 mr-1" />
-                      รอยืนยัน
-                    </Badge>
-                  )}
-                  {order.buyerConfirmed && order.disputeResolution !== 'refund' && (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border border-green-300 text-xs">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      ยืนยันแล้ว
-                    </Badge>
                   )}
                 </div>
               </div>
               
-              {/* Cancel Button - Show for processing orders only */}
-              {order.status === 'processing' && (
-                <div className="mt-2">
+              {/* Order Content - More spacious */}
+              <div 
+                className="flex-1 cursor-pointer min-w-0"
+                onClick={() => openOrderDetail(order)}
+              >
+                <div className="space-y-3">
+                  {/* Shop Name with Avatar - Bigger */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
+                      <Image
+                        src={order.shopAvatar || '/landscape-placeholder-svgrepo-com.svg'}
+                        alt={shopName}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <span className="font-bold text-base sm:text-lg text-gray-900 truncate">{shopName}</span>
+                  </div>
+                  
+                  {/* Product Info - Bigger text */}
+                  <div className="space-y-1.5">
+                    {items[0]?.gameName && (
+                      <p className="text-sm sm:text-base font-bold text-[#ff9800] truncate flex items-center gap-1.5">
+                        🎮 {items[0].gameName}
+                      </p>
+                    )}
+                    <p className={`text-sm sm:text-base line-clamp-2 ${items[0]?.gameName ? 'text-gray-700' : 'text-gray-900 font-semibold'}`}>
+                      {items[0]?.name || 'สินค้า'}
+                      {items.length > 1 && (
+                        <span className="ml-1.5 text-[#ff9800] font-bold">
+                          +{items.length - 1} รายการ
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  
+                  {/* Date & Price Row */}
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{formatDate(order.createdAt)}</span>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-[#ff9800] whitespace-nowrap">
+                      ฿{order.totalAmount.toLocaleString()}
+                    </div>
+                  </div>
+                  
+                  {/* Status Badges - More prominent */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {order.status !== 'cancelled' && getPaymentStatusBadge(order.paymentStatus, order)}
+                    
+                    {/* Buyer Confirmation Badge */}
+                    {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
+                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-300 text-sm px-3 py-1">
+                        <AlertTriangle className="w-4 h-4 mr-1.5" />
+                        รอยืนยัน
+                      </Badge>
+                    )}
+                    {order.buyerConfirmed && order.disputeResolution !== 'refund' && (
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border border-green-300 text-sm px-3 py-1">
+                        <CheckCircle className="w-4 h-4 mr-1.5" />
+                        ยืนยันแล้ว
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Cancel Button - Show for pending and processing orders only */}
+              {/* Support both new format (with status) and legacy format (without status, only paymentStatus) */}
+              {(
+                (order.status === 'pending' || order.status === 'processing' || !order.status) && 
+                order.paymentStatus !== 'completed'
+              ) && (
+                <div className="mt-3">
                   <Button
                     variant="destructive"
-                    size="sm"
+                    size="default"
                     onClick={(e) => {
                       e.stopPropagation()
                       openCancelModal(order)
                     }}
-                    className="w-full h-8 text-xs"
+                    className="w-full h-10 text-sm font-semibold"
+                    disabled={cancellingOrderId === order.id}
                   >
-                    <XCircle className="w-3 h-3 mr-1" />
-                    ยกเลิก
+                    {cancellingOrderId === order.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        กำลังยกเลิก...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        ยกเลิกคำสั่งซื้อ
+                      </>
+                    )}
                   </Button>
                 </div>
               )}
-                </div>
-              </div>
               
               {/* Confirm Receipt Button - Show if delivered but not confirmed and not refunded */}
               {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
-                <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2.5">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="mt-4 pt-4 border-t-2 border-gray-200 space-y-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-xs font-semibold text-blue-900">
+                        <p className="text-sm font-bold text-blue-900">
                           ผู้ขายส่งรหัสให้คุณแล้ว กรุณายืนยันหลังตรวจสอบ
                         </p>
                       </div>
@@ -1203,8 +1372,8 @@ export function MyOrdersContent() {
                   
                   {/* Dispute Status Badge */}
                   {order.hasDispute && order.disputeStatus !== 'resolved' && (
-                    <div className="mt-1.5">
-                      <Badge variant="outline" className={`w-full justify-center text-xs ${
+                    <div>
+                      <Badge variant="outline" className={`w-full justify-center text-sm py-2 ${
                         order.disputeStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
                         'bg-yellow-50 text-yellow-700 border-yellow-200'
                       }`}>
@@ -1216,8 +1385,8 @@ export function MyOrdersContent() {
                   
                   {/* Resolved Dispute Status */}
                   {order.disputeStatus === 'resolved' && order.disputeResolution && (
-                    <div className="mt-1.5">
-                      <Badge variant="outline" className={`w-full justify-center text-xs ${
+                    <div>
+                      <Badge variant="outline" className={`w-full justify-center text-sm py-2 ${
                         (order.disputeResolution as string) === 'refund' ? 'bg-green-50 text-green-700 border-green-200' :
                         (order.disputeResolution as string) === 'new_code' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-gray-50 text-gray-700 border-gray-200'
@@ -1232,7 +1401,7 @@ export function MyOrdersContent() {
                   {/* Action Buttons */}
                   {/* Hide report button if refunded */}
                   {(order.disputeResolution as string) !== 'refund' && (
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1240,10 +1409,10 @@ export function MyOrdersContent() {
                         setShowChatDialog(true)
                       }}
                       variant="outline"
-                      className="w-full border-blue-300 hover:bg-blue-50 h-8 text-xs"
-                      size="sm"
+                      className="w-full border-blue-300 hover:bg-blue-50 h-10 text-sm font-semibold"
+                      size="default"
                     >
-                      <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+                      <MessageCircle className="w-4 h-4 mr-2" />
                       แชท
                     </Button>
                     
@@ -1254,14 +1423,14 @@ export function MyOrdersContent() {
                         setShowReportDialog(true)
                       }}
                       variant="outline"
-                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 h-8 text-xs ${
+                      className={`w-full border-red-300 hover:bg-red-50 text-red-600 h-10 text-sm font-semibold ${
                         (order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
-                      size="sm"
+                      size="default"
                       disabled={!!(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved')}
                     >
-                      <Flag className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-                      <span className="truncate">{(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงาน'}</span>
+                      <Flag className="w-4 h-4 mr-2" />
+                      <span className="truncate">{(order.hasDispute && order.disputeStatus && order.disputeStatus !== 'resolved') ? 'กำลังตรวจสอบ' : 'รายงานปัญหา'}</span>
                     </Button>
                   </div>
                   )}
@@ -1275,8 +1444,8 @@ export function MyOrdersContent() {
                         setShowChatDialog(true)
                       }}
                       variant="outline"
-                      className="w-full border-blue-300 hover:bg-blue-50 h-8 text-xs"
-                      size="sm"
+                      className="w-full border-blue-300 hover:bg-blue-50 h-10 text-sm font-semibold"
+                      size="default"
                     >
                       <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                       แชท
@@ -1748,14 +1917,32 @@ export function MyOrdersContent() {
                     <div className="space-y-2">
                       {selectedOrderDetail.items.map((item, index) => (
                         <div key={index} className="bg-white border rounded-lg p-3">
-                          <div className="flex justify-between items-start mb-1">
-                            <div className="flex-1">
-                              <Link href={`/product/${item.gameId || item.productId}`} className="hover:text-[#ff9800] transition-colors">
-                                <p className="font-medium text-gray-900 hover:underline">{item.name}</p>
-                              </Link>
+                          <div className="flex justify-between items-start gap-3">
+                            {/* Product Image */}
+                            {item.productImage && (
+                              <div className="flex-shrink-0">
+                                <img
+                                  src={item.productImage}
+                                  alt={item.name}
+                                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border-2 border-gray-200"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 mb-1 line-clamp-2">{item.name}</p>
                               {item.gameName && (
                                 <p className="text-sm text-[#ff9800] font-medium mt-1">🎮 {item.gameName}</p>
                               )}
+                              <Link 
+                                href={`/products/${item.gameId || item.productId}`}
+                                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#f57c00] hover:to-[#ff9800] text-white text-xs font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                ดูหน้าสินค้า
+                              </Link>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-[#ff9800] ml-2">
