@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { checkUserBanStatus } from '@/lib/auth-helpers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +13,17 @@ export async function POST(request: NextRequest) {
         { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       )
+    }
+
+    // ✅ Check if user is banned (if userId is provided)
+    if (userId) {
+      const banError = await checkUserBanStatus(userId)
+      if (banError) {
+        return NextResponse.json(
+          { error: banError },
+          { status: 403 }
+        )
+      }
     }
 
     // Validate email format

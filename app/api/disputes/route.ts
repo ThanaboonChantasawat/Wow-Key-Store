@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createDispute } from '@/lib/dispute-service'
 import { adminAuth } from '@/lib/firebase-admin-config'
+import { checkUserBanStatus } from '@/lib/auth-helpers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,15 @@ export async function POST(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1]
     const decodedToken = await adminAuth.verifyIdToken(token)
     const userId = decodedToken.uid
+
+    // ✅ Check if user is banned
+    const banError = await checkUserBanStatus(userId)
+    if (banError) {
+      return NextResponse.json(
+        { success: false, error: banError },
+        { status: 403 }
+      )
+    }
 
     // Parse request body
     const body = await request.json()

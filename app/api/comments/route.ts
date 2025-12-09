@@ -7,7 +7,7 @@ import {
   updateComment,
   deleteComment
 } from '@/lib/comment-service'
-import { verifyIdToken } from '@/lib/auth-helpers'
+import { verifyIdToken, checkUserBanStatus } from '@/lib/auth-helpers'
 import { createNotification } from '@/lib/notification-service'
 import { adminDb } from '@/lib/firebase-admin-config'
 
@@ -82,6 +82,16 @@ export async function POST(request: NextRequest) {
     }
     
     const userId = token.uid
+    
+    // ✅ Check if user is banned
+    const banError = await checkUserBanStatus(userId)
+    if (banError) {
+      return NextResponse.json(
+        { error: banError },
+        { status: 403 }
+      )
+    }
+    
     const body = await request.json()
     const { 
       type, // 'shop' or 'product'

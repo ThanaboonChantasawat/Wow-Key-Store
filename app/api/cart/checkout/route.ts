@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
+import { checkUserBanStatus } from '@/lib/auth-helpers'
 
 interface CheckoutItem {
   productId: string
@@ -40,6 +41,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
+      )
+    }
+
+    // ✅ Check if user is banned
+    const banError = await checkUserBanStatus(userId)
+    if (banError) {
+      console.log('🚫 User is banned:', userId)
+      return NextResponse.json(
+        { error: banError },
+        { status: 403 }
       )
     }
 

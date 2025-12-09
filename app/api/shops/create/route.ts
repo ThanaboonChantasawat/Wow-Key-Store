@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createShop } from "@/lib/shop-service";
+import { checkUserBanStatus } from "@/lib/auth-helpers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +11,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Owner ID and shop data are required" },
         { status: 400 }
+      );
+    }
+
+    // ✅ Check if user is banned
+    const banError = await checkUserBanStatus(ownerId);
+    if (banError) {
+      return NextResponse.json(
+        { error: banError },
+        { status: 403 }
       );
     }
 

@@ -21,6 +21,22 @@ service cloud.firestore {
       return shopId != null && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
     }
     
+    // ✅ NEW: Check if user is banned or suspended
+    function isNotBanned() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let isBanned = userData.banned == true || userData.accountStatus == 'banned';
+      let isSuspended = userData.accountStatus == 'suspended';
+      
+      // Check if ban has expired
+      if (isBanned && userData.bannedUntil != null) {
+        let bannedUntil = userData.bannedUntil;
+        // If current time is past bannedUntil, user is no longer banned
+        return request.time > bannedUntil || (!isSuspended && !isBanned);
+      }
+      
+      return !isBanned && !isSuspended;
+    }
+    
     // Users collection - อ่านได้ทุกคนที่ login, แก้ไขได้เฉพาะเจ้าของหรือ admin
     match /users/{userId} {
       allow read: if isAuthenticated() || isAdmin();
@@ -32,16 +48,16 @@ service cloud.firestore {
     // Shops collection - อ่านได้ทุกคนหรือ admin, แก้ไขเฉพาะเจ้าของ (admin ใช้ API route)
     match /shops/{shopId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isNotBanned();
+      allow update: if isAuthenticated() && isNotBanned() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow delete: if false; // ใช้ API route
     }
 
     // Products collection - อ่านได้ทุกคน, แก้ไขได้เฉพาะเจ้าของร้าน
     match /products/{productId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
+      allow create: if isAuthenticated() && isNotBanned();
+      allow update, delete: if isAuthenticated() && isNotBanned() && 
         resource.data.shopId == 'shop_' + request.auth.uid;
     }
 
@@ -69,8 +85,8 @@ service cloud.firestore {
         isShopOwner(resource.data.shopId) ||
         isAdmin()
       );
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isNotBanned() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && isNotBanned() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if false; // ใช้ API route
 
       // Messages subcollection
@@ -86,28 +102,28 @@ service cloud.firestore {
 
     // Cart collections - เฉพาะเจ้าของตะกร้า
     match /carts/{cartId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isAuthenticated() && isNotBanned();
     }
     
     match /cart/{userId}/items/{itemId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) && isNotBanned();
     }
     
     // Alternative cart structure
     match /cart/{cartItemId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && isNotBanned();
     }
 
     // Favorites collection - เฉพาะเจ้าของ
     match /favorites/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) && isNotBanned();
     }
 
     // Reopen requests - เจ้าของร้านสร้างได้, ส่วนอื่นใช้ API route
     match /reopenRequests/{requestId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() && isNotBanned() && 
         request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
@@ -127,36 +143,36 @@ service cloud.firestore {
     // Notifications - user สามารถอ่านและอัปเดตของตัวเองได้
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
       allow create, delete: if false; // ใช้ API route
     }
 
     // Shop Reviews - อ่านได้ทุกคน, สร้างได้เฉพาะผู้ที่ซื้อแล้ว, แก้/ลบได้เฉพาะเจ้าของ
     match /shopReviews/{reviewId} {
       allow read: if true; // ทุกคนอ่านรีวิวได้
-      allow create: if isAuthenticated(); // การตรวจสอบการซื้อจริงทำใน backend
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned(); // การตรวจสอบการซื้อจริงทำใน backend
+      allow update, delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // Product Reviews - อ่านได้ทุกคน, สร้างได้เฉพาะผู้ที่ซื้อแล้ว, แก้/ลบได้เฉพาะเจ้าของ
     match /productReviews/{reviewId} {
       allow read: if true; // ทุกคนอ่านรีวิวได้
-      allow create: if isAuthenticated(); // การตรวจสอบการซื้อจริงทำใน backend
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned(); // การตรวจสอบการซื้อจริงทำใน backend
+      allow update, delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // Shop Comments - อ่านได้ทุกคน, สร้าง/แก้/ลบได้เฉพาะ login แล้ว
     match /shopComments/{commentId} {
       allow read: if true; // ทุกคนอ่านคอมเมนต์ได้
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned();
+      allow update, delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // Product Comments - อ่านได้ทุกคน, สร้าง/แก้/ลบได้เฉพาะ login แล้ว
     match /productComments/{commentId} {
       allow read: if true; // ทุกคนอ่านคอมเมนต์ได้
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned();
+      allow update, delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // Support Messages - เจ้าของ ticket และ admin อ่านได้

@@ -76,3 +76,80 @@ export async function verifyAdmin(request: NextRequest) {
     return null
   }
 }
+
+/**
+ * Verify user is not banned
+ * Returns error message if user is banned, null if user is allowed to proceed
+ */
+export async function checkUserBanStatus(userId: string): Promise<string | null> {
+  try {
+    const userDoc = await adminDb.collection('users').doc(userId).get()
+    
+    if (!userDoc.exists) {
+      return 'User not found'
+    }
+    
+    const userData = userDoc.data()
+    
+    // Check if user is permanently banned
+    if (userData?.accountStatus === 'banned' || userData?.banned === true) {
+      // Check if ban has expiration date
+      if (userData?.bannedUntil) {
+        const bannedUntil = userData.bannedUntil.toDate ? userData.bannedUntil.toDate() : new Date(userData.bannedUntil)
+        const now = new Date()
+        
+        // If ban has expired, auto-unban
+        if (now >= bannedUntil) {
+          await adminDb.collection('users').doc(userId).update({
+            banned: false,
+            bannedUntil: null,
+            accountStatus: 'active'
+          })
+          console.log('✅ Auto-unbanned user:', userId)
+          return null
+        }
+        
+        // Ban is still active
+        const daysLeft = Math.ceil((bannedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return `บัญชีของคุณถูกระงับจนถึง ${bannedUntil.toLocaleDateString('th-TH')} (อีก ${daysLeft} วัน)\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`
+      }
+      
+      // Permanent ban without expiration
+      return `บัญชีของคุณถูกระงับการใช้งานถาวร\nเหตุผล: ${userData.bannedReason || 'ไม่ระบุ'}`
+    }
+    
+    // Check if user is suspended
+    if (userData?.accountStatus === 'suspended') {
+      return 'บัญชีของคุณถูกพักการใช้งานชั่วคราว กรุณาติดต่อทีมงาน'
+    }
+    
+    return null
+  } catch (error) {
+    console.error('Error checking user ban status:', error)
+    return 'Error checking ban status'
+  }
+}
+
+/**
+ * Verify user and check ban status
+ * Returns { user, banError } where banError is null if user is allowed
+ */
+export async function verifyUserAndCheckBan(token: string) {
+  try {
+    const decodedToken = await verifyIdTokenString(token)
+    
+    if (!decodedToken) {
+      return { user: null, banError: 'Invalid token' }
+    }
+    
+    const banError = await checkUserBanStatus(decodedToken.uid)
+    
+    return {
+      user: decodedToken,
+      banError
+    }
+  } catch (error) {
+    console.error('Error verifying user and checking ban:', error)
+    return { user: null, banError: 'Verification error' }
+  }
+}
