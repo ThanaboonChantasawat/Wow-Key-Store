@@ -8,14 +8,6 @@ import * as admin from 'firebase-admin'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Only allow in development mode
-    if (process.env.NODE_ENV !== 'development') {
-      return NextResponse.json(
-        { error: 'This endpoint is only available in development mode' },
-        { status: 403 }
-      )
-    }
-
     const body = await request.json()
     const { orderId, orderIds } = body
 

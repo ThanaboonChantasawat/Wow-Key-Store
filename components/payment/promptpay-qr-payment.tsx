@@ -403,10 +403,12 @@ export function PromptPayQRPayment({
           </ol>
         </div>
 
-        {/* TEST MODE BYPASS BUTTON */}
-        {process.env.NODE_ENV === 'development' && status === 'pending' && (
+        {/* TEST MODE BYPASS BUTTON (แสดงเสมอสำหรับทดสอบ) */}
+        {status === 'pending' && (
           <div className="border-t pt-4">
-
+            <p className="text-xs text-orange-600 text-center mb-2">
+              🧪 ปุ่มสำหรับทดสอบเท่านั้น (ใช้ข้ามการชำระเงินจริง)
+            </p>
             <Button
               onClick={handleTestBypass}
               variant="outline"
@@ -414,7 +416,7 @@ export function PromptPayQRPayment({
               disabled={status !== 'pending'}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              ชำระเงินผ่าน
+              ชำระเงินผ่าน (Bypass)
             </Button>
           </div>
         )}

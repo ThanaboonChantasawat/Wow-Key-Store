@@ -12,6 +12,10 @@ export async function POST(request: NextRequest) {
     }
 
     const token = await verifyIdTokenString(authHeader.substring(7));
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     const userId = token.uid;
 
     // Check if user is admin
