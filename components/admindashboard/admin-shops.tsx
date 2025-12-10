@@ -657,10 +657,6 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">User ID</p>
-                    <p className="font-medium text-[#292d32] font-mono text-sm">{selectedShop.ownerId}</p>
-                  </div>
-                  <div>
                     <p className="text-sm text-gray-500">สถานะบัญชี</p>
                     <p className="font-medium text-[#292d32]">
                       {selectedShop.ownerProfile?.accountStatus === 'active' ? '✅ Active' : '❌ Inactive'}
@@ -792,10 +788,6 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                     <DollarSign className="w-4 h-4 text-blue-600" />
                     <p className="font-medium text-[#292d32]">฿{selectedShop.totalRevenue.toLocaleString()}</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Owner ID</p>
-                  <p className="font-medium text-[#292d32] font-mono text-sm">{selectedShop.ownerId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Shop ID</p>
