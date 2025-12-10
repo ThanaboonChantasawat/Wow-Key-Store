@@ -68,6 +68,7 @@ export default function SellerPayouts() {
   const [withdrawing, setWithdrawing] = useState(false)
   const [shopData, setShopData] = useState<any>(null)
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -368,7 +369,6 @@ export default function SellerPayouts() {
     .reduce((sum, p) => sum + p.amount, 0)
 
   const itemsPerPage = 5
-  const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.max(1, Math.ceil(payouts.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage

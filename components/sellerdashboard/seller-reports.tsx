@@ -83,6 +83,17 @@ export function SellerReports() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   
+  // Filter reports
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = 
+      report.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.subject.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || report.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+  
   // Action Dialog State
   const [selectedReport, setSelectedReport] = useState<Dispute | null>(null)
   const itemsPerPage = 5
@@ -367,16 +378,6 @@ export function SellerReports() {
     }
     return types[type] || type
   }
-
-  const filteredReports = reports.filter(report => {
-    const matchesSearch = 
-      report.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.subject.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesStatus = statusFilter === 'all' || report.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
 
   // Calculate stats
   const pendingCount = reports.filter(r => r.status === 'pending').length

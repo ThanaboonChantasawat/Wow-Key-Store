@@ -37,13 +37,18 @@ export async function POST(
     const body = await request.json();
     
     // Filter allowed fields to update
-    const allowedFields = ['displayName', 'photoURL', 'phoneNumber', 'email'];
+    const allowedFields = ['displayName', 'photoURL', 'phoneNumber', 'email', 'shopId', 'isSeller', 'role'];
     const updates: any = {};
     
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updates[field] = body[field];
       }
+    }
+    
+    // Only allow role updates from buyer to seller, not to admin
+    if (updates.role && !['buyer', 'seller'].includes(updates.role)) {
+      delete updates.role;
     }
     
     if (Object.keys(updates).length === 0) {
