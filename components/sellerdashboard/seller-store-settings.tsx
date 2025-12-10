@@ -350,11 +350,18 @@ export function SellerStoreSettings({ userId }: SellerStoreSettingsProps) {
                   <Input 
                     type="tel"
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '')
+                      if (value.length <= 10) {
+                        setContactPhone(value)
+                      }
+                    }}
                     className="border-2 focus:border-[#ff9800]"
                     disabled={saving || uploading}
                     placeholder="08X-XXX-XXXX"
+                    maxLength={10}
                   />
+                  <p className="text-xs text-gray-500 mt-1">ตัวเลข 10 หลัก</p>
                 </div>
               </div>
 

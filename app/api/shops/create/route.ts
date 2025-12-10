@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
     const shopId = await createShop(ownerId, shopData);
 
     return NextResponse.json({ shopId }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating shop:", error);
     return NextResponse.json(
-      { error: "Failed to create shop" },
+      { error: error.message || "Failed to create shop" },
       { status: 500 }
     );
   }

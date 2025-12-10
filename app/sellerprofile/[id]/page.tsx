@@ -133,6 +133,9 @@ export default function SellerProfile() {
           if (shopRes.ok) {
             const data = await shopRes.json();
             shopData = data.shop || data;
+          } else if (shopRes.status === 404) {
+            // ไม่พบร้านค้า - เป็นเรื่องปกติ
+            console.log('No shop found for owner:', id);
           }
         }
 

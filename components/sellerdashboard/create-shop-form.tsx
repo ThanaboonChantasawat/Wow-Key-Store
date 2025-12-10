@@ -203,9 +203,12 @@ export function CreateShopForm({ userId, onShopCreated, existingShop }: CreateSh
       setTimeout(() => {
         onShopCreated()
       }, 1500)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating shop:", error)
-      setMessage({ type: "error", text: "เกิดข้อผิดพลาดในการสร้างร้านค้า กรุณาลองใหม่อีกครั้ง" })
+      
+      // แสดง error message ที่ชัดเจน
+      const errorMessage = error.message || "เกิดข้อผิดพลาดในการสร้างร้านค้า กรุณาลองใหม่อีกครั้ง"
+      setMessage({ type: "error", text: errorMessage })
     } finally {
       setLoading(false)
     }

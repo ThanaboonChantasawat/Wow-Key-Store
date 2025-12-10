@@ -782,14 +782,23 @@ export function AccountContent() {
                 เบอร์โทรศัพท์
               </label>
               {isEditing ? (
-                <Input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="กรอกเบอร์โทรศัพท์"
-                  className="max-w-md border-2 focus:border-[#ff9800] transition-colors"
-                  disabled={loading}
-                />
+                <div className="max-w-md">
+                  <Input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '')
+                      if (value.length <= 10) {
+                        setPhoneNumber(value)
+                      }
+                    }}
+                    placeholder="กรอกเบอร์โทรศัพท์"
+                    className="border-2 focus:border-[#ff9800] transition-colors"
+                    maxLength={10}
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">ตัวเลข 10 หลัก</p>
+                </div>
               ) : (
                 <div className="text-[#292d32] font-medium break-words">
                   {userProfile?.phoneNumber || "-"}

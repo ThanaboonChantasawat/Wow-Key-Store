@@ -398,10 +398,17 @@ export default function ReopenShopForm() {
                 <Input
                   type="tel"
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '')
+                    if (value.length <= 10) {
+                      setContactPhone(value)
+                    }
+                  }}
                   placeholder="08X-XXX-XXXX"
+                  maxLength={10}
                   disabled={hasPendingRequest || submitting}
                 />
+                <p className="text-xs text-gray-500 mt-1">ตัวเลข 10 หลัก</p>
               </div>
 
               <div>

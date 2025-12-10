@@ -97,7 +97,8 @@ export async function createShop(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create shop');
+    const errorData = await response.json().catch(() => ({ error: 'Failed to create shop' }));
+    throw new Error(errorData.error || 'Failed to create shop');
   }
 
   const { shopId } = await response.json();

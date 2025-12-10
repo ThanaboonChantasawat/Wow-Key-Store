@@ -367,11 +367,12 @@ export async function checkUsernameExists(username: string, excludeUserId?: stri
     
     for (const doc of usersSnapshot.docs) {
       const data = doc.data();
-      if (data.displayName && data.displayName.toLowerCase().trim() === normalizedUsername) {
+      if (data && data.displayName && data.displayName.toLowerCase().trim() === normalizedUsername) {
         // ถ้ามี excludeUserId (สำหรับการแก้ไข) ให้ข้ามผู้ใช้นั้น
         if (excludeUserId && doc.id === excludeUserId) {
           continue;
         }
+        console.log(`Found duplicate username: ${data.displayName} (${doc.id})`);
         return true; // พบชื่อซ้ำ
       }
     }
@@ -379,7 +380,8 @@ export async function checkUsernameExists(username: string, excludeUserId?: stri
     return false; // ไม่มีชื่อซ้ำ
   } catch (error) {
     console.error("Error checking username:", error);
-    throw error;
+    // ถ้า error ให้คืนค่า false เพื่อไม่บล็อกการอัปเดต
+    return false;
   }
 }
 

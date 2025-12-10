@@ -633,17 +633,20 @@ export async function updateShopSalesStats(shopId: string): Promise<void> {
 export async function checkShopNameExists(shopName: string, excludeShopId?: string): Promise<boolean> {
   try {
     const normalizedName = shopName.toLowerCase().trim();
+    
+    // ดึงเฉพาะร้านที่ชื่อตรงกัน (case-insensitive ต้องเช็คด้วย loop)
     const shopsSnapshot = await adminDb
       .collection("shops")
       .get();
     
     for (const doc of shopsSnapshot.docs) {
       const data = doc.data();
-      if (data.shopName && data.shopName.toLowerCase().trim() === normalizedName) {
+      if (data && data.shopName && data.shopName.toLowerCase().trim() === normalizedName) {
         // ถ้ามี excludeShopId (สำหรับการแก้ไข) ให้ข้ามร้านนั้น
         if (excludeShopId && doc.id === excludeShopId) {
           continue;
         }
+        console.log(`Found duplicate shop name: ${data.shopName} (${doc.id})`);
         return true; // พบชื่อซ้ำ
       }
     }
@@ -651,7 +654,8 @@ export async function checkShopNameExists(shopName: string, excludeShopId?: stri
     return false; // ไม่มีชื่อซ้ำ
   } catch (error) {
     console.error("Error checking shop name:", error);
-    throw error;
+    // ถ้า error ให้คืนค่า false เพื่อไม่บล็อกการสร้างร้าน
+    return false;
   }
 }
 
