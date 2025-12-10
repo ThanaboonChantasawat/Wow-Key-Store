@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     let weekEarnings = 0 // This week's earnings
     let monthEarnings = 0 // This month's earnings
 
-    ordersSnapshot.docs.forEach(doc => {
+    confirmedSnapshot.docs.forEach(doc => {
       const order = doc.data()
       console.log(`📦 Order ${doc.id}:`, {
         sellerAmount: order.sellerAmount,
