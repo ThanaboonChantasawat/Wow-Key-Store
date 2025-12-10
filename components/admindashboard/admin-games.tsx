@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getAllGames, createGame, updateGame, deleteGame, type Game } from "@/lib/game-service"
 import { getAllCategories, type Category } from "@/lib/category-service"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
-import { storage } from "@/components/firebase-config"
+import { storage, auth } from "@/components/firebase-config"
+import { useAuth } from "@/components/auth-context"
 import Image from "next/image"
 
 // Helper function to delete old image from Firebase Storage
@@ -39,6 +40,7 @@ const deleteImageFromStorage = async (imageUrl: string) => {
 };
 
 export function AdminGames() {
+  const { user, isInitialized } = useAuth()
   const [games, setGames] = useState<Game[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,6 +128,17 @@ export function AdminGames() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // ตรวจสอบว่า auth initialized แล้ว
+    if (!isInitialized) {
+      setMessage({ type: "error", text: "กรุณารอสักครู่ ระบบกำลังโหลด..." })
+      return
+    }
+    
+    if (!user) {
+      setMessage({ type: "error", text: "กรุณาเข้าสู่ระบบก่อนทำการอัปโหลด" })
+      return
+    }
+    
     if (!formData.name.trim()) {
       setMessage({ type: "error", text: "กรุณากรอกชื่อเกม" })
       return
@@ -148,6 +161,22 @@ export function AdminGames() {
       // Upload image if new file selected
       if (imageFile) {
         try {
+          // Double-check authentication from Firebase Auth directly
+          const currentUser = auth.currentUser
+          if (!currentUser) {
+            setMessage({ type: "error", text: "กรุณาเข้าสู่ระบบก่อนทำการอัปโหลด" })
+            setLoading(false)
+            return
+          }
+          
+          // Force refresh the ID token to ensure it's valid and not expired
+          console.log('Getting fresh auth token...')
+          const token = await currentUser.getIdToken(true)
+          console.log('Auth token obtained:', token ? 'Yes' : 'No')
+          
+          // Wait a moment for the token to propagate to Firebase SDK
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
           // Delete old image if updating and URL exists
           if (editingId && formData.imageUrl) {
             await deleteImageFromStorage(formData.imageUrl);
@@ -155,11 +184,13 @@ export function AdminGames() {
           
           const timestamp = Date.now()
           const storageRef = ref(storage, `game-images/${timestamp}_${imageFile.name}`)
+          console.log('Uploading to:', storageRef.fullPath)
           await uploadBytes(storageRef, imageFile)
           imageUrl = await getDownloadURL(storageRef)
+          console.log('Upload successful!')
         } catch (uploadError) {
           console.error("Error uploading image:", uploadError)
-          setMessage({ type: "error", text: "อัปโหลดรูปภาพไม่สำเร็จ" })
+          setMessage({ type: "error", text: "อัปโหลดรูปภาพไม่สำเร็จ: " + (uploadError instanceof Error ? uploadError.message : 'Unknown error') })
           setLoading(false)
           return
         }

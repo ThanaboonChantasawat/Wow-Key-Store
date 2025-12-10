@@ -215,10 +215,23 @@ export default function SellerPayouts() {
           title: "✅ ขอถอนเงินสำเร็จ",
           description: `กำลังถอนเงิน ฿${amount.toFixed(2)} เข้า${accountInfo}`,
         })
+        
+        // อัปเดต balance ทันทีในฝั่ง UI ก่อนรอ API
+        if (balance) {
+          setBalance({
+            ...balance,
+            available: balance.available - amount
+          })
+        }
+        
         setWithdrawDialogOpen(false)
         setWithdrawAmount("")
         setWithdrawStep(1)
-        fetchPayouts() // Refresh data
+        
+        // รอ 1 วินาทีแล้วรีเฟรชข้อมูลจาก API
+        setTimeout(() => {
+          fetchPayouts()
+        }, 1000)
       } else {
         // Specific error messages
         let errorMessage = data.error || "ไม่สามารถขอถอนเงินได้"

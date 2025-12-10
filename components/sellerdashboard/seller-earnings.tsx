@@ -1,21 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+// import { Button } from "@/components/ui/button" // Commented out to avoid potential Slot/Ref issues
 import { 
   Wallet, 
-  TrendingUp, 
-  Clock, 
   RefreshCw,
   AlertCircle,
   DollarSign,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  Clock
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+// import { useToast } from "@/hooks/use-toast" // Commented out to avoid potential Toast issues
 import { useAuth } from "@/components/auth-context"
-import { Loading } from "@/components/ui/loading"
+// import { Loading } from "@/components/ui/loading" // Commented out
 
 interface BalanceData {
   available: Array<{ amount: number; currency: string }>
@@ -44,17 +43,21 @@ export default function SellerEarnings() {
   const [nextPayout, setNextPayout] = useState<NextPayout | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const { toast } = useToast()
+  // const { toast } = useToast()
   const { user } = useAuth()
+  const lastUidRef = useRef<string | null>(null)
 
-  const fetchData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+  const fetchEarningsData = async (isRefresh = false) => {
+    if (!user?.uid) return
 
     try {
-      setRefreshing(true)
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+
+      console.log('Fetching earnings data for:', user.uid)
 
       // Fetch seller balance from our custom API (based on buyer confirmations)
       const sellerBalanceRes = await fetch(`/api/seller/balance?userId=${user.uid}`)
@@ -75,8 +78,6 @@ export default function SellerEarnings() {
             month: Math.round((data.balance.monthEarnings || 0) * 100),
             currency: 'thb',
           })
-          
-          console.log('💰 Seller balance loaded:', data.balance)
         }
       } else {
         console.error('Failed to fetch seller balance:', await sellerBalanceRes.text())
@@ -91,25 +92,41 @@ export default function SellerEarnings() {
           const pending = payoutsData.payouts.find((p: NextPayout) => p.status === 'pending')
           if (pending) {
             setNextPayout(pending)
+          } else {
+            setNextPayout(null)
           }
+        } else {
+          setNextPayout(null)
         }
       }
     } catch (error) {
       console.error('Error fetching earnings data:', error)
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถโหลดข้อมูลรายได้ได้",
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "เกิดข้อผิดพลาด",
+      //   description: "ไม่สามารถโหลดข้อมูลรายได้ได้",
+      //   variant: "destructive",
+      // })
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (isRefresh) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    // Prevent double fetching and ensure user.uid is stable
+    if (user?.uid && user.uid !== lastUidRef.current) {
+      lastUidRef.current = user.uid
+      fetchEarningsData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
+  const handleRefresh = () => {
+    fetchEarningsData(true)
+  }
 
   const formatAmount = (amount: number) => {
     return (amount / 100).toFixed(2)
@@ -130,10 +147,14 @@ export default function SellerEarnings() {
     return diff
   }
 
-  if (loading) {
+  if (loading && !balance) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loading text="กำลังโหลดข้อมูลรายได้..." />
+        {/* <Loading text="กำลังโหลดข้อมูลรายได้..." /> */}
+        <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff9800]"></div>
+            <p className="text-gray-500 mt-4">กำลังโหลดข้อมูลรายได้...</p>
+        </div>
       </div>
     )
   }
@@ -152,14 +173,15 @@ export default function SellerEarnings() {
             ติดตามยอดเงินและสถิติการขายของคุณ
           </p>
         </div>
-        <Button 
-          onClick={fetchData} 
+        {/* Replaced Button with native button to avoid Slot/Ref issues */}
+        <button 
+          onClick={handleRefresh} 
           disabled={refreshing}
-          variant="outline"
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           รีเฟรช
-        </Button>
+        </button>
       </div>
 
       {/* Balance Cards */}

@@ -23,17 +23,10 @@ service cloud.firestore {
     
     // ✅ NEW: Check if user is banned
     function isNotBanned() {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      let isBanned = userData.banned == true || userData.accountStatus == 'banned';
-      
-      // Check if ban has expired
-      if (isBanned && userData.bannedUntil != null) {
-        let bannedUntil = userData.bannedUntil;
-        // If current time is past bannedUntil, user is no longer banned
-        return request.time > bannedUntil;
-      }
-      
-      return !isBanned;
+      // ถ้าไม่มี user document หรือไม่สามารถ get ได้ ให้ถือว่าไม่ banned
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('banned', false) != true &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('accountStatus', 'active') != 'banned');
     }
     
     // Users collection - อ่านได้ทุกคนที่ login, แก้ไขได้เฉพาะเจ้าของหรือ admin
@@ -55,34 +48,34 @@ service cloud.firestore {
     // Shops collection - อ่านได้ทุกคนหรือ admin, แก้ไขเฉพาะเจ้าของ (admin ใช้ API route)
     match /shops/{shopId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isNotBanned();
-      allow update: if isAuthenticated() && isNotBanned() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow delete: if false; // ใช้ API route
     }
 
     // Products collection - อ่านได้ทุกคน, แก้ไขได้เฉพาะเจ้าของร้าน
     match /products/{productId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isNotBanned();
-      allow update, delete: if isAuthenticated() && isNotBanned() && 
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
         resource.data.shopId == 'shop_' + request.auth.uid;
     }
 
-    // Games collections - อ่านได้ทุกคน, แก้ไขผ่าน API route เท่านั้น
+    // Games collections - อ่านได้ทุกคน, แก้ไขเฉพาะ admin
     match /games/{gameId} {
       allow read: if true;
-      allow write: if false; // ใช้ API route ที่เช็ค admin role
+      allow write: if isAdmin(); // อนุญาตให้ admin เขียนได้
     }
     
     match /gamesList/{gameId} {
       allow read: if true;
-      allow write: if false; // ใช้ API route
+      allow write: if isAdmin(); // อนุญาตให้ admin เขียนได้
     }
 
-    // Categories collection - อ่านได้ทุกคน, แก้ไขผ่าน API route
+    // Categories collection - อ่านได้ทุกคน, แก้ไขเฉพาะ admin
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if false; // ใช้ API route ที่เช็ค admin role
+      allow write: if isAdmin(); // อนุญาตให้ admin เขียนได้
     }
 
     // Orders collection - เฉพาะเจ้าของคำสั่งซื้อ, เจ้าของร้าน, หรือ admin

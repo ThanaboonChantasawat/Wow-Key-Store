@@ -1,7 +1,11 @@
 rules_version = '2';
 
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    
     // อนุญาตให้อ่านได้ทุกคน
     match /{allPaths=**} {
       allow read: if true;
@@ -9,8 +13,8 @@ service firebase.storage {
 
     // Shop logos - เฉพาะผู้ใช้ที่ login แล้วเท่านั้นที่อัปโหลดได้
     match /shop-logos/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null;
+      allow delete: if request.auth != null;
     }
 
     // Product images - เฉพาะผู้ใช้ที่ login แล้วเท่านั้นที่อัปโหลดได้
@@ -25,8 +29,9 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Game images - เฉพาะ admin
-    match /game-images/{gameId}/{fileName} {
+    // Game images - เฉพาะผู้ใช้ที่ login (ชั่วคราวอนุญาตทุกคนที่ login แล้ว)
+    // TODO: เปลี่ยนเป็นเช็ค admin role หลังจาก IAM permissions ตั้งค่าเสร็จ
+    match /game-images/{fileName} {
       allow write: if request.auth != null;
       allow delete: if request.auth != null;
     }
@@ -35,7 +40,8 @@ service firebase.storage {
     match /reopen-documents/{shopId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
-      allow delete: if request.auth != null; // ควรเช็คว่าเป็น admin หรือเจ้าของร้าน แต่เพื่อความง่ายให้ auth ก็พอสำหรับตอนนี้ หรือจะใช้ function isAdmin ก็ได้ถ้ามี
+      allow delete: if request.auth != null && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
     }
   }
 }

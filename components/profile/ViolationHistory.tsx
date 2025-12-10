@@ -65,8 +65,8 @@ export function ViolationHistoryContent() {
         })
       }
 
-      // Get violation history from admin activities
-      const response = await fetch(`/api/admin/activities?targetUserId=${user.uid}&limit=50`, {
+      // Get violation history from admin activities (ดึงเฉพาะ targetType='user' ที่เกี่ยวกับผู้ใช้คนนี้)
+      const response = await fetch(`/api/admin/activities?targetUserId=${user.uid}&targetType=user&limit=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -74,7 +74,11 @@ export function ViolationHistoryContent() {
 
       if (response.ok) {
         const data = await response.json()
-        setViolations(data.activities || [])
+        // กรองเฉพาะกิจกรรมที่เกี่ยวกับผู้ใช้นี้โดยตรง
+        const userViolations = (data.activities || []).filter((activity: ViolationRecord) => 
+          activity.targetType === 'user' && activity.targetId === user.uid
+        )
+        setViolations(userViolations)
       }
     } catch (error) {
       console.error('❌ Error fetching violation history:', error)
