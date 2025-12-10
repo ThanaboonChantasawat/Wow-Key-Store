@@ -198,8 +198,8 @@ export function SellerUpdateOrders() {
             setOrders(data.orders);
           } else {
             toast({
-              title: "เกิดข้อผิดพลาด",
-              description: "ไม่สามารถโหลดคำสั่งซื้อได้",
+              title: "ไม่สามารถโหลดคำสั่งซื้อได้",
+              description: "กรุณาลองใหม่อีกครั้ง",
               variant: "destructive",
             });
           }
@@ -337,16 +337,16 @@ export function SellerUpdateOrders() {
         setNotes("");
       } else {
         toast({
-          title: "เกิดข้อผิดพลาด",
-          description: data.error || "ไม่สามารถอัพเดตคำสั่งซื้อได้",
+          title: "ไม่สามารถอัพเดตได้",
+          description: data.error || "กรุณาลองใหม่อีกครั้ง",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error updating order:", error);
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้",
+        title: "ไม่สามารถอัพเดตได้",
+        description: "กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง",
         variant: "destructive",
       });
     } finally {

@@ -53,7 +53,7 @@ function CheckoutForm({ amount, productName, onSuccess, onCancel }: CheckoutForm
         setMessage(error.message || "เกิดข้อผิดพลาดในการชำระเงิน")
         toast({
           title: "การชำระเงินล้มเหลว",
-          description: error.message,
+          description: 'ไม่สามารถชำระเงินได้ กรุณาลองใหม่อีกครั้ง',
           variant: "destructive",
         })
       } else if (paymentIntent && paymentIntent.status === "succeeded") {

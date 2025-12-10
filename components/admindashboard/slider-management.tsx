@@ -8,6 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { Upload, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface SliderImage {
   id: string
@@ -24,6 +32,8 @@ export function SliderManagement() {
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [imageToDelete, setImageToDelete] = useState<{ id: string; url: string } | null>(null)
 
   useEffect(() => {
     fetchImages()
@@ -125,12 +135,17 @@ export function SliderManagement() {
     }
   }
 
-  const handleDelete = async (id: string, url: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบรูปนี้?')) return
+  const openDeleteDialog = (id: string, url: string) => {
+    setImageToDelete({ id, url })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!imageToDelete) return
 
     try {
       const token = await user?.getIdToken()
-      const response = await fetch(`/api/slider?id=${id}&url=${encodeURIComponent(url)}`, {
+      const response = await fetch(`/api/slider?id=${imageToDelete.id}&url=${encodeURIComponent(imageToDelete.url)}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -158,6 +173,9 @@ export function SliderManagement() {
         description: "ไม่สามารถลบรูปได้",
         variant: "destructive",
       })
+    } finally {
+      setDeleteDialogOpen(false)
+      setImageToDelete(null)
     }
   }
 
@@ -407,7 +425,7 @@ export function SliderManagement() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(image.id, image.url)}
+                    onClick={() => openDeleteDialog(image.id, image.url)}
                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -433,6 +451,26 @@ export function SliderManagement() {
           </ul>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบ</DialogTitle>
+            <DialogDescription>
+              คุณแน่ใจหรือไม่ที่จะลบรูปหน้าแรกนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              ลบ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     // Filter orders that belong to this shop
     const filteredOrders: any[] = []
     const userIds = new Set<string>()
+    const userEmails = new Set<string>()
     const productIds = new Set<string>()
 
     querySnapshot.docs.forEach(doc => {
@@ -86,6 +87,15 @@ export async function GET(request: NextRequest) {
         userIds.add(data.userId)
       }
 
+      if (data.email) {
+        try {
+          const emailStr = String(data.email).toLowerCase()
+          if (emailStr) userEmails.add(emailStr)
+        } catch (e) {
+          console.error('Error normalizing order email for user lookup:', e)
+        }
+      }
+
       // Collect product IDs
       if (shopSpecificData.items && Array.isArray(shopSpecificData.items)) {
         shopSpecificData.items.forEach((item: any) => {
@@ -102,7 +112,7 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // Fetch user profiles
+    // Fetch user profiles by ID
     const userMap = new Map<string, any>()
     if (userIds.size > 0) {
       const userIdArray = Array.from(userIds)
@@ -122,6 +132,40 @@ export async function GET(request: NextRequest) {
           })
         } catch (err) {
           console.error('Error fetching user chunk:', err)
+        }
+      }
+    }
+
+    // Fetch user profiles by email (for cases where UID changed, e.g. re-login with Google)
+    const userEmailMap = new Map<string, any>()
+    if (userEmails.size > 0) {
+      const emailArray = Array.from(userEmails)
+      const chunks: string[][] = []
+      for (let i = 0; i < emailArray.length; i += 10) {
+        chunks.push(emailArray.slice(i, i + 10))
+      }
+
+      for (const chunk of chunks) {
+        try {
+          const usersSnapshot = await adminDb.collection('users')
+            .where('email', 'in', chunk)
+            .get()
+
+          usersSnapshot.forEach(userDoc => {
+            const uData: any = userDoc.data() || {}
+            if (uData.email) {
+              try {
+                const key = String(uData.email).toLowerCase()
+                if (key && !userEmailMap.has(key)) {
+                  userEmailMap.set(key, uData)
+                }
+              } catch (e) {
+                console.error('Error normalizing user email for email map:', e)
+              }
+            }
+          })
+        } catch (err) {
+          console.error('Error fetching user-by-email chunk:', err)
         }
       }
     }
@@ -163,20 +207,76 @@ export async function GET(request: NextRequest) {
     }
     
     const orders = filteredOrders.map(({ docId, data, shopSpecificData }) => {
-      const userProfile = userMap.get(data.userId)
-      
-      // Debug user resolution
-      if (filteredOrders.length > 0 && filteredOrders[0].docId === docId) {
-        console.log(`[DEBUG] User Resolution for Order ${docId}:`, {
-           userId: data.userId,
-           dataUsername: data.username,
-           userProfileFound: !!userProfile,
-           userProfileName: userProfile?.displayName || userProfile?.username,
-           userProfileEmail: userProfile?.email,
-           finalUsername: (data.username && data.username !== 'ลูกค้าทั่วไป' && data.username !== 'ผู้ซื้อ') 
-             ? data.username 
-             : (userProfile?.displayName || userProfile?.username || userProfile?.email?.split('@')[0] || 'ผู้ซื้อ')
-        });
+      const uidProfile = userMap.get(data.userId) || null
+
+      let emailKey: string | null = null
+      // Only treat valid-looking emails (with @) as email keys
+      if (data.email && typeof data.email === 'string' && data.email.includes('@')) {
+        try {
+          emailKey = String(data.email).toLowerCase()
+        } catch (e) {
+          console.error('Error normalizing order email when resolving profile for order', docId, e)
+        }
+      }
+
+      const emailProfile = emailKey ? (userEmailMap.get(emailKey) || null) : null
+
+      const uidProfileFound = !!uidProfile
+      const emailProfileFound = !!emailProfile
+
+      const uidHasInfo = !!(uidProfile && (uidProfile.displayName || uidProfile.email))
+      const emailHasInfo = !!(emailProfile && (emailProfile.displayName || emailProfile.email))
+
+      let userProfile: any = null
+
+      // 1) If we have a good email-based profile for this order, use it.
+      if (emailHasInfo) {
+        userProfile = emailProfile
+      } else if (uidHasInfo) {
+        // 2) Otherwise, use UID profile ONLY if it matches this order's email
+        //    (when an email is present and valid). This prevents using the
+        //    seller's profile for a different buyer email.
+        let orderEmailStr = ''
+        let uidEmailStr = ''
+
+        if (data.email && typeof data.email === 'string' && data.email.includes('@')) {
+          orderEmailStr = data.email.toLowerCase()
+        }
+        if (uidProfile.email && typeof uidProfile.email === 'string') {
+          uidEmailStr = uidProfile.email.toLowerCase()
+        }
+
+        if (!orderEmailStr || !uidEmailStr || orderEmailStr === uidEmailStr) {
+          userProfile = uidProfile
+        }
+      } else if (emailProfile) {
+        // 3) Fallback: email profile without displayName/email
+        userProfile = emailProfile
+      } else if (uidProfile) {
+        // 4) Fallback: UID profile without displayName/email
+        userProfile = uidProfile
+      }
+
+      const profileDisplayName = userProfile?.displayName || null
+      const profileEmail = userProfile?.email || null
+
+      // Debug user resolution for all orders
+      if (!userProfile) {
+        console.warn(`[DEBUG] No user profile resolved for order ${docId}`, {
+          userId: data.userId || null,
+          orderEmail: data.email || null,
+          uidProfileFound,
+          emailProfileFound,
+        })
+      } else {
+        console.log(`[DEBUG] Buyer profile resolved for order ${docId}`, {
+          userId: data.userId || null,
+          orderEmail: data.email || null,
+          uidProfileFound,
+          emailProfileFound,
+          profileDisplayName,
+          profileEmail,
+        })
       }
       
       return {
@@ -252,15 +352,15 @@ export async function GET(request: NextRequest) {
         paidAt: data.paidAt?.toDate?.()?.toISOString() || data.paidAt || null,
         buyerConfirmed: data.buyerConfirmed || false,
         sellerNotes: data.sellerNotes || '',
-        // Add user info from profile if not in order
-        // Prioritize userProfile name if data.username is generic
-        username: (data.username && data.username !== 'ลูกค้าทั่วไป' && data.username !== 'ผู้ซื้อ') 
-          ? data.username 
-          : (userProfile?.displayName || userProfile?.username || userProfile?.email?.split('@')[0] || 'ผู้ซื้อ'),
-        email: (data.email && data.email !== '-') 
-          ? data.email 
-          : (userProfile?.email || ''),
+        // Add buyer info - profile comes from users collection (by UID or email fallback)
+        // Username: displayName from users; fallback to generic label only
+        buyerUsername: profileDisplayName || 'ผู้ซื้อ',
+        // Email: email from users; fallback to '-' if missing
+        buyerEmail: profileEmail || '-',
         userImage: userProfile?.photoURL || userProfile?.image || userProfile?.avatarUrl || null,
+        // Legacy fields for backward compatibility (same values)
+        username: profileDisplayName || 'ผู้ซื้อ',
+        email: profileEmail || '-',
       }
     })
     

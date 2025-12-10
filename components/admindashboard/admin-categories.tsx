@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getAllCategories, createCategory, updateCategory, deleteCategory, type Category } from "@/lib/category-service"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -22,6 +30,10 @@ export function AdminCategories() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 8
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     loadCategories()
@@ -118,12 +130,17 @@ export function AdminCategories() {
     setMessage(null)
   }
 
-  const handleDelete = async (categorySlug: string) => {
-    if (!confirm("คุณต้องการลบหมวดหมู่นี้หรือไม่?")) return
+  const openDeleteDialog = (categorySlug: string) => {
+    setCategoryToDelete(categorySlug)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!categoryToDelete) return
     
     try {
       setLoading(true)
-      await deleteCategory(categorySlug)
+      await deleteCategory(categoryToDelete)
       setMessage({ type: "success", text: "ลบหมวดหมู่สำเร็จ" })
       await loadCategories()
     } catch (error) {
@@ -131,6 +148,8 @@ export function AdminCategories() {
       setMessage({ type: "error", text: "ลบไม่สำเร็จ" })
     } finally {
       setLoading(false)
+      setDeleteDialogOpen(false)
+      setCategoryToDelete(null)
     }
   }
 
@@ -229,7 +248,7 @@ export function AdminCategories() {
                               <Pencil className="h-4 w-4 text-blue-600" />
                             </button>
                             <button
-                              onClick={() => handleDelete(category.slug)}
+                              onClick={() => openDeleteDialog(category.slug)}
                               className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                               disabled={loading}
                             >
@@ -468,6 +487,26 @@ export function AdminCategories() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบหมวดหมู่</DialogTitle>
+            <DialogDescription>
+              คุณแน่ใจหรือไม่ที่จะลบหมวดหมู่นี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              ลบ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -119,7 +119,7 @@ export default function SellerPayouts() {
         console.error('Failed to fetch balance:', errorData)
         toast({
           title: "ไม่สามารถโหลดยอดเงินได้",
-          description: errorData.error || "กรุณาลองใหม่อีกครั้ง",
+          description: "กรุณาลองใหม่อีกครั้ง หรือติดต่อทีมงาน",
           variant: "destructive",
         })
       }
@@ -136,8 +136,8 @@ export default function SellerPayouts() {
     } catch (error) {
       console.error('Error fetching payouts:', error)
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+        title: "ไม่สามารถโหลดข้อมูลได้",
+        description: "กรุณารีเฟรชหน้าเว็บและลองใหม่อีกครั้ง",
         variant: "destructive",
       })
     } finally {

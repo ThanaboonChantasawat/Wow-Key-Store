@@ -124,7 +124,7 @@ export function ReviewList({
       toast({
         variant: 'destructive',
         title: 'เกิดข้อผิดพลาด',
-        description: error.message || 'ไม่สามารถลบรีวิวได้'
+        description: 'ไม่สามารถลบรีวิวได้ กรุณาลองใหม่อีกครั้ง'
       })
     } finally {
       setDeleteDialogOpen(false)

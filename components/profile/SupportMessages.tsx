@@ -176,7 +176,7 @@ export function SupportMessagesContent() {
         const data = await response.json()
         toast({
           title: "❌ เกิดข้อผิดพลาด",
-          description: data.error || 'ไม่สามารถส่งข้อความได้',
+          description: 'ไม่สามารถส่งข้อความได้ กรุณาลองใหม่อีกครั้ง',
           variant: "destructive",
         })
       }

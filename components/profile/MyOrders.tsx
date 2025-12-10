@@ -712,7 +712,7 @@ export function MyOrdersContent() {
         // Refresh orders
         await fetchOrders()
       } else {
-        throw new Error(data.error || 'ไม่สามารถยกเลิกคำสั่งซื้อได้')
+        throw new Error('ไม่สามารถยกเลิกคำสั่งซื้อได้')
       }
     } catch (err: any) {
       console.error('Error cancelling order:', err)
@@ -866,7 +866,7 @@ export function MyOrdersContent() {
           closeOrderDetail()
         }
       } else {
-        throw new Error(data.error || 'ไม่สามารถยืนยันรับสินค้าได้')
+        throw new Error('ไม่สามารถยืนยันรับสินค้าได้')
       }
     } catch (err: any) {
       console.error('Error confirming receipt:', err)

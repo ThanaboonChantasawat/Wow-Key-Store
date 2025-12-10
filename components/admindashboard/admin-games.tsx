@@ -15,6 +15,14 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { storage, auth } from "@/components/firebase-config"
 import { useAuth } from "@/components/auth-context"
 import Image from "next/image"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Helper function to delete old image from Firebase Storage
 const deleteImageFromStorage = async (imageUrl: string) => {
@@ -66,6 +74,10 @@ export function AdminGames() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [gameToDelete, setGameToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -249,12 +261,17 @@ export function AdminGames() {
     setShowModal(true)
   }
 
-  const handleDelete = async (gameId: string) => {
-    if (!confirm("คุณต้องการลบเกมนี้หรือไม่?")) return
+  const openDeleteDialog = (gameId: string) => {
+    setGameToDelete(gameId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!gameToDelete) return
     
     try {
       setLoading(true)
-      await deleteGame(gameId)
+      await deleteGame(gameToDelete)
       setMessage({ type: "success", text: "ลบเกมสำเร็จ" })
       await loadData()
     } catch (error) {
@@ -262,6 +279,8 @@ export function AdminGames() {
       setMessage({ type: "error", text: "ลบไม่สำเร็จ" })
     } finally {
       setLoading(false)
+      setDeleteDialogOpen(false)
+      setGameToDelete(null)
     }
   }
 
@@ -511,7 +530,7 @@ export function AdminGames() {
                           <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
                         </button>
                         <button
-                          onClick={() => handleDelete(game.id)}
+                          onClick={() => openDeleteDialog(game.id)}
                           className="p-1.5 sm:p-2 hover:bg-red-50 rounded-lg transition-colors"
                           disabled={loading}
                           title="ลบ"
@@ -832,6 +851,26 @@ export function AdminGames() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการลบเกม</DialogTitle>
+            <DialogDescription>
+              คุณแน่ใจหรือไม่ที่จะลบเกมนี้? การกระทำนี้ไม่สามารถย้อนกลับได้
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              ลบ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
 
     </div>

@@ -171,8 +171,8 @@ export function BankAccountSettings({ shopId }: BankAccountProps) {
       })
     } catch (error: any) {
       toast({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message,
+        title: "บันทึกไม่สำเร็จ",
+        description: "กรุณาลองใหม่อีกครั้ง หรือติดต่อทีมงาน",
         variant: "destructive",
       })
     } finally {

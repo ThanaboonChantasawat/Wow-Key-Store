@@ -110,7 +110,7 @@ export function ReportProblemDialog({
       console.error('Error reporting problem:', error)
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: error.message,
+        description: 'ไม่สามารถส่งรายงานปัญหาได้ กรุณาลองใหม่อีกครั้ง',
         variant: "destructive"
       })
     } finally {

@@ -126,7 +126,7 @@ export function OrderChatDialog({
       console.error('Error sending message:', error)
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: error.message,
+        description: 'ไม่สามารถส่งข้อความได้ กรุณาลองใหม่อีกครั้ง',
         variant: "destructive"
       })
     } finally {

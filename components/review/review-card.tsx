@@ -94,7 +94,7 @@ export function ReviewCard({ review, currentUserId, onDelete }: ReviewCardProps)
       toast({
         variant: 'destructive',
         title: 'เกิดข้อผิดพลาด',
-        description: error.message || 'ไม่สามารถส่งรายงานได้',
+        description: 'ไม่สามารถส่งรายงานได้ กรุณาลองใหม่อีกครั้ง',
       })
     } finally {
       setIsSubmitting(false)
