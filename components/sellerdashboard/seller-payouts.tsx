@@ -213,7 +213,7 @@ export default function SellerPayouts() {
         
         toast({
           title: "✅ ขอถอนเงินสำเร็จ",
-          description: `กำลังโอนเงิน ฿${amount.toFixed(2)} เข้า${accountInfo}`,
+          description: `กำลังถอนเงิน ฿${amount.toFixed(2)} เข้า${accountInfo}`,
         })
         setWithdrawDialogOpen(false)
         setWithdrawAmount("")
@@ -324,15 +324,15 @@ export default function SellerPayouts() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'paid':
-        return 'โอนเงินเข้าบัญชีธนาคารเรียบร้อยแล้ว'
+        return 'ถอนเงินเข้าบัญชีธนาคารเรียบร้อยแล้ว'
       case 'pending':
-        return 'รอดำเนินการโอนเงิน'
+        return 'รอดำเนินการถอนเงิน'
       case 'in_transit':
-        return 'กำลังโอนเงินเข้าบัญชีธนาคาร'
+        return 'กำลังถอนเงินเข้าบัญชีธนาคาร'
       case 'canceled':
-        return 'การโอนเงินถูกยกเลิก'
+        return 'การถอนเงินถูกยกเลิก'
       case 'failed':
-        return 'การโอนเงินล้มเหลว กรุณาตรวจสอบข้อมูลธนาคาร'
+        return 'การถอนเงินล้มเหลว กรุณาตรวจสอบข้อมูลธนาคาร'
       default:
         return status
     }
@@ -341,7 +341,7 @@ export default function SellerPayouts() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loading text="กำลังโหลดข้อมูลการโอนเงิน..." />
+        <Loading text="กำลังโหลดข้อมูลการถอนเงิน..." />
       </div>
     )
   }
@@ -358,7 +358,7 @@ export default function SellerPayouts() {
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">💸 การโอนเงิน</h2>
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">💸 การถอนเงิน</h2>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           จัดการการถอนเงินและตรวจสอบประวัติการโอน (อัปเดตอัตโนมัติทุก 30 วินาที)
         </p>
@@ -473,15 +473,15 @@ export default function SellerPayouts() {
       {/* Payouts List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">ประวัติการโอนเงิน</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">ประวัติการถอนเงิน</CardTitle>
         </CardHeader>
         <CardContent>
           {payouts.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
               <ArrowDownToLine className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm sm:text-base">ยังไม่มีรายการโอนเงิน</p>
+              <p className="text-muted-foreground text-sm sm:text-base">ยังไม่มีรายการถอนเงิน</p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                ระบบจะโอนเงินเข้าบัญชีธนาคารของคุณตามรอบที่กำหนด
+                ระบบจะถอนเงินเข้าบัญชีธนาคารของคุณตามรอบที่กำหนด
               </p>
             </div>
           ) : (
@@ -577,7 +577,7 @@ export default function SellerPayouts() {
               <ul className="space-y-1 text-blue-700">
                 <li>• เงินจากคำสั่งซื้อที่<strong>ผู้ซื้อยืนยันรับสินค้าแล้ว</strong>จึงจะถอนได้</li>
                 <li>• เงินที่ถอนจะโอนเข้าบัญชีธนาคารที่คุณตั้งค่าไว้</li>
-                <li>• ระบบจะดำเนินการโอนเงินตามรอบที่กำหนด (2-3 วันทำการ)</li>
+                <li>• ระบบจะดำเนินการถอนเงินตามรอบที่กำหนด (2-3 วันทำการ)</li>
                 <li>• คุณสามารถตรวจสอบข้อมูลบัญชีธนาคารได้ในหน้าตั้งค่าร้านค้า</li>
               </ul>
             </div>
@@ -696,7 +696,7 @@ export default function SellerPayouts() {
             /* Step 2: Enter Amount */
             <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
               <div className="bg-accent/50 border rounded-lg p-2.5 sm:p-3 mb-3 sm:mb-4">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">จะโอนเงินเข้า:</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">จะถอนเงินเข้า:</p>
                 {(() => {
                   const selectedAccount = bankAccounts.find(acc => acc.id === selectedAccountId)
                   if (!selectedAccount) return null
