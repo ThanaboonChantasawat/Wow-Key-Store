@@ -24,6 +24,12 @@ export async function createShop(
   }
 ): Promise<string> {
   try {
+    // ตรวจสอบชื่อร้านค้าซ้ำก่อนสร้าง
+    const nameExists = await checkShopNameExists(shopData.shopName);
+    if (nameExists) {
+      throw new Error('ชื่อร้านค้านี้ถูกใช้งานแล้ว กรุณาเลือกชื่ออื่น');
+    }
+
     const shopId = `shop_${ownerId}`;
     const shopRef = adminDb.collection("shops").doc(shopId);
     
@@ -188,6 +194,14 @@ export async function updateShop(
   shopData: Partial<Omit<Shop, 'shopId' | 'ownerId' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   try {
+    // ถ้ามีการเปลี่ยนชื่อร้าน ให้ตรวจสอบชื่อซ้ำ
+    if (shopData.shopName) {
+      const nameExists = await checkShopNameExists(shopData.shopName, shopId);
+      if (nameExists) {
+        throw new Error('ชื่อร้านค้านี้ถูกใช้งานแล้ว กรุณาเลือกชื่ออื่น');
+      }
+    }
+
     const shopRef = adminDb.collection("shops").doc(shopId);
     await shopRef.update({
       ...shopData,
@@ -614,5 +628,32 @@ export async function updateShopSalesStats(shopId: string): Promise<void> {
     throw error;
   }
 }
+
+// Check if shop name already exists
+export async function checkShopNameExists(shopName: string, excludeShopId?: string): Promise<boolean> {
+  try {
+    const normalizedName = shopName.toLowerCase().trim();
+    const shopsSnapshot = await adminDb
+      .collection("shops")
+      .get();
+    
+    for (const doc of shopsSnapshot.docs) {
+      const data = doc.data();
+      if (data.shopName && data.shopName.toLowerCase().trim() === normalizedName) {
+        // ถ้ามี excludeShopId (สำหรับการแก้ไข) ให้ข้ามร้านนั้น
+        if (excludeShopId && doc.id === excludeShopId) {
+          continue;
+        }
+        return true; // พบชื่อซ้ำ
+      }
+    }
+    
+    return false; // ไม่มีชื่อซ้ำ
+  } catch (error) {
+    console.error("Error checking shop name:", error);
+    throw error;
+  }
+}
+
 
 

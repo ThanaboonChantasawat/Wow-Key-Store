@@ -105,6 +105,14 @@ export async function updateUserProfile(
   updates: Partial<Omit<UserProfile, 'createdAt' | 'lastLoginAt'>>
 ): Promise<void> {
   try {
+    // ถ้ามีการเปลี่ยนชื่อผู้ใช้ ให้ตรวจสอบชื่อซ้ำ
+    if (updates.displayName) {
+      const usernameExists = await checkUsernameExists(updates.displayName, userId);
+      if (usernameExists) {
+        throw new Error('ชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาเลือกชื่ออื่น');
+      }
+    }
+
     const userRef = adminDb.collection("users").doc(userId);
     await userRef.update({
       ...updates,
@@ -318,6 +326,7 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
       const userDoc = snapshot.docs[0];
       const data = userDoc.data();
       
+      
       return {
         displayName: data.displayName,
         email: data.email,
@@ -347,3 +356,30 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
     throw error;
   }
 }
+
+// Check if username (displayName) already exists
+export async function checkUsernameExists(username: string, excludeUserId?: string): Promise<boolean> {
+  try {
+    const normalizedUsername = username.toLowerCase().trim();
+    const usersSnapshot = await adminDb
+      .collection("users")
+      .get();
+    
+    for (const doc of usersSnapshot.docs) {
+      const data = doc.data();
+      if (data.displayName && data.displayName.toLowerCase().trim() === normalizedUsername) {
+        // ถ้ามี excludeUserId (สำหรับการแก้ไข) ให้ข้ามผู้ใช้นั้น
+        if (excludeUserId && doc.id === excludeUserId) {
+          continue;
+        }
+        return true; // พบชื่อซ้ำ
+      }
+    }
+    
+    return false; // ไม่มีชื่อซ้ำ
+  } catch (error) {
+    console.error("Error checking username:", error);
+    throw error;
+  }
+}
+
