@@ -165,6 +165,20 @@ export async function GET(request: NextRequest) {
     const orders = filteredOrders.map(({ docId, data, shopSpecificData }) => {
       const userProfile = userMap.get(data.userId)
       
+      // Debug user resolution
+      if (filteredOrders.length > 0 && filteredOrders[0].docId === docId) {
+        console.log(`[DEBUG] User Resolution for Order ${docId}:`, {
+           userId: data.userId,
+           dataUsername: data.username,
+           userProfileFound: !!userProfile,
+           userProfileName: userProfile?.displayName || userProfile?.username,
+           userProfileEmail: userProfile?.email,
+           finalUsername: (data.username && data.username !== 'ลูกค้าทั่วไป' && data.username !== 'ผู้ซื้อ') 
+             ? data.username 
+             : (userProfile?.displayName || userProfile?.username || userProfile?.email?.split('@')[0] || 'ผู้ซื้อ')
+        });
+      }
+      
       return {
         id: docId,
         userId: data.userId,
@@ -196,12 +210,40 @@ export async function GET(request: NextRequest) {
             finalName = 'สินค้าไม่ระบุชื่อ';
           }
 
+          // Determine image
+          let finalImage = item.image || item.productImage || item.coverImage;
+          
+          // If no image on item, try to find it in product data
+          if (!finalImage && productData) {
+            if (productData.images && Array.isArray(productData.images) && productData.images.length > 0) {
+              finalImage = productData.images[0];
+            } else if (productData.image) {
+              finalImage = productData.image;
+            } else if (productData.coverImage) {
+              finalImage = productData.coverImage;
+            }
+          }
+          
+          // Debug log for first item of first order
+          if (filteredOrders.length > 0 && filteredOrders[0].docId === docId && item === shopSpecificData.items[0]) {
+             console.log(`[DEBUG] Item Image Resolution:`, {
+                itemId: item.id,
+                itemName: finalName,
+                hasItemImage: !!item.image,
+                hasProductData: !!productData,
+                finalImageValue: finalImage || 'NULL/UNDEFINED',
+                productImages: productData?.images || 'N/A',
+                productImage: productData?.image || 'N/A',
+                productCover: productData?.coverImage || 'N/A'
+             });
+          }
+
           return {
             ...item,
             productName: finalName,
             price: Number(item.price) || 0,
             quantity: Number(item.quantity) || 1,
-            image: item.image || productData?.images?.[0] || productData?.image || null
+            image: finalImage || null
           }
         }),
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
@@ -211,9 +253,14 @@ export async function GET(request: NextRequest) {
         buyerConfirmed: data.buyerConfirmed || false,
         sellerNotes: data.sellerNotes || '',
         // Add user info from profile if not in order
-        username: data.username || userProfile?.displayName || userProfile?.username || 'ลูกค้าทั่วไป',
-        email: data.email || userProfile?.email || '-',
-        userImage: userProfile?.photoURL || userProfile?.image || null,
+        // Prioritize userProfile name if data.username is generic
+        username: (data.username && data.username !== 'ลูกค้าทั่วไป' && data.username !== 'ผู้ซื้อ') 
+          ? data.username 
+          : (userProfile?.displayName || userProfile?.username || userProfile?.email?.split('@')[0] || 'ผู้ซื้อ'),
+        email: (data.email && data.email !== '-') 
+          ? data.email 
+          : (userProfile?.email || ''),
+        userImage: userProfile?.photoURL || userProfile?.image || userProfile?.avatarUrl || null,
       }
     })
     

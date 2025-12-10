@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -594,9 +595,20 @@ export default function SellerSalesHistory() {
                   }}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-white transition-colors">
-                      <Package className="w-6 h-6 text-gray-600" />
-                    </div>
+                    {order.items[0]?.image ? (
+                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white flex-shrink-0">
+                        <Image
+                          src={order.items[0].image}
+                          alt={order.items[0]?.productName || order.items[0]?.name || 'สินค้า'}
+                          fill
+                          className="object-cover p-1 rounded-md"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-2 border-gray-300 flex-shrink-0">
+                        <Package className="w-10 h-10 text-gray-400" />
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-gray-900">
@@ -757,7 +769,7 @@ export default function SellerSalesHistory() {
                 {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
                   <Button 
                     variant="default"
-                    onClick={() => handleOpenUpdateForm(selectedOrder)}
+                    onClick={handleOpenUpdateForm}
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     อัพเดตสถานะ
@@ -1009,17 +1021,6 @@ export default function SellerSalesHistory() {
                   />
                 </div>
               </div>
-
-              {/* Warning */}
-              {deliveredItems.some(i => i.password) && (
-                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div className="text-sm text-yellow-800">
-                    <p className="font-semibold">ข้อควรระวัง</p>
-                    <p>เมื่อกรอก Password สถานะจะเปลี่ยนเป็น &quot;เสร็จสมบูรณ์&quot; ทันที</p>
-                  </div>
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex justify-between gap-2 pt-4 border-t">

@@ -49,7 +49,7 @@ interface OrderItem {
   name: string;
   price: number;
   quantity: number;
-  image?: string;
+  image?: string | null;
 }
 
 interface DeliveredItem {
@@ -194,6 +194,7 @@ export function SellerUpdateOrders() {
           const data = await response.json();
 
           if (data.success) {
+            console.log("Orders received in frontend:", data.orders);
             setOrders(data.orders);
           } else {
             toast({
@@ -255,8 +256,12 @@ export function SellerUpdateOrders() {
       // If legacy data exists, populate the first item
       // แต่ไม่เอาค่า default จาก API (-) หรือ (ลูกค้าทั่วไป)
       if (items.length > 0 && (order.email || order.username || order.password)) {
-        items[0].email = (order.email && order.email !== '-') ? order.email : '';
-        items[0].username = (order.username && order.username !== 'ลูกค้าทั่วไป' && order.username !== 'ผู้ซื้อ') ? order.username : '';
+        // ตรวจสอบค่า default อย่างเข้มงวด
+        const isDefaultEmail = !order.email || order.email === '-' || order.email === 'undefined';
+        const isDefaultUsername = !order.username || order.username === 'ลูกค้าทั่วไป' || order.username === 'ผู้ซื้อ' || order.username === 'undefined';
+        
+        items[0].email = isDefaultEmail ? '' : order.email!;
+        items[0].username = isDefaultUsername ? '' : order.username!;
         items[0].password = order.password || '';
         items[0].additionalInfo = order.additionalInfo || '';
       }
@@ -550,20 +555,34 @@ export function SellerUpdateOrders() {
                         {(Number(order.sellerAmount) || 0).toLocaleString()}
                       </p>
                       {/* แสดงข้อมูลผู้ซื้อ */}
-                      <div className="flex items-center gap-2 mt-2">
-                        {order.userImage && (
-                          <div className="relative w-6 h-6 rounded-full overflow-hidden">
+                      <div className="flex items-center gap-3 mt-3 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                          {order.userImage ? (
                             <Image
                               src={order.userImage}
                               alt={order.username || 'ผู้ซื้อ'}
                               fill
                               className="object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
                             />
-                          </div>
-                        )}
-                        <p className="text-gray-700">
-                          ผู้ซื้อ: <span className="font-medium">{order.username || 'ผู้ซื้อ'}</span>
-                        </p>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-orange-100 text-orange-500 font-bold text-xs">
+                              {(order.username && order.username !== 'ผู้ซื้อ' ? order.username : (order.email || '?')).charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {(!order.username || order.username === 'ลูกค้าทั่วไป' || order.username === 'ผู้ซื้อ') 
+                              ? (order.email || 'ผู้ซื้อ') 
+                              : order.username}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.email && order.email !== '-' ? order.email : 'ไม่ระบุอีเมล'}
+                          </p>
+                        </div>
                       </div>
                       {(order.email || order.password) && (
                         <p className="text-green-600 font-medium">
@@ -599,21 +618,21 @@ export function SellerUpdateOrders() {
                       key={idx}
                       className="flex items-center gap-3 text-sm text-gray-600 py-2"
                     >
-                      {/* รูปภาพสินค้า */}
-                      <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
-                        {item.image ? (
+                      {/* รูปภาพสินค้า - คัดลอกมาจาก seller-products.tsx */}
+                      {item.image ? (
+                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white flex-shrink-0">
                           <Image
                             src={item.image}
                             alt={item.name}
                             fill
-                            className="object-cover"
+                            className="object-cover p-1 rounded-md"
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-2 border-gray-300 flex-shrink-0">
+                          <Package className="w-10 h-10 text-gray-400" />
+                        </div>
+                      )}
                       <div className="flex-1 flex justify-between items-center">
                         <span>
                           {item.name} x{item.quantity || 1}
@@ -805,14 +824,9 @@ export function SellerUpdateOrders() {
 
                         {/* Delivered Items Inputs */}
                         <div className="space-y-6">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-base font-semibold">
-                              ข้อมูลบัญชีที่จัดส่ง ({deliveredItems.length} รายการ)
-                            </Label>
-                            <p className="text-sm text-orange-600">
-                              ⚠️ สำคัญ! โปรดปิด 2FA(การยืนยันตัวตน 2 ชั้น) ด้วยหากมี
-                            </p>
-                          </div>
+                          <Label className="text-base font-semibold">
+                            ข้อมูลบัญชีที่จัดส่ง ({deliveredItems.length} รายการ)
+                          </Label>
                           
                           {deliveredItems.map((item, index) => (
                             <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
@@ -989,11 +1003,6 @@ export function SellerUpdateOrders() {
               <p className="text-gray-700">
                 คุณต้องการส่งข้อมูลรหัสเกมไปยังลูกค้าใช่หรือไม่?
               </p>
-              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-                <p className="text-yellow-800 text-xs font-medium">
-                  ⚠️ เมื่อส่งรหัสแล้ว รอลูกค้ายืนยันการรับสินค้า จึงจะได้รับเงิน (ไม่สามารถยกเลิกได้)
-                </p>
-              </div>
               <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-60 overflow-y-auto">
                 <p className="font-semibold text-gray-900 mb-2">รายการที่จัดส่ง ({deliveredItems.length}):</p>
                 {deliveredItems.map((item, idx) => (
