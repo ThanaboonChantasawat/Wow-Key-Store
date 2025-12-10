@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +49,7 @@ interface OrderItem {
   name: string;
   price: number;
   quantity: number;
+  image?: string;
 }
 
 interface DeliveredItem {
@@ -81,6 +83,8 @@ interface Order {
   updatedAt: string;
   gameCodeDeliveredAt?: string;
   deliveredItems?: DeliveredItem[];
+  buyerConfirmed?: boolean;
+  userImage?: string;
 }
 
 export function SellerUpdateOrders() {
@@ -249,11 +253,12 @@ export function SellerUpdateOrders() {
       });
       
       // If legacy data exists, populate the first item
+      // แต่ไม่เอาค่า default จาก API (-) หรือ (ลูกค้าทั่วไป)
       if (items.length > 0 && (order.email || order.username || order.password)) {
-        items[0].email = order.email;
-        items[0].username = order.username;
-        items[0].password = order.password;
-        items[0].additionalInfo = order.additionalInfo;
+        items[0].email = (order.email && order.email !== '-') ? order.email : '';
+        items[0].username = (order.username && order.username !== 'ลูกค้าทั่วไป' && order.username !== 'ผู้ซื้อ') ? order.username : '';
+        items[0].password = order.password || '';
+        items[0].additionalInfo = order.additionalInfo || '';
       }
       
       setDeliveredItems(items);
@@ -544,6 +549,22 @@ export function SellerUpdateOrders() {
                         ยอดที่ได้รับ: ฿
                         {(Number(order.sellerAmount) || 0).toLocaleString()}
                       </p>
+                      {/* แสดงข้อมูลผู้ซื้อ */}
+                      <div className="flex items-center gap-2 mt-2">
+                        {order.userImage && (
+                          <div className="relative w-6 h-6 rounded-full overflow-hidden">
+                            <Image
+                              src={order.userImage}
+                              alt={order.username || 'ผู้ซื้อ'}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        <p className="text-gray-700">
+                          ผู้ซื้อ: <span className="font-medium">{order.username || 'ผู้ซื้อ'}</span>
+                        </p>
+                      </div>
                       {(order.email || order.password) && (
                         <p className="text-green-600 font-medium">
                           ✓ ส่งข้อมูลบัญชีแล้ว (ไม่สามารถยกเลิกได้)
@@ -576,18 +597,35 @@ export function SellerUpdateOrders() {
                   {order.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex justify-between text-sm text-gray-600 py-1"
+                      className="flex items-center gap-3 text-sm text-gray-600 py-2"
                     >
-                      <span>
-                        {item.name} x{item.quantity || 1}
-                      </span>
-                      <span>
-                        ฿
-                        {(
-                          (Number(item.price) || 0) *
-                          (Number(item.quantity) || 1)
-                        ).toLocaleString()}
-                      </span>
+                      {/* รูปภาพสินค้า */}
+                      <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                        {item.image ? (
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-6 h-6 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 flex justify-between items-center">
+                        <span>
+                          {item.name} x{item.quantity || 1}
+                        </span>
+                        <span>
+                          ฿
+                          {(
+                            (Number(item.price) || 0) *
+                            (Number(item.quantity) || 1)
+                          ).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

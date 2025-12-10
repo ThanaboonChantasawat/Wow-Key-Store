@@ -274,6 +274,11 @@ export default function SellerPayouts() {
   }
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
     fetchPayouts()
     
     // Auto-refresh every 30 seconds
@@ -282,7 +287,7 @@ export default function SellerPayouts() {
     }, 30000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
 
   const formatAmount = (amount: number) => {
     return (amount / 100).toFixed(2)

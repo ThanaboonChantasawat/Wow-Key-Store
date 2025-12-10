@@ -483,7 +483,7 @@ export function CartContent() {
                         />
 
                         {/* Product Image */}
-                        <Link href={`/product/${item.gameId}`} className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity">
+                        <Link href={`/products/${item.id}`} className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity">
                           <Image
                             src={item.image}
                             alt={item.name}
@@ -494,7 +494,7 @@ export function CartContent() {
 
                         {/* Product Info */}
                         <div className="flex-1 min-w-0">
-                          <Link href={`/product/${item.gameId}`} className="hover:text-[#ff9800] transition-colors">
+                          <Link href={`/products/${item.id}`} className="hover:text-[#ff9800] transition-colors">
                             <h3 className="text-lg font-semibold text-[#1e1e1e] mb-1 truncate">
                               {item.name}
                             </h3>
