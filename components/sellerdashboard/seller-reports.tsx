@@ -181,7 +181,6 @@ export function SellerReports() {
     setResponseMessage("")
     setNewCode("")
     setNewCodes({})
-          paginatedReports.map((report) => (
     setOrderData(null)
     
     if (action === 'new_code') {
