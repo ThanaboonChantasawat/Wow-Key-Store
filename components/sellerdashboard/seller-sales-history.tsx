@@ -74,6 +74,9 @@ interface Order {
   userId: string
   username?: string
   email?: string
+  buyerUsername?: string
+  buyerEmail?: string
+  userImage?: string
   items: OrderItem[]
   totalAmount: number
   status: string
@@ -623,7 +626,9 @@ export default function SellerSalesHistory() {
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <UserIcon className="w-3 h-3" />
-                          {order.username || order.email || 'ไม่ระบุตัวตน'}
+                          {(!order.buyerUsername || order.buyerUsername === 'ลูกค้าทั่วไป' || order.buyerUsername === 'ผู้ซื้อ') 
+                            ? (order.buyerEmail || order.userId || 'ผู้ซื้อ') 
+                            : order.buyerUsername}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -707,11 +712,15 @@ export default function SellerSalesHistory() {
                 <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-lg">
                   <div>
                     <p className="text-muted-foreground">ชื่อผู้ใช้</p>
-                    <p className="font-medium">{selectedOrder.username || 'ลูกค้าทั่วไป'}</p>
+                    <p className="font-medium">
+                      {(!selectedOrder.buyerUsername || selectedOrder.buyerUsername === 'ลูกค้าทั่วไป' || selectedOrder.buyerUsername === 'ผู้ซื้อ') 
+                        ? (selectedOrder.buyerEmail || selectedOrder.userId || 'ผู้ซื้อ') 
+                        : selectedOrder.buyerUsername}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">อีเมล</p>
-                    <p className="font-medium">{selectedOrder.email || '-'}</p>
+                    <p className="font-medium">{selectedOrder.buyerEmail || selectedOrder.email || '-'}</p>
                   </div>
                 </div>
               </div>

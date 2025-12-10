@@ -106,21 +106,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Select orders to fulfill the requested amount (not all available orders)
+    // Select orders to fulfill the requested amount
+    // Important: We select EXACT amount, and if there's an order larger than needed,
+    // we'll mark it as PARTIALLY paid using a new field
     const ordersToPayout: any[] = []
     let selectedAmount = 0
+    let lastOrderPartialAmount = 0 // Track if last order is partially paid
 
     for (const order of allAvailableOrders) {
       if (selectedAmount >= amount) break
       
-      ordersToPayout.push(order)
-      selectedAmount += order.amount
+      const remainingNeeded = amount - selectedAmount
+      
+      if (order.amount <= remainingNeeded) {
+        // Use full order
+        ordersToPayout.push({
+          ...order,
+          usedAmount: order.amount,
+          isPartial: false
+        })
+        selectedAmount += order.amount
+      } else {
+        // Use partial amount from this order
+        ordersToPayout.push({
+          ...order,
+          usedAmount: remainingNeeded,
+          isPartial: true
+        })
+        selectedAmount += remainingNeeded
+        lastOrderPartialAmount = remainingNeeded
+        break
+      }
     }
 
     console.log('📦 Selected orders for payout:', {
       selectedOrders: ordersToPayout.length,
       selectedAmount,
       requestedAmount: amount,
+      hasPartialOrder: ordersToPayout.some(o => o.isPartial)
     })
 
     // Create payout to seller's bank account
@@ -191,19 +214,38 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Mark orders as paid out
+      // Mark orders as paid out (or partially paid out)
       const batch = adminDb.batch()
       ordersToPayout.forEach((order: any) => {
         const orderRef = adminDb.collection('orders').doc(order.id)
-        batch.update(orderRef, {
-          payoutStatus: 'paid',
-          payoutId: payoutRef.id,
-          payoutDate: admin.firestore.FieldValue.serverTimestamp(),
-        })
+        
+        if (order.isPartial) {
+          // This order is partially paid - track how much has been paid
+          const currentPaidAmount = Number(order.paidOutAmount) || 0
+          const newPaidAmount = currentPaidAmount + order.usedAmount
+          
+          // If fully paid now, mark as 'paid', otherwise 'partial'
+          const newStatus = newPaidAmount >= order.amount ? 'paid' : 'partial'
+          
+          batch.update(orderRef, {
+            payoutStatus: newStatus,
+            paidOutAmount: newPaidAmount,
+            lastPayoutId: payoutRef.id,
+            lastPayoutDate: admin.firestore.FieldValue.serverTimestamp(),
+          })
+        } else {
+          // Full order paid out
+          batch.update(orderRef, {
+            payoutStatus: 'paid',
+            paidOutAmount: order.amount,
+            payoutId: payoutRef.id,
+            payoutDate: admin.firestore.FieldValue.serverTimestamp(),
+          })
+        }
       })
       await batch.commit()
 
-      console.log('✅ Orders marked as paid out')
+      console.log('✅ Orders marked as paid out (including partial payments)')
 
       // Build success message
       const method = shopData.promptPayId ? 'PromptPay' : 'บัญชีธนาคาร'

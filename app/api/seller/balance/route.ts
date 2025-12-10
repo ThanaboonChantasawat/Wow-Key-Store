@@ -117,12 +117,13 @@ export async function GET(request: NextRequest) {
     let weekEarnings = 0 // This week's earnings
     let monthEarnings = 0 // This month's earnings
 
-    confirmedSnapshot.docs.forEach(doc => {
+    ordersSnapshot.docs.forEach(doc => {
       const order = doc.data()
       console.log(`📦 Order ${doc.id}:`, {
         sellerAmount: order.sellerAmount,
         paymentStatus: order.paymentStatus,
         payoutStatus: order.payoutStatus,
+        paidOutAmount: order.paidOutAmount,
         buyerConfirmed: order.buyerConfirmed,
         buyerConfirmedAt: order.buyerConfirmedAt
       })
@@ -155,13 +156,21 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check if already paid out
-      if (order.payoutStatus === 'paid' || order.payoutStatus === 'completed') {
+      // Check payment status - support partial payments
+      const paidOutAmount = Number(order.paidOutAmount) || 0
+      
+      if (order.payoutStatus === 'paid') {
+        // Fully paid out
         totalPaid += sellerAmount
-        console.log(`  ✓ Already paid: ฿${sellerAmount}`)
+        console.log(`  ✓ Fully paid: ฿${sellerAmount}`)
+      } else if (order.payoutStatus === 'partial') {
+        // Partially paid out
+        totalPaid += paidOutAmount
+        const remaining = sellerAmount - paidOutAmount
+        availableAmount += remaining
+        console.log(`  💰 Partial: Paid ฿${paidOutAmount}, Available ฿${remaining}`)
       } else if (order.payoutStatus === 'ready' || !order.payoutStatus) {
         // Available to withdraw (confirmed but not paid out yet)
-        // รวมทั้งกรณีที่ยังไม่มี payoutStatus (คำสั่งซื้อเก่าที่ยืนยันแล้ว)
         availableAmount += sellerAmount
         console.log(`  💰 Available: ฿${sellerAmount}`)
       }
