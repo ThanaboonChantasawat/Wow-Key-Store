@@ -50,14 +50,24 @@ export function ReviewList({
         params.append('shopId', shopId)
       } else if (type === 'product' && productId) {
         params.append('productId', productId)
+      } else {
+        // ไม่มี shopId หรือ productId ให้ข้าม
+        console.warn('ReviewList: Missing shopId or productId', { type, shopId, productId })
+        setLoading(false)
+        return
       }
       
-      const res = await fetch(`/api/reviews?${params}`)
+      const url = `/api/reviews?${params}`
+      console.log('Fetching reviews from:', url)
+      
+      const res = await fetch(url)
       const data = await res.json()
       
       if (res.ok) {
         setReviews(data.reviews || [])
         setStats(data.stats || null)
+      } else {
+        console.error('Failed to fetch reviews:', data)
       }
     } catch (error) {
       console.error('Error fetching reviews:', error)

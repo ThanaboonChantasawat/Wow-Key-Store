@@ -221,8 +221,8 @@ export function SellerUpdateOrders() {
 
   const handleOpenDialog = (order: Order) => {
     setSelectedOrder(order);
-    setEmail(order.email || "");
-    setUsername(order.username || "");
+    setEmail("");
+    setUsername("");
     setPassword(order.password || "");
     setAdditionalInfo(order.additionalInfo || "");
     setNotes(order.sellerNotes || "");

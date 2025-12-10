@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
       }
 
       const userId = token.uid
-      const reviews = await getUserOrderReviews(userId, orderId)
+      // Pass productId to filter product reviews
+      const reviews = await getUserOrderReviews(userId, orderId, productId || undefined)
       return NextResponse.json(reviews)
     }
     

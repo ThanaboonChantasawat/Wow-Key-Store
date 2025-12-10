@@ -124,7 +124,7 @@ export function MyOrdersContent() {
   const [selectedShop, setSelectedShop] = useState<any>(null) // Add state for shop details
   const [selectedOrderReviews, setSelectedOrderReviews] = useState<{
     shopReview: { id: string; rating: number; comment: string } | null
-    productReview: { id: string; rating: number; comment: string } | null
+    productReview: { id: string; productId: string; rating: number; comment: string } | null
   } | null>(null)
   
   // New states for filtering & pagination
@@ -149,6 +149,15 @@ export function MyOrdersContent() {
   const [selectedOrderToReport, setSelectedOrderToReport] = useState<Order | null>(null)
   const [showChatDialog, setShowChatDialog] = useState(false)
   const [selectedOrderToChat, setSelectedOrderToChat] = useState<Order | null>(null)
+  
+  // Review states
+  const [selectedProductToReview, setSelectedProductToReview] = useState<{
+    productId: string
+    productName: string
+  } | null>(null)
+  
+  // Store product-specific reviews
+  const [productReviews, setProductReviews] = useState<Map<string, { id: string; rating: number; comment: string }>>(new Map())
 
   useEffect(() => {
     const chatOrderId = searchParams.get('chatOrderId')
@@ -745,6 +754,7 @@ export function MyOrdersContent() {
             productReview: data.productReview
               ? {
                   id: data.productReview.id,
+                  productId: data.productReview.productId,
                   rating: data.productReview.rating,
                   comment: data.productReview.text || data.productReview.comment || '',
                 }
@@ -763,6 +773,52 @@ export function MyOrdersContent() {
     setShowOrderDetailModal(false)
     setSelectedOrderDetail(null)
     setSelectedOrderReviews(null)
+    setProductReviews(new Map())
+    setSelectedProductToReview(null)
+  }
+  
+  const fetchProductReview = async (orderId: string, productId: string) => {
+    if (!user) return
+    
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch(`/api/reviews?orderId=${orderId}&productId=${productId}&forUser=true`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        if (data.productReview) {
+          setProductReviews(prev => {
+            const newMap = new Map(prev)
+            newMap.set(productId, {
+              id: data.productReview.id,
+              rating: data.productReview.rating,
+              comment: data.productReview.text || data.productReview.comment || '',
+            })
+            return newMap
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching product review:', error)
+    }
+  }
+  
+  const handleProductReviewSelect = async (productId: string, productName: string, orderId: string) => {
+    const isCurrentlySelected = selectedProductToReview?.productId === productId
+    
+    if (isCurrentlySelected) {
+      setSelectedProductToReview(null)
+    } else {
+      setSelectedProductToReview({ productId, productName })
+      // Fetch review for this specific product if not already loaded
+      if (!productReviews.has(productId)) {
+        await fetchProductReview(orderId, productId)
+      }
+    }
   }
 
   const openConfirmDialog = (order: Order) => {
@@ -1356,6 +1412,25 @@ export function MyOrdersContent() {
                 </div>
               )}
               
+              {/* Chat Button - Show after payment completed */}
+              {order.paymentStatus === 'completed' && order.status !== 'cancelled' && (
+                <div className="mt-4 pt-4 border-t-2 border-gray-200">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedOrderToChat(order)
+                      setShowChatDialog(true)
+                    }}
+                    variant="outline"
+                    className="w-full border-blue-300 hover:bg-blue-50 h-10 text-sm font-semibold"
+                    size="default"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    แชทกับผู้ขาย
+                  </Button>
+                </div>
+              )}
+              
               {/* Confirm Receipt Button - Show if delivered but not confirmed and not refunded */}
               {order.gameCodeDeliveredAt && !order.buyerConfirmed && order.status !== 'cancelled' && order.disputeResolution !== 'refund' && (
                 <div className="mt-4 pt-4 border-t-2 border-gray-200 space-y-3">
@@ -1401,21 +1476,7 @@ export function MyOrdersContent() {
                   {/* Action Buttons */}
                   {/* Hide report button if refunded */}
                   {(order.disputeResolution as string) !== 'refund' && (
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedOrderToChat(order)
-                        setShowChatDialog(true)
-                      }}
-                      variant="outline"
-                      className="w-full border-blue-300 hover:bg-blue-50 h-10 text-sm font-semibold"
-                      size="default"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      แชท
-                    </Button>
-                    
+                  <div className="grid grid-cols-1 gap-2 sm:gap-3">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1915,12 +1976,21 @@ export function MyOrdersContent() {
                       รายการสินค้า
                     </h4>
                     <div className="space-y-2">
-                      {selectedOrderDetail.items.map((item, index) => (
-                        <div key={index} className="bg-white border rounded-lg p-3">
+                      {selectedOrderDetail.items.map((item, index) => {
+                        const isSelected = selectedProductToReview?.productId === item.productId
+                        return (
+                        <div 
+                          key={index} 
+                          className={`bg-white border rounded-lg p-3 transition-all ${
+                            isSelected 
+                              ? 'ring-2 ring-yellow-400 border-yellow-400 shadow-lg bg-yellow-50' 
+                              : 'border-gray-200'
+                          }`}
+                        >
                           <div className="flex justify-between items-start gap-3">
                             {/* Product Image */}
                             {item.productImage && (
-                              <div className="flex-shrink-0">
+                              <div className="flex-shrink-0 relative">
                                 <img
                                   src={item.productImage}
                                   alt={item.name}
@@ -1929,20 +1999,51 @@ export function MyOrdersContent() {
                                     e.currentTarget.style.display = 'none'
                                   }}
                                 />
+                                {isSelected && (
+                                  <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1 shadow-md">
+                                    <Star className="w-3 h-3 text-white fill-white" />
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 mb-1 line-clamp-2">{item.name}</p>
+                              <div className="flex items-start gap-2">
+                                <p className="font-medium text-gray-900 mb-1 line-clamp-2 flex-1">{item.name}</p>
+                                {isSelected && (
+                                  <span className="bg-yellow-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    กำลังรีวิว
+                                  </span>
+                                )}
+                              </div>
                               {item.gameName && (
                                 <p className="text-sm text-[#ff9800] font-medium mt-1">🎮 {item.gameName}</p>
                               )}
-                              <Link 
-                                href={`/products/${item.gameId || item.productId}`}
-                                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#f57c00] hover:to-[#ff9800] text-white text-xs font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
-                              >
-                                <ShoppingBag className="w-3.5 h-3.5" />
-                                ดูหน้าสินค้า
-                              </Link>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                <Link 
+                                  href={`/products/${item.gameId || item.productId}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#f57c00] hover:to-[#ff9800] text-white text-xs font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                >
+                                  <ShoppingBag className="w-3.5 h-3.5" />
+                                  ดูหน้าสินค้า
+                                </Link>
+                                {selectedOrderDetail.buyerConfirmed && selectedOrderDetail.status !== 'cancelled' && item.productId && (
+                                  <button
+                                    onClick={() => handleProductReviewSelect(
+                                      item.productId!,
+                                      item.name,
+                                      selectedOrderDetail.id
+                                    )}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 ${
+                                      isSelected
+                                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white'
+                                        : 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white'
+                                    }`}
+                                  >
+                                    <Star className="w-3.5 h-3.5" />
+                                    {isSelected ? 'ยกเลิกรีวิว' : 'รีวิวสินค้านี้'}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-[#ff9800] ml-2">
@@ -1955,8 +2056,35 @@ export function MyOrdersContent() {
                               )}
                             </div>
                           </div>
+                          
+                          {/* Review Form for This Product */}
+                          {isSelected && selectedOrderDetail.buyerConfirmed && selectedOrderDetail.status !== 'cancelled' && (
+                            <div className="mt-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                                <h5 className="font-semibold text-gray-900">รีวิวสินค้า: {item.name}</h5>
+                              </div>
+                              <ReviewFormComponent
+                                key={`product-${item.productId}`}
+                                orderId={selectedOrderDetail.id}
+                                shopId={selectedOrderDetail.shopId}
+                                shopName={selectedOrderDetail.shopName || getShopName(selectedOrderDetail)}
+                                productId={item.productId}
+                                productName={item.name}
+                                existingShopReview={selectedOrderReviews?.shopReview || undefined}
+                                existingProductReview={productReviews.get(item.productId!)}
+                                onSuccess={() => {
+                                  // แค่ refresh ข้อมูลรีวิว ไม่ต้องปิดฟอร์ม
+                                  if (item.productId) {
+                                    fetchProductReview(selectedOrderDetail.id, item.productId)
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
 
@@ -2215,35 +2343,6 @@ export function MyOrdersContent() {
                           )}
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Review Section in Order Detail */}
-                  {selectedOrderDetail.buyerConfirmed && selectedOrderDetail.status !== 'cancelled' && (
-                    <div className="bg-white rounded-xl p-4 border border-yellow-200 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                          <div>
-                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base">รีวิวคำสั่งซื้อนี้</h4>
-                            <p className="text-xs text-gray-600">ให้คะแนนร้านค้าและสินค้า หลังจากได้รับสินค้าแล้ว</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ฟอร์มรีวิวเดียว: รวมรีวิวร้านค้า และรีวิวสินค้า (ถ้ามี productId และสินค้าเดียว) */}
-                      <ReviewFormComponent
-                        orderId={selectedOrderDetail.id}
-                        shopId={selectedOrderDetail.shopId}
-                        shopName={selectedOrderDetail.shopName || getShopName(selectedOrderDetail)}
-                        productId={selectedOrderDetail.items.length === 1 ? selectedOrderDetail.items[0].productId : undefined}
-                        productName={selectedOrderDetail.items.length === 1 ? selectedOrderDetail.items[0].name : undefined}
-                        existingShopReview={selectedOrderReviews?.shopReview || undefined}
-                        existingProductReview={selectedOrderReviews?.productReview || undefined}
-                        onSuccess={() => {
-                          // สามารถเพิ่ม toast หรือ refresh ได้ภายหลัง
-                        }}
-                      />
                     </div>
                   )}
 

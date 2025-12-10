@@ -170,6 +170,16 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
+    // Order Chats - buyer และ seller ของ order นั้นๆ สามารถอ่านและเขียนได้
+    match /orderChats/{orderId} {
+      allow read: if isAuthenticated() && (
+        get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid ||
+        isShopOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.shopId) ||
+        isAdmin()
+      );
+      allow write: if false; // ใช้ API route
+    }
+
     // Support Messages - เจ้าของ ticket และ admin อ่านได้
     match /support_messages/{messageId} {
       allow read: if isAuthenticated();

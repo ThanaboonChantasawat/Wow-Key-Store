@@ -43,9 +43,11 @@ async function verifyPurchase(
       return false
     }
     
-    // Verify order is completed and buyer confirmed
-    if (orderData?.status !== 'completed' || !orderData?.buyerConfirmed) {
-      console.log('❌ Order not completed or not confirmed by buyer. Status:', orderData?.status, 'buyerConfirmed:', orderData?.buyerConfirmed)
+    // Verify order is completed OR buyer confirmed
+    // Allow reviews if buyer confirmed even if status is not 'completed'
+    const isCompletedOrConfirmed = orderData?.buyerConfirmed || orderData?.status === 'completed'
+    if (!isCompletedOrConfirmed) {
+      console.log('❌ Order not completed and not confirmed by buyer. Status:', orderData?.status, 'buyerConfirmed:', orderData?.buyerConfirmed)
       return false
     }
     
@@ -69,18 +71,36 @@ async function verifyPurchase(
       }
     }
     
-    // Verify product if provided - check in shops[].items[]
+    // Verify product if provided - check in multiple locations
     if (productId) {
-      const shops = (orderData as any).shops || []
-      const allItems = shops.flatMap((shop: any) => shop.items || [])
-      console.log('🔎 Checking product in order shops.items:', { productId, shopsCount: shops.length, itemsCount: allItems.length })
-      const hasProduct = allItems.some((item: any) => item.productId === productId)
+      let hasProduct = false
+      
+      // Check in root-level items array (common structure)
+      if (Array.isArray(orderData?.items)) {
+        hasProduct = orderData.items.some((item: any) => 
+          item.productId === productId || item.gameId === productId
+        )
+        console.log('🔎 Checking product in root items:', { productId, itemsCount: orderData.items.length, hasProduct })
+      }
+      
+      // If not found in root items, check in shops[].items[] (legacy structure)
+      if (!hasProduct && Array.isArray((orderData as any).shops)) {
+        const shops = (orderData as any).shops || []
+        const allItems = shops.flatMap((shop: any) => shop.items || [])
+        hasProduct = allItems.some((item: any) => 
+          item.productId === productId || item.gameId === productId
+        )
+        console.log('🔎 Checking product in shops.items:', { productId, shopsCount: shops.length, itemsCount: allItems.length, hasProduct })
+      }
+      
       if (!hasProduct) {
-        console.log('❌ Order does not contain this product in shops.items. Looking for:', productId)
-        console.log('   Available products:', allItems.map((i: any) => i.productId))
+        console.log('❌ Order does not contain this product. Looking for:', productId)
+        if (orderData?.items) {
+          console.log('   Available products in root items:', orderData.items.map((i: any) => i.productId || i.gameId))
+        }
         return false
       }
-      console.log('✅ Product found in order shops.items')
+      console.log('✅ Product found in order')
     }
     
     console.log('✅ Purchase verification passed')
@@ -299,22 +319,31 @@ export async function getProductReviews(
  */
 export async function getUserOrderReviews(
   userId: string,
-  orderId: string
+  orderId: string,
+  productId?: string
 ): Promise<{ shopReview: ShopReview | null; productReview: ProductReview | null }> {
   try {
+    const shopQuery = adminDb
+      .collection(SHOP_REVIEWS_COLLECTION)
+      .where('userId', '==', userId)
+      .where('orderId', '==', orderId)
+      .limit(1)
+    
+    // Build product query - filter by productId if provided
+    let productQuery = adminDb
+      .collection(PRODUCT_REVIEWS_COLLECTION)
+      .where('userId', '==', userId)
+      .where('orderId', '==', orderId)
+    
+    if (productId) {
+      productQuery = productQuery.where('productId', '==', productId)
+    }
+    
+    productQuery = productQuery.limit(1)
+
     const [shopSnap, productSnap] = await Promise.all([
-      adminDb
-        .collection(SHOP_REVIEWS_COLLECTION)
-        .where('userId', '==', userId)
-        .where('orderId', '==', orderId)
-        .limit(1)
-        .get(),
-      adminDb
-        .collection(PRODUCT_REVIEWS_COLLECTION)
-        .where('userId', '==', userId)
-        .where('orderId', '==', orderId)
-        .limit(1)
-        .get(),
+      shopQuery.get(),
+      productQuery.get(),
     ])
 
     const shopReview = !shopSnap.empty

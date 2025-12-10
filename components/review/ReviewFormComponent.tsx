@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/components/auth-context'
+import { useToast } from '@/hooks/use-toast'
 
 interface ReviewFormProps {
   orderId: string
@@ -38,6 +39,7 @@ export function ReviewFormComponent({
   existingProductReview
 }: ReviewFormProps) {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [shopRating, setShopRating] = useState(existingShopReview?.rating || 0)
   const [shopComment, setShopComment] = useState(existingShopReview?.comment || '')
   const [productRating, setProductRating] = useState(existingProductReview?.rating || 0)
@@ -51,6 +53,21 @@ export function ReviewFormComponent({
   const [shopSuccess, setShopSuccess] = useState(false)
   const [productSuccess, setProductSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  // อัปเดต state เมื่อ props เปลี่ยน (หลังจาก refresh ข้อมูล)
+  useEffect(() => {
+    if (existingShopReview) {
+      setShopRating(existingShopReview.rating)
+      setShopComment(existingShopReview.comment)
+    }
+  }, [existingShopReview])
+
+  useEffect(() => {
+    if (existingProductReview) {
+      setProductRating(existingProductReview.rating)
+      setProductComment(existingProductReview.comment)
+    }
+  }, [existingProductReview])
 
   const handleSubmitShopReview = async () => {
     if (!user || shopRating === 0) return
@@ -100,10 +117,17 @@ export function ReviewFormComponent({
       }
 
       console.log('✅ Shop review success:', data)
+      
+      // Set success state เพื่อแสดงข้อความสำเร็จ
       setShopSuccess(true)
-      if (onSuccess) onSuccess()
     } catch (err: any) {
       setError(err.message)
+      toast({
+        title: "❌ เกิดข้อผิดพลาด",
+        description: err.message || "ไม่สามารถส่งรีวิวได้",
+        variant: "destructive",
+        duration: 5000,
+      })
     } finally {
       setShopLoading(false)
     }
@@ -159,10 +183,20 @@ export function ReviewFormComponent({
       }
 
       console.log('✅ Product review success:', data)
+      
+      // Set success state เพื่อแสดงข้อความสำเร็จ
       setProductSuccess(true)
+      
+      // เรียก onSuccess เพื่อ refresh ข้อมูลรีวิว แต่ไม่ปิดฟอร์ม
       if (onSuccess) onSuccess()
     } catch (err: any) {
       setError(err.message)
+      toast({
+        title: "❌ เกิดข้อผิดพลาด",
+        description: err.message || "ไม่สามารถส่งรีวิวได้",
+        variant: "destructive",
+        duration: 5000,
+      })
     } finally {
       setProductLoading(false)
     }
@@ -201,27 +235,65 @@ export function ReviewFormComponent({
     </div>
   )
 
-  // If both reviews are successful, show the thank you card
-  if (shopSuccess && (!productId || productSuccess)) {
-    return (
-      <Card className="border-green-200 bg-green-50">
-        <CardContent className="p-6 text-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Star className="w-8 h-8 text-white fill-white" />
-          </div>
-          <h3 className="text-xl font-bold text-green-900 mb-2">
-            ขอบคุณสำหรับรีวิว!
-          </h3>
-          <p className="text-green-700">
-            รีวิวของคุณจะช่วยให้ผู้ซื้อคนอื่นตัดสินใจได้ดีขึ้น
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <div className="space-y-6">
+      {/* แสดงข้อความสำเร็จเมื่อรีวิวเสร็จ */}
+      {shopSuccess && (
+        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+              <Star className="w-5 h-5 text-white fill-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-900">
+                {existingShopReview ? 'แก้ไขรีวิวร้านค้าสำเร็จ' : 'ส่งรีวิวร้านค้าสำเร็จ'}
+              </p>
+              <p className="text-sm text-green-700">
+                {existingShopReview 
+                  ? `แก้ไขรีวิวร้าน ${shopName} เรียบร้อยแล้ว`
+                  : `ขอบคุณที่ให้รีวิวร้าน ${shopName}`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {productSuccess && (
+        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+              <Star className="w-5 h-5 text-white fill-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-900">
+                {existingProductReview ? '✅ แก้ไขรีวิวสินค้าสำเร็จ' : '✅ ส่งรีวิวสินค้าสำเร็จ'}
+              </p>
+              <p className="text-sm text-green-700">
+                {existingProductReview
+                  ? `แก้ไขรีวิวสินค้า ${productName} เรียบร้อยแล้ว`
+                  : `ขอบคุณที่ให้รีวิวสินค้า ${productName}`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* แจ้งเตือนถ้าเคยรีวิวแล้ว */}
+      {!shopSuccess && !productSuccess && (existingShopReview || existingProductReview) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800 font-medium">
+            ℹ️ {existingShopReview && existingProductReview 
+              ? 'คุณเคยรีวิวร้านและสินค้านี้แล้ว' 
+              : existingShopReview 
+                ? 'คุณเคยรีวิวร้านนี้แล้ว'
+                : 'คุณเคยรีวิวสินค้านี้แล้ว'
+            } - การส่งรีวิวอีกครั้งจะเป็นการแก้ไขรีวิวเดิม
+          </p>
+        </div>
+      )}
+
       {/* Shop Review */}
       <Card>
         <CardHeader>
@@ -258,10 +330,10 @@ export function ReviewFormComponent({
 
           <Button
             onClick={handleSubmitShopReview}
-            disabled={shopLoading || shopRating === 0 || shopSuccess}
+            disabled={shopLoading || shopRating === 0}
             className="w-full bg-[#ff9800] hover:bg-[#e08800]"
           >
-            {shopLoading ? 'กำลังส่ง...' : shopSuccess ? (existingShopReview ? 'บันทึกการแก้ไขแล้ว' : 'ส่งรีวิวร้านค้าแล้ว') : (existingShopReview ? 'บันทึกการแก้ไข' : 'ส่งรีวิวร้านค้า')}
+            {shopLoading ? 'กำลังส่ง...' : (existingShopReview ? 'บันทึกการแก้ไข' : 'ส่งรีวิวร้านค้า')}
           </Button>
         </CardContent>
       </Card>
@@ -303,10 +375,10 @@ export function ReviewFormComponent({
 
             <Button
               onClick={handleSubmitProductReview}
-              disabled={productLoading || productRating === 0 || productSuccess}
+              disabled={productLoading || productRating === 0}
               className="w-full bg-[#ff9800] hover:bg-[#e08800]"
             >
-              {productLoading ? 'กำลังส่ง...' : productSuccess ? (existingProductReview ? 'บันทึกการแก้ไขแล้ว' : 'ส่งรีวิวสินค้าแล้ว') : (existingProductReview ? 'บันทึกการแก้ไข' : 'ส่งรีวิวสินค้า')}
+              {productLoading ? 'กำลังส่ง...' : (existingProductReview ? 'บันทึกการแก้ไข' : 'ส่งรีวิวสินค้า')}
             </Button>
           </CardContent>
         </Card>

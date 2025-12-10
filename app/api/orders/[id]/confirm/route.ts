@@ -76,9 +76,19 @@ export async function POST(
 
     // Update shop stats (totalSales and totalRevenue)
     if (orderData?.shopId) {
+      // นับจำนวนสินค้าที่ขายจริง (รวม quantity ของแต่ละ item)
+      let totalItemsSold = 0
+      if (orderData.items && Array.isArray(orderData.items)) {
+        totalItemsSold = orderData.items.reduce((sum: number, item: any) => {
+          return sum + (item.quantity || 1)
+        }, 0)
+      } else {
+        totalItemsSold = 1 // ถ้าไม่มี items array ให้นับเป็น 1
+      }
+
       const shopRef = adminDb.collection('shops').doc(orderData.shopId)
       await shopRef.update({
-        totalSales: admin.firestore.FieldValue.increment(1),
+        totalSales: admin.firestore.FieldValue.increment(totalItemsSold),
         totalRevenue: admin.firestore.FieldValue.increment(orderData.totalAmount || 0),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       })
