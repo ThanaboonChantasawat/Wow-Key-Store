@@ -354,6 +354,14 @@ export default function SellerPayouts() {
     .filter(p => p.status === 'pending' || p.status === 'in_transit')
     .reduce((sum, p) => sum + p.amount, 0)
 
+  const itemsPerPage = 5
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const totalPages = Math.max(1, Math.ceil(payouts.length / itemsPerPage))
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedPayouts = payouts.slice(startIndex, endIndex)
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -486,7 +494,7 @@ export default function SellerPayouts() {
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {payouts.map((payout) => {
+              {paginatedPayouts.map((payout) => {
                 const daysUntil = getDaysUntil(payout.arrival_date)
                 const isPast = daysUntil < 0
                 const isToday = daysUntil === 0
@@ -566,6 +574,32 @@ export default function SellerPayouts() {
           )}
         </CardContent>
       </Card>
+
+      {payouts.length > 0 && (
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 text-sm text-gray-600">
+          <div>
+            หน้า {currentPage} จาก {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              ถัดไป
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Info Note */}
       <Card className="bg-blue-50 border-blue-200">

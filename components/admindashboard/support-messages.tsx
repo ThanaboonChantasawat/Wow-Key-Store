@@ -345,6 +345,9 @@ export function SupportMessagesContent() {
     return labels[category] || category
   }
 
+  const itemsPerPage = 5
+  const [currentPage, setCurrentPage] = useState(1)
+
   if (isLoading) {
     return (
       <div className="text-center py-12">
@@ -453,7 +456,9 @@ export function SupportMessagesContent() {
             </CardContent>
           </Card>
         ) : (
-          filteredMessages.map((message) => (
+          filteredMessages
+            .slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage)
+            .map((message) => (
             <Card 
               key={message.id}
               className="hover:shadow-lg transition-all cursor-pointer border-l-4"
@@ -498,6 +503,32 @@ export function SupportMessagesContent() {
           ))
         )}
       </div>
+
+      {filteredMessages.length > 0 && (
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 text-sm text-gray-600">
+          <div>
+            หน้า {currentPage} จาก {Math.max(1, Math.ceil(filteredMessages.length / itemsPerPage))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === Math.max(1, Math.ceil(filteredMessages.length / itemsPerPage))}
+              onClick={() => setCurrentPage((prev) => Math.min(Math.max(1, Math.ceil(filteredMessages.length / itemsPerPage)), prev + 1))}
+            >
+              ถัดไป
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selectedMessage && (

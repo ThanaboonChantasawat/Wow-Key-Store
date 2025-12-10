@@ -85,6 +85,13 @@ export function SellerReports() {
   
   // Action Dialog State
   const [selectedReport, setSelectedReport] = useState<Dispute | null>(null)
+  const itemsPerPage = 5
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / itemsPerPage))
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedReports = filteredReports.slice(startIndex, endIndex)
   const [showActionDialog, setShowActionDialog] = useState(false)
   const [actionType, setActionType] = useState<'refund' | 'reject' | 'new_code'>('refund')
   const [responseMessage, setResponseMessage] = useState("")
@@ -174,7 +181,7 @@ export function SellerReports() {
     setResponseMessage("")
     setNewCode("")
     setNewCodes({})
-    setSelectedItems([])
+          paginatedReports.map((report) => (
     setOrderData(null)
     
     if (action === 'new_code') {
@@ -238,6 +245,31 @@ export function SellerReports() {
         }
       }
     }
+      {filteredReports.length > 0 && (
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-2 text-sm text-gray-600">
+          <div>
+            หน้า {currentPage} จาก {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              ถัดไป
+            </Button>
+          </div>
+        </div>
+      )}
 
     try {
       setSubmitting(true)

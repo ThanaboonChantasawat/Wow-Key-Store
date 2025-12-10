@@ -17,13 +17,29 @@ interface Order {
 }
 
 export function AdminOrders() {
-  const [currentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const totalPages = 1
+  const itemsPerPage = 5
 
   // Mock data - ในอนาคตจะดึงจาก Firestore
   const orders: Order[] = []
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.buyer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.product.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage))
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -152,7 +168,7 @@ export function AdminOrders() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {paginatedOrders.map((order) => (
                 <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 font-mono font-medium text-[#292d32]">{order.orderNumber}</td>
                   <td className="px-6 py-4 text-[#292d32]">{order.buyer}</td>
@@ -173,7 +189,7 @@ export function AdminOrders() {
           </table>
         </div>
 
-        {orders.length === 0 && (
+        {filteredOrders.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p>ยังไม่มีคำสั่งซื้อในระบบ</p>
@@ -183,8 +199,22 @@ export function AdminOrders() {
         <div className="p-6 flex items-center justify-between border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-[#292d32]">หน้า {currentPage} จาก {totalPages}</div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>ก่อนหน้า</Button>
-            <Button variant="outline" size="sm" disabled>ถัดไป</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages || filteredOrders.length === 0}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              ถัดไป
+            </Button>
           </div>
         </div>
       </div>
