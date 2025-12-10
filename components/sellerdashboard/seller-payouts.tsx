@@ -160,6 +160,16 @@ export default function SellerPayouts() {
       return
     }
 
+    // ตรวจสอบยอดถอนขั้นต่ำ 100 บาท
+    if (amount < 100) {
+      toast({
+        title: "จำนวนเงินต่ำกว่าขั้นต่ำ",
+        description: "ยอดถอนขั้นต่ำคือ 100 บาท",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (balance && amount > balance.available) {
       toast({
         title: "ยอดเงินไม่เพียงพอ",
@@ -306,11 +316,13 @@ export default function SellerPayouts() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <Badge variant="default" className="bg-green-600">โอนสำเร็จ</Badge>
+      case 'completed':
+        return <Badge variant="default" className="bg-green-600">เสร็จสิ้น</Badge>
       case 'pending':
-        return <Badge variant="secondary">กำลังดำเนินการ</Badge>
+        return <Badge variant="secondary">รอดำเนินการ</Badge>
       case 'in_transit':
-        return <Badge variant="secondary">กำลังโอน</Badge>
+      case 'processing':
+        return <Badge variant="secondary">กำลังดำเนินการ</Badge>
       case 'canceled':
         return <Badge variant="destructive">ยกเลิก</Badge>
       case 'failed':
@@ -338,10 +350,12 @@ export default function SellerPayouts() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'paid':
+      case 'completed':
         return 'ถอนเงินเข้าบัญชีธนาคารเรียบร้อยแล้ว'
       case 'pending':
         return 'รอดำเนินการถอนเงิน'
       case 'in_transit':
+      case 'processing':
         return 'กำลังถอนเงินเข้าบัญชีธนาคาร'
       case 'canceled':
         return 'การถอนเงินถูกยกเลิก'
@@ -567,7 +581,7 @@ export default function SellerPayouts() {
                       {/* Right: Amount */}
                       <div className="text-left sm:text-right w-full sm:w-auto">
                         <div className={`text-xl sm:text-2xl font-bold ${
-                          payout.status === 'paid' 
+                          payout.status === 'paid' || payout.status === 'completed'
                             ? 'text-green-600' 
                             : payout.status === 'failed' || payout.status === 'canceled'
                             ? 'text-red-600'
@@ -576,7 +590,7 @@ export default function SellerPayouts() {
                           ฿{formatAmount(payout.amount)}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {payout.currency.toUpperCase()}
+                          บาท
                         </div>
                       </div>
                     </div>
@@ -785,11 +799,12 @@ export default function SellerPayouts() {
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     className="pl-8"
-                    min="0"
+                    min="100"
                     step="0.01"
                     max={balance?.available || 0}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">ยอดถอนขั้นต่ำ 100 บาท</p>
               </div>
 
               <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
@@ -830,7 +845,8 @@ export default function SellerPayouts() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-blue-800">
                 <p className="font-medium mb-1">ข้อมูลการถอนเงิน:</p>
                 <ul className="space-y-1 text-blue-700">
-                  <li>• เงินจะโอนเข้าบัญชีที่คุณเลือก</li>
+                  <li>• ยอดถอนขั้นต่ำ 100 บาท</li>
+                  <li>• เงินที่ถอนจะโอนเข้าบัญชีที่เลือกเต็มจำนวน (ไม่หักค่าธรรมเนียม)</li>
                   <li>• ระบบจะดำเนินการโอนภายใน 2-3 วันทำการ</li>
                   <li>• คุณสามารถตรวจสอบสถานะได้ในหน้านี้</li>
                 </ul>
