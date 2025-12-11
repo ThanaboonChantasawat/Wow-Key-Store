@@ -85,12 +85,16 @@ export async function GET(request: NextRequest) {
 
       if (data.userId) {
         userIds.add(data.userId)
+        console.log(`[DEBUG] Order ${doc.id} has userId: ${data.userId}`)
       }
 
       if (data.email) {
         try {
           const emailStr = String(data.email).toLowerCase()
-          if (emailStr) userEmails.add(emailStr)
+          if (emailStr) {
+            userEmails.add(emailStr)
+            console.log(`[DEBUG] Order ${doc.id} has email: ${emailStr}`)
+          }
         } catch (e) {
           console.error('Error normalizing order email for user lookup:', e)
         }
@@ -115,6 +119,7 @@ export async function GET(request: NextRequest) {
     // Fetch user profiles by ID
     const userMap = new Map<string, any>()
     if (userIds.size > 0) {
+      console.log(`[DEBUG] Fetching user profiles for ${userIds.size} user IDs:`, Array.from(userIds))
       const userIdArray = Array.from(userIds)
       const chunks = []
       for (let i = 0; i < userIdArray.length; i += 10) {
@@ -127,8 +132,14 @@ export async function GET(request: NextRequest) {
             .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
             .get()
           
+          console.log(`[DEBUG] Found ${usersSnapshot.size} user profiles by ID in this chunk`)
           usersSnapshot.forEach(userDoc => {
-            userMap.set(userDoc.id, userDoc.data())
+            const userData = userDoc.data()
+            userMap.set(userDoc.id, userData)
+            console.log(`[DEBUG] User ${userDoc.id}:`, {
+              displayName: userData.displayName || 'N/A',
+              email: userData.email || 'N/A'
+            })
           })
         } catch (err) {
           console.error('Error fetching user chunk:', err)
@@ -139,6 +150,7 @@ export async function GET(request: NextRequest) {
     // Fetch user profiles by email (for cases where UID changed, e.g. re-login with Google)
     const userEmailMap = new Map<string, any>()
     if (userEmails.size > 0) {
+      console.log(`[DEBUG] Fetching user profiles for ${userEmails.size} emails:`, Array.from(userEmails))
       const emailArray = Array.from(userEmails)
       const chunks: string[][] = []
       for (let i = 0; i < emailArray.length; i += 10) {
@@ -151,6 +163,7 @@ export async function GET(request: NextRequest) {
             .where('email', 'in', chunk)
             .get()
 
+          console.log(`[DEBUG] Found ${usersSnapshot.size} user profiles by email in this chunk`)
           usersSnapshot.forEach(userDoc => {
             const uData: any = userDoc.data() || {}
             if (uData.email) {
@@ -158,6 +171,11 @@ export async function GET(request: NextRequest) {
                 const key = String(uData.email).toLowerCase()
                 if (key && !userEmailMap.has(key)) {
                   userEmailMap.set(key, uData)
+                  console.log(`[DEBUG] User by email ${key}:`, {
+                    uid: userDoc.id,
+                    displayName: uData.displayName || 'N/A',
+                    email: uData.email || 'N/A'
+                  })
                 }
               } catch (e) {
                 console.error('Error normalizing user email for email map:', e)

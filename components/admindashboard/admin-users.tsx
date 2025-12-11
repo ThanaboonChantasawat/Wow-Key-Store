@@ -572,63 +572,98 @@ export function AdminUsers() {
 
               {/* Role and Status in Grid */}
               {canEditRole(selectedUser) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Role Management */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-gray-800 flex items-center gap-1">
-                      <Shield className="w-3.5 h-3.5 text-[#ff9800]" />
-                      บทบาท
-                    </label>
-                    <select
-                      value={newRole}
-                      onChange={(e) => setNewRole(e.target.value as 'buyer' | 'seller' | 'admin' | 'superadmin')}
-                      className="w-full px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
-                      disabled={isUpdating}
-                    >
-                      <option value="buyer">🎮 Buyer</option>
-                      <option value="seller">👤 Seller</option>
-                      {currentUserRole === 'superadmin' && (
-                        <>
-                          <option value="admin">🛡️ Admin</option>
-                          {selectedUser.id === currentUser?.uid && (
-                            <option value="superadmin">👑 Super Admin</option>
-                          )}
-                        </>
-                      )}
-                    </select>
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Role Management (Super Admin only, as checkboxes) */}
+                  {currentUserRole === 'superadmin' && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                          <Shield className="w-4 h-4 text-white" />
+                        </div>
+                        <span>บทบาทผู้ดูแล</span>
+                      </label>
+                      <div className="space-y-2 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4">
+                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white border-2 border-transparent hover:border-purple-300 transition-all cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={newRole === 'admin'}
+                            onChange={() => setNewRole('admin')}
+                            disabled={isUpdating}
+                            className="h-5 w-5 rounded-md border-2 border-purple-300 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 cursor-pointer"
+                          />
+                          <span className="flex items-center gap-2 text-sm font-semibold text-gray-700 group-hover:text-purple-700 transition-colors">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-sm">
+                              <Shield className="w-4 h-4 text-white" />
+                            </div>
+                            Admin
+                          </span>
+                        </label>
+                        {selectedUser.id === currentUser?.uid && (
+                          <label className="flex items-center gap-3 p-3 rounded-lg bg-white border-2 border-transparent hover:border-yellow-300 transition-all cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={newRole === 'superadmin'}
+                              onChange={() => setNewRole('superadmin')}
+                              disabled={isUpdating}
+                              className="h-5 w-5 rounded-md border-2 border-yellow-300 text-yellow-600 focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 cursor-pointer"
+                            />
+                            <span className="flex items-center gap-2 text-sm font-semibold text-gray-700 group-hover:text-yellow-700 transition-colors">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center shadow-sm">
+                                <Crown className="w-4 h-4 text-white" />
+                              </div>
+                              Super Admin
+                            </span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Status Management */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-gray-800 flex items-center gap-1">
-                      <Activity className="w-3.5 h-3.5 text-[#ff9800]" />
-                      สถานะ
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <Activity className="w-4 h-4 text-white" />
+                      </div>
+                      <span>สถานะบัญชี</span>
                     </label>
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as 'active' | 'banned')}
-                      className="w-full px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:border-[#ff9800] focus:outline-none transition-colors"
-                      disabled={isUpdating}
-                    >
-                      <option value="active">✅ ใช้งานปกติ</option>
-                      <option value="banned">🚫 แบน</option>
-                    </select>
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
+                      <select
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value as 'active' | 'banned')}
+                        className="w-full px-4 py-3 text-sm font-semibold border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none transition-all bg-white shadow-sm"
+                        disabled={isUpdating}
+                      >
+                        <option value="active">✅ ใช้งานปกติ</option>
+                        <option value="banned">🚫 แบน</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Action Buttons */}
               {canEditRole(selectedUser) && (selectedUser.role !== newRole || selectedUser.accountStatus !== newStatus) && (
-                <div className="flex justify-center">
+                <div className="flex justify-center pt-2">
                   <Button
                     onClick={() => {
                       if (selectedUser.role !== newRole) handleRoleChange()
                       if (selectedUser.accountStatus !== newStatus) handleStatusChange()
                     }}
-                    className="w-full max-w-sm bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-2"
+                    className="w-full bg-gradient-to-r from-[#ff9800] to-[#f57c00] hover:from-[#e08800] hover:to-[#d56600] text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                     disabled={isUpdating}
                   >
-                    {isUpdating ? 'กำลังบันทึก...' : '💾 บันทึกการเปลี่ยนแปลง'}
+                    {isUpdating ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        กำลังบันทึก...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <Check className="w-5 h-5" />
+                        บันทึกการเปลี่ยนแปลง
+                      </div>
+                    )}
                   </Button>
                 </div>
               )}

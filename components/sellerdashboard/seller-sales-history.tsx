@@ -280,15 +280,12 @@ export default function SellerSalesHistory() {
         });
         
         // Legacy support: if order has top-level email/pass, put it in first item
-        if (items.length > 0 && (selectedOrder.email || selectedOrder.password)) {
-           items[0].email = selectedOrder.email;
-           items[0].username = selectedOrder.username;
+        // Don't auto-fill buyer's email/username - seller needs to enter game account details
+        if (items.length > 0 && selectedOrder.password) {
            items[0].password = selectedOrder.password;
            items[0].additionalInfo = selectedOrder.additionalInfo;
            
            // Also set form state
-           setFormEmail(selectedOrder.email || "")
-           setFormUsername(selectedOrder.username || "")
            setFormPassword(selectedOrder.password || "")
            setFormAdditionalInfo(selectedOrder.additionalInfo || "")
         }
@@ -667,24 +664,26 @@ export default function SellerSalesHistory() {
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
-              <div>
-                <DialogTitle>รายละเอียดคำสั่งซื้อ</DialogTitle>
-                <DialogDescription>
-                  รหัสคำสั่งซื้อ: #{selectedOrder?.id}
-                </DialogDescription>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between pr-8 gap-4">
+                <div className="flex-1 min-w-0">
+                  <DialogTitle>รายละเอียดคำสั่งซื้อ</DialogTitle>
+                  <DialogDescription className="break-all">
+                    รหัสคำสั่งซื้อ: #{selectedOrder?.id}
+                  </DialogDescription>
+                </div>
+                {selectedOrder && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleOpenChat(e, selectedOrder)}
+                    className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    แชท
+                  </Button>
+                )}
               </div>
-              {selectedOrder && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => handleOpenChat(e, selectedOrder)}
-                  className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  แชทกับลูกค้า
-                </Button>
-              )}
             </div>
           </DialogHeader>
           
@@ -829,7 +828,6 @@ export default function SellerSalesHistory() {
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="w-5 h-5 text-blue-600" />
                   <h3 className="font-semibold">ข้อมูลบัญชีเกม</h3>
-                  <Badge variant="outline" className="text-xs">Password บังคับกรอก</Badge>
                 </div>
 
                 {/* Login Type Selection */}

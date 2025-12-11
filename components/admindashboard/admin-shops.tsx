@@ -48,6 +48,37 @@ export function AdminShops({ adminId }: AdminShopsProps) {
     filterShops()
   }, [shops, searchQuery, statusFilter])
 
+  // Load admin profiles (ผู้ตรวจสอบ/ผู้ระงับ) เมื่อเลือกดูร้านค้ารายละเอียด
+  useEffect(() => {
+    const loadAdminProfiles = async () => {
+      if (!selectedShop) {
+        setVerifierProfile(null)
+        setSuspenderProfile(null)
+        return
+      }
+
+      try {
+        if (selectedShop.verifiedBy) {
+          const profile = await getUserProfile(selectedShop.verifiedBy)
+          setVerifierProfile(profile || null)
+        } else {
+          setVerifierProfile(null)
+        }
+
+        if (selectedShop.suspendedBy) {
+          const profile = await getUserProfile(selectedShop.suspendedBy)
+          setSuspenderProfile(profile || null)
+        } else {
+          setSuspenderProfile(null)
+        }
+      } catch (error) {
+        console.error('Error loading admin profiles for shop:', selectedShop.shopId, error)
+      }
+    }
+
+    loadAdminProfiles()
+  }, [selectedShop])
+
   const loadShops = async () => {
     try {
       setLoading(true)
@@ -788,10 +819,6 @@ export function AdminShops({ adminId }: AdminShopsProps) {
                     <DollarSign className="w-4 h-4 text-blue-600" />
                     <p className="font-medium text-[#292d32]">฿{selectedShop.totalRevenue.toLocaleString()}</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Shop ID</p>
-                  <p className="font-medium text-[#292d32] font-mono text-sm">{selectedShop.shopId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">วันที่สร้าง</p>

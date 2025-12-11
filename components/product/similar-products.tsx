@@ -88,7 +88,7 @@ export function SimilarProducts({ productId }: SimilarProductsProps) {
   if (loading) {
     return (
       <div>
-        <h2 className="text-xl font-bold text-[#292d32] mb-4">กำลังโหลดสินค้าที่คล้ายกัน...</h2>
+        <h2 className="text-xl font-bold text-[#292d32] mb-4">กำลังโหลดสินค้าที่อื่นๆ...</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -127,10 +127,10 @@ export function SimilarProducts({ productId }: SimilarProductsProps) {
           </div>
           <div>
             <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
-              ไม่พบสินค้าที่คล้ายกัน
+              ไม่พบสินค้าที่อื่นๆ
             </h3>
             <p className="text-gray-600 text-sm sm:text-base">
-              ขออภัย ขณะนี้ยังไม่มีสินค้าที่คล้ายกันในระบบ
+              ขออภัย ขณะนี้ยังไม่มีสินค้าที่อื่นๆในระบบ
             </p>
             <p className="text-gray-500 text-xs sm:text-sm mt-1">
               ลองเลือกดูสินค้าอื่น ๆ ในหมวดหมู่ต่าง ๆ ของเรา
@@ -144,7 +144,7 @@ export function SimilarProducts({ productId }: SimilarProductsProps) {
   return (
     <div>
       <h2 className="text-xl sm:text-2xl font-bold text-[#292d32] mb-4 sm:mb-6">
-        สินค้าที่คล้ายกัน {products.length > 0 && <span className="text-gray-500 text-base">({products.length} รายการ)</span>}
+        สินค้าที่อื่นๆ {products.length > 0 && <span className="text-gray-500 text-base">({products.length} รายการ)</span>}
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {products.map((product) => (

@@ -26,15 +26,19 @@ export async function GET(
 
     // Serialize to JSON-safe format
     const serializedUser = {
-      uid: user.uid || '',
+      uid: user.uid || id, // Use user.uid or fallback to id parameter
       email: user.email || '',
       displayName: user.displayName || '',
       photoURL: user.photoURL || null,
-      role: user.role || 'user',
+      role: user.role || 'buyer',
       isSeller: user.isSeller || false,
       shopId: user.shopId || null,
+      accountStatus: user.accountStatus || 'active',
+      emailVerified: user.emailVerified || false,
+      phoneNumber: user.phoneNumber || null,
       lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
       createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: user.updatedAt ? user.updatedAt.toISOString() : new Date().toISOString(),
     };
 
     return NextResponse.json(serializedUser);

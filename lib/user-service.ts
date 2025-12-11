@@ -67,6 +67,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       if (!data) return null;
       
       return {
+        uid: userDoc.id, // Always include the document ID as uid
         displayName: data.displayName,
         email: data.email,
         photoURL: data.photoURL,
@@ -238,6 +239,7 @@ export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
       const data = doc.data();
       return {
         id: doc.id,
+        uid: doc.id, // Include uid field
         displayName: data.displayName || "Unknown",
         email: data.email || null,
         photoURL: data.photoURL || null,
@@ -247,6 +249,7 @@ export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
         isVerified: data.isVerified || false,
         emailVerified: data.emailVerified || false,
         accountStatus: data.accountStatus || 'active',
+        shopId: data.shopId || null,
         lastLoginAt: data.lastLoginAt?.toDate() || new Date(),
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date()

@@ -1,4 +1,5 @@
 export interface UserProfile {
+  uid?: string; // Document ID from Firestore
   displayName: string;
   email: string | null;
   photoURL: string | null;
