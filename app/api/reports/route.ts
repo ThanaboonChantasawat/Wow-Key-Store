@@ -278,3 +278,93 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = await verifyIdTokenString(authHeader.substring(7))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { reportId, adminNote } = body
+
+    if (!reportId) {
+      return NextResponse.json({ error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 })
+    }
+
+    const reportRef = adminDb.collection('reports').doc(reportId)
+    const reportDoc = await reportRef.get()
+
+    if (!reportDoc.exists) {
+      return NextResponse.json({ error: 'ไม่พบรายงาน' }, { status: 404 })
+    }
+
+    const reportData = reportDoc.data()
+    
+    if (reportData?.status !== 'resolved') {
+      return NextResponse.json({ error: 'รายงานนี้ยังไม่ได้รับการตัดสิน' }, { status: 400 })
+    }
+
+    const batch = adminDb.batch()
+
+    // Reset report status
+    batch.update(reportRef, {
+      status: 'pending',
+      resolution: admin.firestore.FieldValue.delete(),
+      adminNote: adminNote || '',
+      resolvedAt: admin.firestore.FieldValue.delete(),
+      resolvedBy: admin.firestore.FieldValue.delete(),
+      reversedAt: new Date(),
+      reversedBy: token.uid
+    })
+
+    // If user was banned/warned by this report, reverse it
+    if (reportData.targetUserId && reportData.resolution) {
+      const userRef = adminDb.collection('users').doc(reportData.targetUserId)
+      const userDoc = await userRef.get()
+      
+      if (userDoc.exists) {
+        const userData = userDoc.data()
+        
+        if (reportData.resolution === 'ban') {
+          // Unban user
+          batch.update(userRef, {
+            accountStatus: 'active',
+            banned: false,
+            bannedUntil: admin.firestore.FieldValue.delete(),
+            bannedReason: admin.firestore.FieldValue.delete(),
+            bannedBy: admin.firestore.FieldValue.delete()
+          })
+        } else if (reportData.resolution === 'warn') {
+          // Reduce violation count
+          const currentViolations = userData?.violations || 0
+          if (currentViolations > 0) {
+            batch.update(userRef, {
+              violations: currentViolations - 1
+            })
+          }
+        }
+      }
+    }
+
+    await batch.commit()
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'ยกเลิกการตัดสินเรียบร้อยแล้ว' 
+    })
+
+  } catch (error: any) {
+    console.error('Error reversing report decision:', error)
+    return NextResponse.json(
+      { error: error.message || 'ไม่สามารถยกเลิกการตัดสินได้' },
+      { status: 500 }
+    )
+  }
+}
