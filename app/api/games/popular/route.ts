@@ -22,14 +22,20 @@ export async function GET() {
         imageUrl: data.imageUrl,
         categories: data.categories || [],
         isPopular: data.isPopular,
+        popularOrder: data.popularOrder || 999,
         status: data.status,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       }
     })
     
-    // Sort by name
-    games.sort((a, b) => a.name.localeCompare(b.name))
+    // Sort by popularOrder (ascending), then by name
+    games.sort((a, b) => {
+      if (a.popularOrder !== b.popularOrder) {
+        return a.popularOrder - b.popularOrder
+      }
+      return a.name.localeCompare(b.name)
+    })
     
     console.log('Returning', games.length, 'popular games')
     
