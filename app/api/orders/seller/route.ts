@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       // Case 1: Cart checkout order with shops array (CHECK THIS FIRST!)
       if (data.type === 'cart_checkout' && data.shops && Array.isArray(data.shops)) {
         const shopData = data.shops.find((s: any) => s.shopId === finalShopId)
+        console.log(`[SELLER ORDERS API] Order ${doc.id} cart_checkout: looking for shopId ${finalShopId} in shops array`, data.shops.map((s: any) => s.shopId))
         if (shopData) {
           belongsToShop = true
           shopSpecificData = {
@@ -69,10 +70,13 @@ export async function GET(request: NextRequest) {
             sellerAmount: shopData.sellerAmount,
             items: shopData.items || [],
           }
+          console.log(`[SELLER ORDERS API] Order ${doc.id} matched in shops array!`)
+        } else {
+          console.log(`[SELLER ORDERS API] Order ${doc.id} shopId not found in shops array`)
         }
       }
-      // Case 2: Direct order with shopId field (ONLY if not cart_checkout)
-      else if (data.type !== 'cart_checkout' && data.shopId === finalShopId) {
+      // Case 2: Direct order with shopId field (ONLY if not already matched in Case 1)
+      else if (!belongsToShop && data.shopId === finalShopId) {
         belongsToShop = true
         shopSpecificData = {
           shopId: data.shopId,
@@ -82,6 +86,7 @@ export async function GET(request: NextRequest) {
           sellerAmount: data.sellerAmount,
           items: data.items || [],
         }
+        console.log(`[SELLER ORDERS API] Order ${doc.id} matched by direct shopId field`)
       }
       
       if (!belongsToShop || !shopSpecificData) {
