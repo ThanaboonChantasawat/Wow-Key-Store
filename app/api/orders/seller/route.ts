@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       let shopSpecificData = null
       
       // Case 1: Cart checkout order with shops array (CHECK THIS FIRST!)
-      if (data.type === 'cart_checkout' && data.shops) {
+      if (data.type === 'cart_checkout' && data.shops && Array.isArray(data.shops)) {
         const shopData = data.shops.find((s: any) => s.shopId === finalShopId)
         if (shopData) {
           belongsToShop = true
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      // Case 2: Direct order with shopId field
-      else if (data.shopId === finalShopId) {
+      // Case 2: Direct order with shopId field (ONLY if not cart_checkout)
+      else if (data.type !== 'cart_checkout' && data.shopId === finalShopId) {
         belongsToShop = true
         shopSpecificData = {
           shopId: data.shopId,
