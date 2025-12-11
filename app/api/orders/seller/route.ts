@@ -4,29 +4,35 @@ import * as admin from 'firebase-admin'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[SELLER ORDERS API] Request received')
     const { searchParams } = new URL(request.url)
     const shopId = searchParams.get('shopId')
     const userId = searchParams.get('userId')
     const status = searchParams.get('status') || 'all' // Default to 'all' if not provided
+
+    console.log('[SELLER ORDERS API] Params:', { shopId, userId, status })
 
     // Support both shopId and userId (convert userId to shopId)
     let finalShopId = shopId
     
     if (!finalShopId && userId) {
       finalShopId = `shop_${userId}`
+      console.log('[SELLER ORDERS API] Converted userId to shopId:', finalShopId)
     }
 
     if (!finalShopId) {
+      console.error('[SELLER ORDERS API] Missing shopId/userId')
       return NextResponse.json(
         { error: 'Shop ID or User ID is required' },
         { status: 400 }
       )
     }
 
-    console.log('Fetching orders for shop:', finalShopId, 'status:', status)
+    console.log('[SELLER ORDERS API] Fetching orders for shop:', finalShopId, 'status:', status)
 
     // Get ALL orders (both direct orders with shopId and cart orders with shops array)
     const querySnapshot = await adminDb.collection('orders').get()
+    console.log('[SELLER ORDERS API] Total orders in database:', querySnapshot.size)
     
     // Filter orders that belong to this shop
     const filteredOrders: any[] = []
@@ -36,6 +42,15 @@ export async function GET(request: NextRequest) {
 
     querySnapshot.docs.forEach(doc => {
       const data = doc.data()
+      
+      console.log(`[SELLER ORDERS API] Checking order ${doc.id}:`, {
+        type: data.type,
+        shopId: data.shopId,
+        hasShopsArray: !!(data.shops && Array.isArray(data.shops)),
+        shopsCount: data.shops?.length || 0,
+        paymentStatus: data.paymentStatus,
+        status: data.status
+      })
       
       // Check if this order belongs to this shop
       let belongsToShop = false
@@ -78,10 +93,14 @@ export async function GET(request: NextRequest) {
         return
       }
       
-      // Filter out orders with pending payment (not yet paid)
-      if (data.paymentStatus === 'pending' || data.paymentStatus === 'cancelled' || data.paymentStatus === 'expired') {
-        return
-      }
+      // REMOVED: Filter for payment status - show all orders regardless of payment status
+      // Seller should see all orders including expired ones to handle customer inquiries
+      // if (data.paymentStatus === 'pending' || data.paymentStatus === 'cancelled' || data.paymentStatus === 'expired') {
+      //   console.log(`[DEBUG] Filtering out order ${doc.id} with paymentStatus: ${data.paymentStatus}`)
+      //   return
+      // }
+      
+      console.log(`[SELLER ORDERS API] Including order ${doc.id} with paymentStatus: ${data.paymentStatus || 'undefined'}, status: ${data.status || 'undefined'}`)
 
       if (data.userId) {
         userIds.add(data.userId)
@@ -382,15 +401,19 @@ export async function GET(request: NextRequest) {
       }
     })
     
+    console.log('[SELLER ORDERS API] Filtered orders count:', filteredOrders.length)
+    console.log('[SELLER ORDERS API] Final orders count after mapping:', orders.length)
+    
     // Sort by creation date (newest first)
     orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
+    console.log('[SELLER ORDERS API] Returning orders:', orders.length)
     return NextResponse.json({
       success: true,
       orders,
     })
   } catch (error) {
-    console.error('Error fetching seller orders:', error)
+    console.error('[SELLER ORDERS API] Error fetching seller orders:', error)
     return NextResponse.json(
       { error: 'Failed to fetch orders' },
       { status: 500 }
