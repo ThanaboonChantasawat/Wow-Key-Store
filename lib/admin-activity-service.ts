@@ -15,7 +15,7 @@ export interface AdminActivity {
   createdAt: Date
 }
 
-// บันทึกกิจกรรม Admin
+// บันทึกกิจกรรม Admin (original function)
 export async function logAdminActivity(
   adminId: string,
   adminName: string,
@@ -44,6 +44,55 @@ export async function logAdminActivity(
     console.error("Error logging admin activity:", error)
     throw error
   }
+}
+
+// 🆕 Simple wrapper for easy logging
+export async function logActivity(
+  adminId: string,
+  actionType: string,
+  description: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  try {
+    // Get admin info
+    const adminDoc = await adminDb.collection('users').doc(adminId).get();
+    const adminData = adminDoc.data();
+    
+    const adminName = adminData?.displayName || adminData?.name || 'Admin';
+    const adminEmail = adminData?.email || '';
+    
+    // Extract target info from metadata
+    const targetType = metadata?.targetType || detectTargetType(actionType);
+    const targetId = metadata?.targetId || metadata?.shopId || metadata?.userId || metadata?.gameId || metadata?.categorySlug || '';
+    const targetName = metadata?.targetName || metadata?.shopName || metadata?.userEmail || metadata?.gameName || metadata?.categoryName || '';
+    const affectedUserId = metadata?.affectedUserId || metadata?.ownerId || metadata?.userId || metadata?.sellerId;
+    
+    await logAdminActivity(
+      adminId,
+      adminName,
+      adminEmail,
+      actionType,
+      targetType,
+      targetId,
+      targetName,
+      description,
+      affectedUserId
+    );
+  } catch (error) {
+    console.error("Error in logActivity wrapper:", error);
+    // Don't throw - logging should not break the main operation
+  }
+}
+
+// Helper to detect target type from action
+function detectTargetType(action: string): string {
+  if (action.includes('shop')) return 'shop';
+  if (action.includes('user') || action.includes('ban') || action.includes('role')) return 'user';
+  if (action.includes('game')) return 'game';
+  if (action.includes('category')) return 'category';
+  if (action.includes('report')) return 'report';
+  if (action.includes('reopen')) return 'shop';
+  return 'other';
 }
 
 // ดึงกิจกรรมล่าสุด

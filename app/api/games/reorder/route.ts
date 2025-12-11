@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
+import { logActivity } from '@/lib/admin-activity-service'
 import { FieldValue } from 'firebase-admin/firestore'
 
 export async function POST(request: NextRequest) {
@@ -55,6 +56,18 @@ export async function POST(request: NextRequest) {
     })
 
     await batch.commit()
+
+    // 📝 Log admin activity
+    try {
+      await logActivity(
+        decodedToken.uid,
+        'reorder_popular_games',
+        `Reordered ${gameIds.length} popular games`,
+        { gameCount: gameIds.length, gameIds, targetType: 'game' }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
 
     return NextResponse.json({ 
       success: true, 

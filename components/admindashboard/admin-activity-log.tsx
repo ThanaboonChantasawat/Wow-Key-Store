@@ -39,7 +39,19 @@ export function AdminActivityLog() {
 
   useEffect(() => {
     if (!user) return
+    
+    // Initial fetch
     fetchActivities()
+    
+    // Set up auto-refresh every 10 seconds
+    const intervalId = setInterval(() => {
+      fetchActivities()
+    }, 10000)
+    
+    // Cleanup
+    return () => {
+      clearInterval(intervalId)
+    }
   }, [user])
 
   // Filter logic

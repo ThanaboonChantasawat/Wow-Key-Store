@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb, adminAuth } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
+import { logActivity } from '@/lib/admin-activity-service'
 
 /**
  * GET /api/admin/users/violations?userId=xxx
@@ -162,6 +163,18 @@ export async function PATCH(request: NextRequest) {
         // Don't fail the request if claims fail, but log it
       }
 
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          adminId,
+          'ban_user',
+          `Banned user: ${userData.email || userData.displayName || userId} for ${banDuration} days - Reason: ${reason}`,
+          { userId, userEmail: userData.email, banDuration, reason, violations: currentViolations + 1, targetType: 'user', targetId: userId, targetName: userData.email || '', affectedUserId: userId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
+
       return NextResponse.json({
         success: true,
         message: `แบนผู้ใช้เป็นเวลา ${banDuration} วันเรียบร้อยแล้ว`,
@@ -187,6 +200,18 @@ export async function PATCH(request: NextRequest) {
         console.log(`✅ Removed banned claim for user ${userId}`);
       } catch (claimError) {
         console.error('Error removing custom claims:', claimError);
+      }
+
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          adminId,
+          'unban_user',
+          `Unbanned user: ${userData.email || userData.displayName || userId}`,
+          { userId, userEmail: userData.email, targetType: 'user', targetId: userId, targetName: userData.email || '', affectedUserId: userId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
       }
 
       return NextResponse.json({

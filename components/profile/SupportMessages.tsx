@@ -336,9 +336,9 @@ export function SupportMessagesContent() {
                     {replies.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">ยังไม่มีการตอบกลับ</p>
                     ) : (
-                      replies.map((reply) => (
+                      replies.map((reply, index) => (
                         <div
-                          key={reply.id}
+                          key={`${reply.id}-${index}`}
                           className={`p-4 rounded-lg ${
                             reply.isAdmin
                               ? 'bg-blue-50 border-l-4 border-blue-500 ml-4'

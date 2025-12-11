@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebase-admin-config';
 import { verifyIdTokenString } from '@/lib/auth-helpers';
+import { logActivity } from '@/lib/admin-activity-service';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
@@ -100,6 +101,18 @@ export async function POST(request: NextRequest) {
       
       await batch.commit();
 
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          userId,
+          'approve_reopen_request',
+          `Approved shop reopen request (ID: ${requestId}) - Shop ID: ${requestData.shopId}`,
+          { requestId, shopId: requestData.shopId, sellerId: requestData.sellerId, reviewNote, affectedUserId: requestData.sellerId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
+
     } else if (action === 'reject') {
       await requestRef.update({
         status: 'rejected',
@@ -108,6 +121,18 @@ export async function POST(request: NextRequest) {
         reviewNote: reviewNote || '',
         updatedAt: FieldValue.serverTimestamp(),
       });
+
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          userId,
+          'reject_reopen_request',
+          `Rejected shop reopen request (ID: ${requestId}) - Shop ID: ${requestData.shopId}`,
+          { requestId, shopId: requestData.shopId, sellerId: requestData.sellerId, reviewNote, affectedUserId: requestData.sellerId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }

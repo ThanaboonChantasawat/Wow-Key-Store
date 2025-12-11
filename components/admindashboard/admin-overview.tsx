@@ -38,6 +38,7 @@ export function AdminOverview({ onNavigate }: AdminOverviewProps) {
     // Set up interval for auto-refresh
     const intervalId = setInterval(() => {
       fetchStats()
+      fetchActivities() // Also refresh activities
     }, 5000) // Refresh every 5 seconds
 
     // Cleanup

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
+import { logActivity } from '@/lib/admin-activity-service'
 import { FieldValue } from 'firebase-admin/firestore'
 
 // GET - Public endpoint to get all categories
@@ -108,6 +109,18 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp()
     })
 
+    // 📝 Log admin activity
+    try {
+      await logActivity(
+        decodedToken.uid,
+        'create_category',
+        `Created category: ${name} (slug: ${slug})`,
+        { categorySlug: slug, categoryName: name, description, targetType: 'category', targetId: slug, targetName: name }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
+
     console.log('[Categories API] Category created successfully:', slug);
     return NextResponse.json({ 
       success: true, 
@@ -189,6 +202,19 @@ export async function PATCH(request: NextRequest) {
 
     await categoryRef.update(updateData)
 
+    // 📝 Log admin activity
+    try {
+      const categoryData = categoryDoc.data();
+      await logActivity(
+        decodedToken.uid,
+        'update_category',
+        `Updated category: ${name || categoryData?.name} (slug: ${slug})`,
+        { categorySlug: slug, updates: { name, description }, targetType: 'category', targetId: slug, targetName: name || categoryData?.name || '' }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
+
     return NextResponse.json({ 
       success: true,
       message: 'Category updated successfully' 
@@ -255,7 +281,21 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const categoryData = categoryDoc.data();
+
     await categoryRef.delete()
+
+    // 📝 Log admin activity
+    try {
+      await logActivity(
+        decodedToken.uid,
+        'delete_category',
+        `Deleted category: ${categoryData?.name} (slug: ${slug})`,
+        { categorySlug: slug, categoryName: categoryData?.name, targetType: 'category', targetId: slug, targetName: categoryData?.name || '' }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
 
     return NextResponse.json({ 
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unsuspendShop } from "@/lib/shop-service";
+import { cookies } from "next/headers";
 
 export async function POST(
   request: NextRequest,
@@ -15,7 +16,11 @@ export async function POST(
       );
     }
 
-    await unsuspendShop(shopId);
+    // Get admin ID from session
+    const cookieStore = await cookies();
+    const adminId = cookieStore.get("userId")?.value;
+
+    await unsuspendShop(shopId, adminId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

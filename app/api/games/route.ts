@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
+import { logActivity } from '@/lib/admin-activity-service'
 import { FieldValue } from 'firebase-admin/firestore'
 
 // GET - Public endpoint to get all games
@@ -105,6 +106,18 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp()
     })
 
+    // 📝 Log admin activity
+    try {
+      await logActivity(
+        decodedToken.uid,
+        'create_game',
+        `Created game: ${name} (ID: ${gameId})`,
+        { gameId, gameName: name, categories, isPopular, targetType: 'game', targetId: gameId, targetName: name }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
+
     return NextResponse.json({ 
       success: true, 
       id: gameId,
@@ -177,6 +190,19 @@ export async function PATCH(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp()
     })
 
+    // 📝 Log admin activity
+    try {
+      const gameData = gameDoc.data();
+      await logActivity(
+        decodedToken.uid,
+        'update_game',
+        `Updated game: ${updateData.name || gameData?.name} (ID: ${id})`,
+        { gameId: id, updates: updateData, targetType: 'game', targetId: id, targetName: updateData.name || gameData?.name || '' }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
+
     return NextResponse.json({ 
       success: true,
       message: 'Game updated successfully' 
@@ -243,7 +269,21 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const gameData = gameDoc.data();
+
     await gameRef.delete()
+
+    // 📝 Log admin activity
+    try {
+      await logActivity(
+        decodedToken.uid,
+        'delete_game',
+        `Deleted game: ${gameData?.name} (ID: ${id})`,
+        { gameId: id, gameName: gameData?.name, targetType: 'game', targetId: id, targetName: gameData?.name || '' }
+      );
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError);
+    }
 
     return NextResponse.json({ 
       success: true,

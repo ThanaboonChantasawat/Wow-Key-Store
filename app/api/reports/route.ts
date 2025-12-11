@@ -2,6 +2,7 @@
 import { adminDb } from '@/lib/firebase-admin-config'
 import { verifyIdTokenString } from '@/lib/auth-helpers'
 import { createNotification } from '@/lib/notification-service'
+import { logActivity } from '@/lib/admin-activity-service'
 import admin from 'firebase-admin'
 
 export const dynamic = 'force-dynamic'
@@ -108,6 +109,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     await batch.commit()
+
+    // 📝 Log admin activity
+    try {
+      const actionText = action === 'delete' ? 'ลบเนื้อหา' : action === 'ban' ? 'แบนผู้ใช้' : 'ปฏิเสธ'
+      await logActivity(
+        token.uid,
+        'process_report',
+        `${actionText} รายงาน: ${targetType} ID: ${targetId}${action === 'ban' ? ` (แบน ${banDuration || 7} วัน)` : ''}`,
+        { reportId, action, targetType, targetId, targetUserId, banDuration, adminNote, affectedUserId: targetUserId }
+      )
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError)
+    }
 
     return NextResponse.json({ success: true, message: 'ดำเนินการรายงานเรียบร้อยแล้ว' })
 
@@ -354,6 +368,19 @@ export async function PUT(request: NextRequest) {
     }
 
     await batch.commit()
+
+    // 📝 Log admin activity
+    try {
+      const actionText = reportData.resolution === 'ban' ? 'ยกเลิกแบน' : reportData.resolution === 'warn' ? 'ลดการเตือน' : 'ย้อนกลับ'
+      await logActivity(
+        token.uid,
+        'reverse_report_decision',
+        `${actionText} การตัดสินรายงาน: ${reportData.targetType} ID: ${reportData.targetId}`,
+        { reportId, originalResolution: reportData.resolution, targetUserId: reportData.targetUserId, adminNote, affectedUserId: reportData.targetUserId }
+      )
+    } catch (logError) {
+      console.error("Error logging admin activity:", logError)
+    }
 
     return NextResponse.json({ 
       success: true, 

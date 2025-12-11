@@ -3,6 +3,7 @@ import { storage } from "@/components/firebase-config";
 import { ref, deleteObject } from "firebase/storage";
 import { updateUserProfile, getUserProfile } from "./user-service";
 import { createNotification } from "./notification-service";
+import { logActivity } from "./admin-activity-service";
 import admin from 'firebase-admin';
 import type { Shop } from "./shop-types";
 
@@ -325,6 +326,18 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
         console.error("Error sending approval notification:", notifError);
         // Don't fail shop approval if notification fails
       }
+
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          adminId,
+          'approve_shop',
+          `Approved shop: ${shopData.shopName} (ID: ${shopId})`,
+          { shopId, shopName: shopData.shopName, ownerId, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: ownerId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
     }
   } catch (error) {
     console.error("Error approving shop:", error);
@@ -396,6 +409,18 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
         } catch (notifError) {
           console.error("Error sending rejection notification:", notifError);
         }
+
+        // 📝 Log admin activity
+        try {
+          await logActivity(
+            adminId,
+            'reject_shop',
+            `Rejected shop: ${shopData.shopName} (ID: ${shopId}) - Reason: ${reason}`,
+            { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, reason, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
+          );
+        } catch (logError) {
+          console.error("Error logging admin activity:", logError);
+        }
       }
     }
   } catch (error) {
@@ -434,6 +459,18 @@ export async function suspendShop(shopId: string, adminId: string, reason: strin
       } catch (notifError) {
         console.error("Error sending suspension notification:", notifError);
       }
+
+      // 📝 Log admin activity
+      try {
+        await logActivity(
+          adminId,
+          'suspend_shop',
+          `Suspended shop: ${shopData.shopName} (ID: ${shopId}) - Reason: ${reason}`,
+          { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, reason, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
     }
   } catch (error) {
     console.error("Error suspending shop:", error);
@@ -442,9 +479,14 @@ export async function suspendShop(shopId: string, adminId: string, reason: strin
 }
 
 // Unsuspend shop (reactivate)
-export async function unsuspendShop(shopId: string): Promise<void> {
+export async function unsuspendShop(shopId: string, adminId?: string): Promise<void> {
   try {
     const shopRef = adminDb.collection("shops").doc(shopId);
+    
+    // Get shop data for logging
+    const shopDoc = await shopRef.get();
+    const shopData = shopDoc.data();
+    
     await shopRef.update({
       status: 'active',
       suspendedBy: admin.firestore.FieldValue.delete(),
@@ -452,6 +494,20 @@ export async function unsuspendShop(shopId: string): Promise<void> {
       suspensionReason: admin.firestore.FieldValue.delete(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    // 📝 Log admin activity
+    if (adminId && shopData) {
+      try {
+        await logActivity(
+          adminId,
+          'unsuspend_shop',
+          `Unsuspended shop: ${shopData.shopName} (ID: ${shopId})`,
+          { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
+        );
+      } catch (logError) {
+        console.error("Error logging admin activity:", logError);
+      }
+    }
   } catch (error) {
     console.error("Error unsuspending shop:", error);
     throw error;
