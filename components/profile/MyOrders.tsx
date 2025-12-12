@@ -109,7 +109,7 @@ interface Order {
 const shopCache = new Map<string, any>();
 
 export function MyOrdersContent() {
-  const { user } = useAuth()
+  const { user, isInitialized } = useAuth()
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
@@ -1026,6 +1026,17 @@ export function MyOrdersContent() {
     }
   }, [showOrderDetailModal, selectedOrderDetail])
 
+  // Show loading while auth is initializing
+  if (!isInitialized || loading) {
+    return (
+      <Card>
+        <CardContent className="p-6 md:p-12">
+          <Loading text="กำลังโหลดคำสั่งซื้อ..." />
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (!user) {
     return (
       <Card>
@@ -1033,16 +1044,6 @@ export function MyOrdersContent() {
           <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">กรุณาเข้าสู่ระบบ</h3>
           <p className="text-gray-600">คุณต้องเข้าสู่ระบบเพื่อดูคำสั่งซื้อ</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6 md:p-12">
-          <Loading text="กำลังโหลดคำสั่งซื้อ..." />
         </CardContent>
       </Card>
     )
