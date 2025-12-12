@@ -561,9 +561,6 @@ export function SupportMessagesContent() {
                 </div>
                 <p className="text-sm text-gray-900 font-medium">{selectedMessage.name}</p>
                 <p className="text-sm text-gray-600">{selectedMessage.email}</p>
-                {selectedMessage.userId && (
-                  <p className="text-xs text-gray-500 mt-1">User ID: {selectedMessage.userId}</p>
-                )}
               </div>
 
               {/* Message */}

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'reorder_popular_games',
-        `Reordered ${gameIds.length} popular games`,
+        `จัดเรียงเกมยอดนิยม ${gameIds.length} เกม`,
         { gameCount: gameIds.length, gameIds, targetType: 'game' }
       );
     } catch (logError) {

@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest) {
         await logActivity(
           adminId,
           'ban_user',
-          `Banned user: ${userData.email || userData.displayName || userId} for ${banDuration} days - Reason: ${reason}`,
+          `แบนผู้ใช้: ${userData.email || userData.displayName || userId} เป็นเวลา ${banDuration} วัน - เหตุผล: ${reason}`,
           { userId, userEmail: userData.email, banDuration, reason, violations: currentViolations + 1, targetType: 'user', targetId: userId, targetName: userData.email || '', affectedUserId: userId }
         );
       } catch (logError) {
@@ -207,7 +207,7 @@ export async function PATCH(request: NextRequest) {
         await logActivity(
           adminId,
           'unban_user',
-          `Unbanned user: ${userData.email || userData.displayName || userId}`,
+          `ยกเลิกการแบนผู้ใช้: ${userData.email || userData.displayName || userId}`,
           { userId, userEmail: userData.email, targetType: 'user', targetId: userId, targetName: userData.email || '', affectedUserId: userId }
         );
       } catch (logError) {

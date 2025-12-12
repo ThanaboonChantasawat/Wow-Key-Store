@@ -11,19 +11,19 @@ export async function POST(
     const { shopData } = body
 
     if (!shopId) {
-      return NextResponse.json({ error: 'Missing shopId' }, { status: 400 })
+      return NextResponse.json({ error: 'กรุณาระบุร้านค้าที่ต้องการแก้ไข' }, { status: 400 })
     }
 
     if (!shopData) {
-      return NextResponse.json({ error: 'Missing shopData' }, { status: 400 })
+      return NextResponse.json({ error: 'กรุณาระบุข้อมูลร้านค้าที่ต้องการแก้ไข' }, { status: 400 })
     }
 
     await updateShop(shopId, shopData)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error updating shop:', error)
+    console.error('เกิดข้อผิดพลาดในการอัปเดตร้านค้า:', error)
     return NextResponse.json(
-      { error: 'Failed to update shop' },
+      { error: 'ไม่สามารถอัปเดตร้านค้าได้' },
       { status: 500 }
     )
   }

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkShopNameExists } from '@/lib/shop-service'
 
 /**
- * GET /api/shops/check-name?name=ชื่อร้าน&excludeShopId=shop_xxx
- * ตรวจสอบว่าชื่อร้านค้าซ้ำหรือไม่
+ * GET /api/shops/check-name?name=ชื่อร้าน
+ * ตรวจสอบว่าชื่อร้านค้าซ้ำหรือไม่ (รองรับการส่งรหัสร้านค้าที่ต้องการยกเว้นสำหรับกรณีแก้ไข)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     if (!name) {
       return NextResponse.json(
-        { error: 'Shop name is required' },
+        { error: 'กรุณาระบุชื่อร้านค้า' },
         { status: 400 }
       )
     }
@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
       message: exists ? 'ชื่อร้านค้านี้ถูกใช้งานแล้ว' : 'ชื่อร้านค้าพร้อมใช้งาน'
     })
   } catch (error: any) {
-    console.error('Error checking shop name:', error)
+    console.error('เกิดข้อผิดพลาดในการตรวจสอบชื่อร้านค้า:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to check shop name' },
+      { error: error.message || 'ไม่สามารถตรวจสอบชื่อร้านค้าได้' },
       { status: 500 }
     )
   }

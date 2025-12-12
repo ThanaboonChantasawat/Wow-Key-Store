@@ -39,9 +39,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ shops: serializedShops });
   } catch (error) {
-    console.error("Error fetching shops:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to fetch shops" },
+      { error: "ไม่สามารถดึงข้อมูลร้านค้าได้" },
       { status: 500 }
     );
   }

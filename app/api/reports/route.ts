@@ -38,6 +38,17 @@ export async function PATCH(request: NextRequest) {
     const targetId = reportData?.targetId
     const targetType = reportData?.targetType
     const targetUserId = reportData?.targetUserId
+    const reportReason = reportData?.reason
+    
+    // Fetch target user name for logging
+    let targetName = 'ผู้ใช้'
+    if (targetUserId) {
+      const userDoc = await adminDb.collection('users').doc(targetUserId).get()
+      if (userDoc.exists) {
+        const userData = userDoc.data()
+        targetName = userData?.displayName || userData?.email || 'ผู้ใช้'
+      }
+    }
 
     const batch = adminDb.batch()
 
@@ -112,13 +123,28 @@ export async function PATCH(request: NextRequest) {
 
     // 📝 Log admin activity
     try {
-      const actionText = action === 'delete' ? 'ลบเนื้อหา' : action === 'ban' ? 'แบนผู้ใช้' : 'ปฏิเสธ'
-      await logActivity(
-        token.uid,
-        'process_report',
-        `${actionText} รายงาน: ${targetType} ID: ${targetId}${action === 'ban' ? ` (แบน ${banDuration || 7} วัน)` : ''}`,
-        { reportId, action, targetType, targetId, targetUserId, banDuration, adminNote, affectedUserId: targetUserId }
-      )
+      if (action === 'delete') {
+        await logActivity(
+          token.uid,
+          'delete_content',
+          `🗑️ ลบเนื้อหา\n• ประเภท: ${targetType === 'review' ? 'รีวิว' : 'ความคิดเห็น'}\n• เจ้าของ: ${targetName}\n• เหตุผล: ${reportReason || '-'}\n• รหัสรายงาน: ${reportId}\n• หมายเหตุ: ${adminNote || '-'}`,
+          { reportId, action, targetType, targetId, targetUserId, adminNote, affectedUserId: targetUserId, targetName, reason: reportReason }
+        )
+      } else if (action === 'ban') {
+        await logActivity(
+          token.uid,
+          'ban_user',
+          `🚫 แบนผู้ใช้\n• ผู้ใช้: ${targetName}\n• ระยะเวลา: ${banDuration || 7} วัน\n• เหตุผล: ${reportReason || '-'}\n• รหัสรายงาน: ${reportId}\n• หมายเหตุ: ${adminNote || '-'}`,
+          { reportId, action, targetType, targetId, targetUserId, banDuration, adminNote, affectedUserId: targetUserId, targetName, reason: reportReason }
+        )
+      } else {
+        await logActivity(
+          token.uid,
+          'process_report',
+          `ดำเนินการรายงาน: ${targetType} ID: ${targetId}`,
+          { reportId, action, targetType, targetId, targetUserId, adminNote, affectedUserId: targetUserId, targetName }
+        )
+      }
     } catch (logError) {
       console.error("Error logging admin activity:", logError)
     }

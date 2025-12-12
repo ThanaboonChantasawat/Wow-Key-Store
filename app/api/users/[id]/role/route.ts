@@ -22,12 +22,12 @@ export async function POST(
 		const cookieStore = await cookies();
 		const adminId = cookieStore.get("userId")?.value;
 
-		// 🛡️ Prevent superadmin from demoting themselves
+		// 🛡️ Prevent superadmin from changing their own role
 		if (adminId && adminId === id) {
 			const adminProfile = await getUserProfile(adminId);
-			if (adminProfile?.role === 'superadmin' && role !== 'superadmin') {
+			if (adminProfile?.role === 'superadmin') {
 				return NextResponse.json(
-					{ error: "คุณไม่สามารถปลด superadmin ของตัวเองได้" },
+					{ error: "superadmin ไม่สามารถแก้ไข role ของตัวเองได้" },
 					{ status: 403 }
 				);
 			}
@@ -44,7 +44,7 @@ export async function POST(
 				await logActivity(
 					adminId,
 					'update_user_role',
-					`Updated user role: ${userProfile.displayName || userProfile.email || id} from ${userProfile.role} to ${role}`,
+					`เปลี่ยนบทบาทผู้ใช้: ${userProfile.displayName || userProfile.email || id} จาก ${userProfile.role} เป็น ${role}`,
 					{ userId: id, oldRole: userProfile.role, newRole: role, userEmail: userProfile.email, targetType: 'user', targetId: id, targetName: userProfile.email || '', affectedUserId: id }
 				);
 			} catch (logError) {

@@ -48,7 +48,7 @@ export default function ShopsPage() {
   }, [user])
 
   const handleImageError = (shopId: string) => {
-    console.error('Failed to load shop image:', shopId)
+    console.error('โหลดรูปภาพร้านค้าไม่สำเร็จ')
     setImageErrors(prev => new Set(prev).add(shopId))
   }
 
@@ -94,15 +94,13 @@ export default function ShopsPage() {
     async function fetchShops() {
       try {
         const response = await fetch('/api/shops/all')
-        if (!response.ok) throw new Error('Failed to fetch shops')
+        if (!response.ok) throw new Error('ไม่สามารถดึงข้อมูลร้านค้าได้')
         const result = await response.json()
         const data = result.shops || result
-        console.log('Fetched shops:', data)
         const activeShops = Array.isArray(data) ? data.filter((s: Shop) => s.status === 'active') : []
-        console.log('Active shops:', activeShops)
         setShops(activeShops)
       } catch (error) {
-        console.error("Failed to fetch shops:", error)
+        console.error("ไม่สามารถดึงข้อมูลร้านค้าได้:", error)
         setShops([])
       } finally {
         setLoading(false)
@@ -180,7 +178,7 @@ export default function ShopsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Hero Section - Dark Theme */}
+      {/* ส่วนหัว (Hero) */}
       <div className="bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 text-white py-16 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -202,7 +200,7 @@ export default function ShopsPage() {
               เลือกซื้อจากร้านค้าที่ผ่านการรับรอง พร้อมบริการคุณภาพ มั่นใจได้ทุกการซื้อขาย
             </p>
             
-            {/* Stats */}
+            {/* สถิติ */}
             <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto mt-8">
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all">
                 <Store className="w-8 h-8 mx-auto mb-2 text-[#ff9800]" />
@@ -224,7 +222,7 @@ export default function ShopsPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         {shops.length === 0 ? (
-          /* Empty State - No shops in system */
+          /* สถานะว่าง - ยังไม่มีร้านค้า */
           <Card className="border-2 border-dashed">
             <CardContent className="p-12 text-center">
               <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -244,7 +242,7 @@ export default function ShopsPage() {
           </Card>
         ) : (
           <>
-            {/* Filter & Sort Section */}
+            {/* ส่วนค้นหา/เรียงลำดับ */}
             <div className="flex flex-col md:flex-row gap-4 mb-8">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -269,7 +267,7 @@ export default function ShopsPage() {
             </div>
 
             {filteredAndSortedShops.length === 0 ? (
-              /* Search Empty State */
+              /* สถานะว่าง - ไม่พบผลการค้นหา */
               <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
                 <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -288,7 +286,7 @@ export default function ShopsPage() {
               </div>
             ) : (
               <>
-                {/* Top Shops Section */}
+                {/* ส่วนร้านค้ายอดนิยม */}
                 {popularShops.length > 0 && (
                   <div className="mb-12">
                     <div className="flex items-center gap-2 mb-6">
@@ -306,7 +304,7 @@ export default function ShopsPage() {
                                 <div className="absolute top-4 left-4 z-10">
                                   <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                                     <Star className="w-3 h-3 fill-white" />
-                                    TOP {index + 1}
+                                    อันดับ {index + 1}
                                   </div>
                                 </div>
                                 
@@ -376,7 +374,7 @@ export default function ShopsPage() {
                   </div>
                 )}
 
-                {/* All Shops Grid */}
+                {/* รายการร้านค้าทั้งหมด */}
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">
                     ร้านค้าทั้งหมด ({filteredAndSortedShops.length})

@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin-config'
 
 /**
  * GET /api/shops/[shopId]/stats
- * Get shop statistics
+ * ดึงสถิติของร้านค้า
  */
 export async function GET(
   request: NextRequest,
@@ -13,14 +13,14 @@ export async function GET(
     const { shopId } = await params
 
     if (!shopId) {
-      return NextResponse.json({ error: 'Shop ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'กรุณาระบุร้านค้าที่ต้องการ' }, { status: 400 })
     }
 
     // Get shop data
     const shopDoc = await adminDb.collection('shops').doc(shopId).get()
 
     if (!shopDoc.exists) {
-      return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
+      return NextResponse.json({ error: 'ไม่พบร้านค้า' }, { status: 404 })
     }
 
     const shopData = shopDoc.data()!
@@ -62,9 +62,9 @@ export async function GET(
       createdAt: shopData.createdAt?.toDate?.()?.toISOString() || null,
     })
   } catch (error: any) {
-    console.error('Error getting shop stats:', error)
+    console.error('เกิดข้อผิดพลาดในการดึงสถิติร้านค้า:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to get shop stats' },
+      { error: error.message || 'ไม่สามารถดึงสถิติร้านค้าได้' },
       { status: 500 }
     )
   }

@@ -11,7 +11,7 @@ export async function POST(
 
     if (!shopId || !adminId) {
       return NextResponse.json(
-        { error: "Shop ID and admin ID are required" },
+        { error: "กรุณาระบุข้อมูลให้ครบถ้วน" },
         { status: 400 }
       );
     }
@@ -20,9 +20,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error approving shop:", error);
+    console.error("เกิดข้อผิดพลาดในการอนุมัติร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to approve shop" },
+      { error: "ไม่สามารถอนุมัติร้านค้าได้" },
       { status: 500 }
     );
   }

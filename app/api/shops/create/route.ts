@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!ownerId || !shopData) {
       return NextResponse.json(
-        { error: "Owner ID and shop data are required" },
+        { error: "กรุณาระบุข้อมูลที่จำเป็นสำหรับการสร้างร้านค้า" },
         { status: 400 }
       );
     }
@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ shopId }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creating shop:", error);
+    console.error("เกิดข้อผิดพลาดในการสร้างร้านค้า:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create shop" },
+      { error: error.message || "ไม่สามารถสร้างร้านค้าได้" },
       { status: 500 }
     );
   }

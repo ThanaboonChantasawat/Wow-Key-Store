@@ -14,9 +14,41 @@ export default function CleanupDuplicatesPage() {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const getOrderStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return 'รอดำเนินการ'
+      case 'completed':
+        return 'สำเร็จ'
+      case 'cancelled':
+        return 'ยกเลิก'
+      case 'failed':
+        return 'ไม่สำเร็จ'
+      default:
+        return status || '-'
+    }
+  }
+
+  const getPaymentStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return 'รอชำระเงิน'
+      case 'paid':
+        return 'ชำระเงินแล้ว'
+      case 'completed':
+        return 'ชำระเงินสำเร็จ'
+      case 'failed':
+        return 'ชำระเงินไม่สำเร็จ'
+      case 'cancelled':
+        return 'ยกเลิก'
+      default:
+        return status || '-'
+    }
+  }
+
   const handleCleanup = async (dryRun: boolean) => {
     if (!userId.trim()) {
-      setError("กรุณากรอก User ID")
+      setError("กรุณากรอกรหัสผู้ใช้")
       return
     }
 
@@ -42,7 +74,7 @@ export default function CleanupDuplicatesPage() {
         setError(data.error || 'เกิดข้อผิดพลาด')
       }
     } catch (err: any) {
-      console.error('Cleanup error:', err)
+      console.error('เกิดข้อผิดพลาดระหว่างการลบข้อมูลซ้ำ:', err)
       setError(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล')
     } finally {
       setLoading(false)
@@ -53,24 +85,21 @@ export default function CleanupDuplicatesPage() {
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>ลบคำสั่งซื้อซ้ำ (Cleanup Duplicate Orders)</CardTitle>
+          <CardTitle>ลบคำสั่งซื้อซ้ำ</CardTitle>
           <CardDescription>
             ลบคำสั่งซื้อที่ซ้ำกันโดยเก็บเฉพาะคำสั่งซื้อล่าสุด (สำหรับ Admin เท่านั้น)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* User ID Input */}
+          {/* ช่องกรอกรหัสผู้ใช้ */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">User ID</label>
+            <label className="text-sm font-medium">รหัสผู้ใช้</label>
             <Input
-              placeholder="กรอก User ID (Firebase UID)"
+              placeholder="กรอกรหัสผู้ใช้"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500">
-              💡 Tip: คุณสามารถหา User ID ได้จาก Firebase Console → Authentication
-            </p>
           </div>
 
           {/* Actions */}
@@ -89,7 +118,7 @@ export default function CleanupDuplicatesPage() {
               ) : (
                 <>
                   <AlertTriangle className="w-4 h-4 mr-2" />
-                  ทดสอบ (Dry Run)
+                  ทดสอบ (ไม่ลบจริง)
                 </>
               )}
             </Button>
@@ -161,9 +190,8 @@ export default function CleanupDuplicatesPage() {
                             <span className="text-sm font-semibold text-green-800">เก็บไว้</span>
                           </div>
                           <div className="text-xs text-gray-700 space-y-1">
-                            <div>ID: {group.keepOrder.id}...</div>
-                            <div>สถานะ: {group.keepOrder.status} | การชำระ: {group.keepOrder.paymentStatus}</div>
-                            <div>สร้างเมื่อ: {new Date(group.keepOrder.createdAt).toLocaleString('th-TH')}</div>
+                              <div>สถานะ: {getOrderStatusLabel(group.keepOrder.status)} | การชำระ: {getPaymentStatusLabel(group.keepOrder.paymentStatus)}</div>
+                              <div>สร้างเมื่อ: {group.keepOrder.createdAt ? new Date(group.keepOrder.createdAt).toLocaleString('th-TH') : '-'}</div>
                           </div>
                         </div>
 
@@ -173,9 +201,8 @@ export default function CleanupDuplicatesPage() {
                           {group.duplicateOrders.map((dup: any, dupIndex: number) => (
                             <div key={dupIndex} className="bg-red-50 border border-red-200 rounded-lg p-2">
                               <div className="text-xs text-gray-700 space-y-1">
-                                <div>ID: {dup.id}...</div>
-                                <div>สถานะ: {dup.status} | การชำระ: {dup.paymentStatus}</div>
-                                <div>สร้างเมื่อ: {new Date(dup.createdAt).toLocaleString('th-TH')}</div>
+                                <div>สถานะ: {getOrderStatusLabel(dup.status)} | การชำระ: {getPaymentStatusLabel(dup.paymentStatus)}</div>
+                                <div>สร้างเมื่อ: {dup.createdAt ? new Date(dup.createdAt).toLocaleString('th-TH') : '-'}</div>
                               </div>
                             </div>
                           ))}

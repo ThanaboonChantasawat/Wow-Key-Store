@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         await logActivity(
           userId,
           'approve_reopen_request',
-          `Approved shop reopen request (ID: ${requestId}) - Shop ID: ${requestData.shopId}`,
+          `อนุมัติคำขอเปิดร้าน (รหัส: ${requestId}) - ร้านค้า: ${requestData.shopId}`,
           { requestId, shopId: requestData.shopId, sellerId: requestData.sellerId, reviewNote, affectedUserId: requestData.sellerId }
         );
       } catch (logError) {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         await logActivity(
           userId,
           'reject_reopen_request',
-          `Rejected shop reopen request (ID: ${requestId}) - Shop ID: ${requestData.shopId}`,
+          `ปฏิเสธคำขอเปิดร้าน (รหัส: ${requestId}) - ร้านค้า: ${requestData.shopId}`,
           { requestId, shopId: requestData.shopId, sellerId: requestData.sellerId, reviewNote, affectedUserId: requestData.sellerId }
         );
       } catch (logError) {

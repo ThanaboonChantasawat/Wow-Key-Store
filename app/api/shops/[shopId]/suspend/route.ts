@@ -11,7 +11,7 @@ export async function POST(
 
     if (!shopId || !adminId || !reason) {
       return NextResponse.json(
-        { error: "Shop ID, admin ID, and reason are required" },
+        { error: "กรุณาระบุข้อมูลให้ครบถ้วน" },
         { status: 400 }
       );
     }
@@ -20,9 +20,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error suspending shop:", error);
+    console.error("เกิดข้อผิดพลาดในการระงับร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to suspend shop" },
+      { error: "ไม่สามารถระงับร้านค้าได้" },
       { status: 500 }
     );
   }

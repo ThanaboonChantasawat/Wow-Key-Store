@@ -5,14 +5,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ ownerId: string }> }
 ) {
-  console.log("API /api/shops/owner/[ownerId] hit");
   try {
     const { ownerId } = await params;
-    console.log("Owner ID:", ownerId);
 
     if (!ownerId) {
       return NextResponse.json(
-        { error: "Owner ID is required" },
+        { error: "กรุณาระบุเจ้าของร้าน" },
         { status: 400 }
       );
     }
@@ -21,7 +19,7 @@ export async function GET(
 
     if (!shop) {
       return NextResponse.json(
-        { error: "Shop not found" },
+        { error: "ไม่พบร้านค้า" },
         { status: 404 }
       );
     }
@@ -59,9 +57,9 @@ export async function GET(
 
     return NextResponse.json({ shop: serializedShop });
   } catch (error) {
-    console.error("Error fetching shop:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to fetch shop" },
+      { error: "ไม่สามารถดึงข้อมูลร้านค้าได้" },
       { status: 500 }
     );
   }

@@ -11,7 +11,7 @@ export async function POST(
 
     if (!shopId) {
       return NextResponse.json(
-        { error: "Shop ID is required" },
+        { error: "กรุณาระบุร้านค้าที่ต้องการยกเลิกการระงับ" },
         { status: 400 }
       );
     }
@@ -24,9 +24,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error unsuspending shop:", error);
+    console.error("เกิดข้อผิดพลาดในการยกเลิกระงับร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to unsuspend shop" },
+      { error: "ไม่สามารถยกเลิกระงับร้านค้าได้" },
       { status: 500 }
     );
   }

@@ -16,21 +16,21 @@ export async function POST() {
         ]);
         updated++;
       } catch (error) {
-        console.error(`Failed to update shop ${shop.shopId}:`, error);
+        console.error('อัปเดตสถิติร้านค้าไม่สำเร็จ:', error);
         failed++;
       }
     }
 
     return NextResponse.json({ 
       success: true,
-      message: `Updated ${updated} shops, ${failed} failed`,
+      message: `อัปเดตสำเร็จ ${updated} ร้าน, ไม่สำเร็จ ${failed} ร้าน`,
       updated,
       failed
     });
   } catch (error) {
-    console.error("Error updating all shop stats:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถิติร้านค้าทั้งหมด:", error);
     return NextResponse.json(
-      { error: "Failed to update shop stats" },
+      { error: "ไม่สามารถอัปเดตสถิติร้านค้าได้" },
       { status: 500 }
     );
   }

@@ -75,7 +75,7 @@ export async function createShop(
     
     return shopId;
   } catch (error) {
-    console.error("Error creating shop:", error);
+    console.error("เกิดข้อผิดพลาดในการสร้างร้านค้า:", error);
     throw error;
   }
 }
@@ -138,7 +138,7 @@ export async function getShopByOwnerId(ownerId: string): Promise<Shop | null> {
     
     return null;
   } catch (error) {
-    console.error("Error getting shop:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า:", error);
     return null;
   }
 }
@@ -184,7 +184,7 @@ export async function getShopById(shopId: string): Promise<Shop | null> {
     
     return null;
   } catch (error) {
-    console.error("Error getting shop:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า:", error);
     return null;
   }
 }
@@ -209,7 +209,7 @@ export async function updateShop(
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
-    console.error("Error updating shop:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตร้านค้า:", error);
     throw error;
   }
 }
@@ -220,7 +220,7 @@ export async function hasShop(userId: string): Promise<boolean> {
     const shop = await getShopByOwnerId(userId);
     return shop !== null;
   } catch (error) {
-    console.error("Error checking shop:", error);
+    console.error("เกิดข้อผิดพลาดในการตรวจสอบร้านค้า:", error);
     return false;
   }
 }
@@ -271,7 +271,7 @@ export async function getAllShops(statusFilter?: 'pending' | 'active' | 'rejecte
     return shops.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
     
   } catch (error) {
-    console.error("Error getting shops:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงรายการร้านค้า:", error);
     return [];
   }
 }
@@ -306,10 +306,10 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
             role: 'seller',
             isSeller: true
           });
-          console.log("User role updated to seller after shop approval");
+          console.log("อัปเดตบทบาทผู้ใช้เป็นผู้ขายหลังอนุมัติร้านค้าแล้ว");
         }
       } catch (userUpdateError) {
-        console.warn("Could not update user role:", userUpdateError);
+        console.warn("ไม่สามารถอัปเดตบทบาทผู้ใช้ได้:", userUpdateError);
         // Continue with shop approval even if user update fails
       }
 
@@ -323,7 +323,7 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
           '/seller'
         );
       } catch (notifError) {
-        console.error("Error sending approval notification:", notifError);
+        console.error("เกิดข้อผิดพลาดในการส่งการแจ้งเตือนการอนุมัติ:", notifError);
         // Don't fail shop approval if notification fails
       }
 
@@ -332,15 +332,15 @@ export async function approveShop(shopId: string, adminId: string): Promise<void
         await logActivity(
           adminId,
           'approve_shop',
-          `Approved shop: ${shopData.shopName} (ID: ${shopId})`,
+          `อนุมัติร้านค้า: ${shopData.shopName}`,
           { shopId, shopName: shopData.shopName, ownerId, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: ownerId }
         );
       } catch (logError) {
-        console.error("Error logging admin activity:", logError);
+        console.error("เกิดข้อผิดพลาดในการบันทึกกิจกรรมผู้ดูแล:", logError);
       }
     }
   } catch (error) {
-    console.error("Error approving shop:", error);
+    console.error("เกิดข้อผิดพลาดในการอนุมัติร้านค้า:", error);
     throw error;
   }
 }
@@ -363,9 +363,9 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
         try {
           const logoRef = ref(storage, shopData.logoUrl);
           await deleteObject(logoRef);
-          console.log("Shop logo deleted from storage after rejection");
+          console.log("ลบโลโก้ร้านค้าจากพื้นที่จัดเก็บหลังปฏิเสธร้านค้าแล้ว");
         } catch (deleteError) {
-          console.warn("Could not delete shop logo:", deleteError);
+          console.warn("ไม่สามารถลบโลโก้ร้านค้าได้:", deleteError);
           // Continue anyway - rejection should still proceed even if logo deletion fails
         }
       }
@@ -377,9 +377,9 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
           role: 'buyer',
           isSeller: false
         });
-        console.log("User role reverted to buyer after shop rejection");
+        console.log("ปรับบทบาทผู้ใช้กลับเป็นผู้ซื้อหลังปฏิเสธร้านค้าแล้ว");
       } catch (userUpdateError) {
-        console.warn("Could not update user role:", userUpdateError);
+        console.warn("ไม่สามารถอัปเดตบทบาทผู้ใช้ได้:", userUpdateError);
         // Continue anyway - shop rejection should still proceed
       }
     }
@@ -407,7 +407,7 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
             '/seller'
           );
         } catch (notifError) {
-          console.error("Error sending rejection notification:", notifError);
+          console.error("เกิดข้อผิดพลาดในการส่งการแจ้งเตือนการปฏิเสธ:", notifError);
         }
 
         // 📝 Log admin activity
@@ -415,16 +415,16 @@ export async function rejectShop(shopId: string, adminId: string, reason: string
           await logActivity(
             adminId,
             'reject_shop',
-            `Rejected shop: ${shopData.shopName} (ID: ${shopId}) - Reason: ${reason}`,
+            `ปฏิเสธร้านค้า: ${shopData.shopName} - เหตุผล: ${reason}`,
             { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, reason, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
           );
         } catch (logError) {
-          console.error("Error logging admin activity:", logError);
+          console.error("เกิดข้อผิดพลาดในการบันทึกกิจกรรมผู้ดูแล:", logError);
         }
       }
     }
   } catch (error) {
-    console.error("Error rejecting shop:", error);
+    console.error("เกิดข้อผิดพลาดในการปฏิเสธร้านค้า:", error);
     throw error;
   }
 }
@@ -457,7 +457,7 @@ export async function suspendShop(shopId: string, adminId: string, reason: strin
           '/seller'
         );
       } catch (notifError) {
-        console.error("Error sending suspension notification:", notifError);
+        console.error("เกิดข้อผิดพลาดในการส่งการแจ้งเตือนการระงับร้านค้า:", notifError);
       }
 
       // 📝 Log admin activity
@@ -465,15 +465,15 @@ export async function suspendShop(shopId: string, adminId: string, reason: strin
         await logActivity(
           adminId,
           'suspend_shop',
-          `Suspended shop: ${shopData.shopName} (ID: ${shopId}) - Reason: ${reason}`,
+          `ระงับร้านค้า: ${shopData.shopName} - เหตุผล: ${reason}`,
           { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, reason, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
         );
       } catch (logError) {
-        console.error("Error logging admin activity:", logError);
+        console.error("เกิดข้อผิดพลาดในการบันทึกกิจกรรมผู้ดูแล:", logError);
       }
     }
   } catch (error) {
-    console.error("Error suspending shop:", error);
+    console.error("เกิดข้อผิดพลาดในการระงับร้านค้า:", error);
     throw error;
   }
 }
@@ -501,15 +501,15 @@ export async function unsuspendShop(shopId: string, adminId?: string): Promise<v
         await logActivity(
           adminId,
           'unsuspend_shop',
-          `Unsuspended shop: ${shopData.shopName} (ID: ${shopId})`,
+          `ยกเลิกระงับร้านค้า: ${shopData.shopName}`,
           { shopId, shopName: shopData.shopName, ownerId: shopData.ownerId, targetType: 'shop', targetId: shopId, targetName: shopData.shopName, affectedUserId: shopData.ownerId }
         );
       } catch (logError) {
-        console.error("Error logging admin activity:", logError);
+        console.error("เกิดข้อผิดพลาดในการบันทึกกิจกรรมผู้ดูแล:", logError);
       }
     }
   } catch (error) {
-    console.error("Error unsuspending shop:", error);
+    console.error("เกิดข้อผิดพลาดในการยกเลิกระงับร้านค้า:", error);
     throw error;
   }
 }
@@ -535,7 +535,7 @@ export async function updateShopStats(
       } as Record<string, unknown>);
     }
   } catch (error) {
-    console.error("Error updating shop stats:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถิติร้านค้า:", error);
     throw error;
   }
 }
@@ -583,7 +583,7 @@ export async function getTopShopsBySales(limit: number = 10): Promise<Shop[]> {
       .sort((a, b) => b.totalSales - a.totalSales)
       .slice(0, limit);
   } catch (error) {
-    console.error("Error getting top shops:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงร้านค้ายอดนิยม:", error);
     throw error;
   }
 }
@@ -631,7 +631,7 @@ export async function getTopShopsByRevenue(limit: number = 10): Promise<Shop[]> 
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, limit);
   } catch (error) {
-    console.error("Error getting top shops by revenue:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงร้านค้ายอดนิยมตามรายได้:", error);
     throw error;
   }
 }
@@ -651,7 +651,7 @@ export async function updateShopProductCount(shopId: string): Promise<void> {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
-    console.error("Error updating shop product count:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตจำนวนสินค้าของร้านค้า:", error);
     throw error;
   }
 }
@@ -680,7 +680,7 @@ export async function updateShopSalesStats(shopId: string): Promise<void> {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
   } catch (error) {
-    console.error("Error updating shop sales stats:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถิติยอดขายของร้านค้า:", error);
     throw error;
   }
 }
@@ -702,14 +702,14 @@ export async function checkShopNameExists(shopName: string, excludeShopId?: stri
         if (excludeShopId && doc.id === excludeShopId) {
           continue;
         }
-        console.log(`Found duplicate shop name: ${data.shopName} (${doc.id})`);
+        console.log(`พบชื่อร้านค้าซ้ำ: ${data.shopName}`);
         return true; // พบชื่อซ้ำ
       }
     }
     
     return false; // ไม่มีชื่อซ้ำ
   } catch (error) {
-    console.error("Error checking shop name:", error);
+    console.error("เกิดข้อผิดพลาดในการตรวจสอบชื่อร้านค้า:", error);
     // ถ้า error ให้คืนค่า false เพื่อไม่บล็อกการสร้างร้าน
     return false;
   }

@@ -10,7 +10,7 @@ export async function GET(
 
     if (!shopId) {
       return NextResponse.json(
-        { error: "Shop ID is required" },
+        { error: "กรุณาระบุร้านค้าที่ต้องการ" },
         { status: 400 }
       );
     }
@@ -19,16 +19,16 @@ export async function GET(
 
     if (!shop) {
       return NextResponse.json(
-        { error: "Shop not found" },
+        { error: "ไม่พบร้านค้า" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ shop });
   } catch (error) {
-    console.error("Error fetching shop:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to fetch shop" },
+      { error: "ไม่สามารถดึงข้อมูลร้านค้าได้" },
       { status: 500 }
     );
   }

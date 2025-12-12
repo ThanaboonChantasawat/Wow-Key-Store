@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'create_category',
-        `Created category: ${name} (slug: ${slug})`,
+        `สร้างหมวดหมู่: ${name}`,
         { categorySlug: slug, categoryName: name, description, targetType: 'category', targetId: slug, targetName: name }
       );
     } catch (logError) {
@@ -208,7 +208,7 @@ export async function PATCH(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'update_category',
-        `Updated category: ${name || categoryData?.name} (slug: ${slug})`,
+        `แก้ไขหมวดหมู่: ${name || categoryData?.name}`,
         { categorySlug: slug, updates: { name, description }, targetType: 'category', targetId: slug, targetName: name || categoryData?.name || '' }
       );
     } catch (logError) {
@@ -290,7 +290,7 @@ export async function DELETE(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'delete_category',
-        `Deleted category: ${categoryData?.name} (slug: ${slug})`,
+        `ลบหมวดหมู่: ${categoryData?.name}`,
         { categorySlug: slug, categoryName: categoryData?.name, targetType: 'category', targetId: slug, targetName: categoryData?.name || '' }
       );
     } catch (logError) {

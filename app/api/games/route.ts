@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'create_game',
-        `Created game: ${name} (ID: ${gameId})`,
+        `เพิ่มเกม: ${name}`,
         { gameId, gameName: name, categories, isPopular, targetType: 'game', targetId: gameId, targetName: name }
       );
     } catch (logError) {
@@ -196,7 +196,7 @@ export async function PATCH(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'update_game',
-        `Updated game: ${updateData.name || gameData?.name} (ID: ${id})`,
+        `แก้ไขเกม: ${updateData.name || gameData?.name}`,
         { gameId: id, updates: updateData, targetType: 'game', targetId: id, targetName: updateData.name || gameData?.name || '' }
       );
     } catch (logError) {
@@ -278,7 +278,7 @@ export async function DELETE(request: NextRequest) {
       await logActivity(
         decodedToken.uid,
         'delete_game',
-        `Deleted game: ${gameData?.name} (ID: ${id})`,
+        `ลบเกม: ${gameData?.name}`,
         { gameId: id, gameName: gameData?.name, targetType: 'game', targetId: id, targetName: gameData?.name || '' }
       );
     } catch (logError) {

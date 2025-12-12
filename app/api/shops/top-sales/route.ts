@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ shops });
   } catch (error) {
-    console.error("Error fetching top shops:", error);
+    console.error("เกิดข้อผิดพลาดในการดึงร้านค้ายอดนิยม:", error);
     return NextResponse.json(
-      { error: "Failed to fetch top shops" },
+      { error: "ไม่สามารถดึงร้านค้ายอดนิยมได้" },
       { status: 500 }
     );
   }

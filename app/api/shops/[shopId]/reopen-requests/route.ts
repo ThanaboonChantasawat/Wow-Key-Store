@@ -10,7 +10,7 @@ export async function DELETE(
 
     if (!shopId) {
       return NextResponse.json(
-        { error: "Shop ID is required" },
+        { error: "กรุณาระบุร้านค้าที่ต้องการ" },
         { status: 400 }
       );
     }
@@ -19,9 +19,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting reopen requests:", error);
+    console.error("เกิดข้อผิดพลาดในการลบคำขอเปิดร้านใหม่:", error);
     return NextResponse.json(
-      { error: "Failed to delete reopen requests" },
+      { error: "ไม่สามารถลบคำขอเปิดร้านใหม่ได้" },
       { status: 500 }
     );
   }

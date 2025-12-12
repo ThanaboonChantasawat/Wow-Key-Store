@@ -16,12 +16,12 @@ export async function POST(
 
     return NextResponse.json({ 
       success: true,
-      message: "Shop stats updated successfully" 
+      message: "อัปเดตสถิติร้านค้าเรียบร้อยแล้ว" 
     });
   } catch (error) {
-    console.error("Error updating shop stats:", error);
+    console.error("เกิดข้อผิดพลาดในการอัปเดตสถิติร้านค้า:", error);
     return NextResponse.json(
-      { error: "Failed to update shop stats" },
+      { error: "ไม่สามารถอัปเดตสถิติร้านค้าได้" },
       { status: 500 }
     );
   }
