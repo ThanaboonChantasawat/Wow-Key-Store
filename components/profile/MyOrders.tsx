@@ -188,56 +188,74 @@ export function MyOrdersContent() {
       }
 
       const data = await response.json()
-      // console.log('Orders data:', data)
       
-      // Enrich orders with shop avatar and product images
-      const enrichedOrders = await Promise.all((data.orders || []).map(async (order: Order) => {
-        // Fetch shop details if shopId exists
-        let shopAvatar = null
-        if (order.shopId) {
-          if (!shopCache.has(order.shopId)) {
+      // Collect all unique shop IDs and product IDs for batch fetching
+      const shopIds = new Set<string>()
+      const productIds = new Set<string>()
+      
+      ;(data.orders || []).forEach((order: Order) => {
+        if (order.shopId) shopIds.add(order.shopId)
+        ;(order.items || []).forEach((item) => {
+          const productId = item.gameId || item.productId
+          if (productId) productIds.add(productId)
+        })
+      })
+
+      // Batch fetch shops that are not in cache
+      const shopsToFetch = Array.from(shopIds).filter(id => !shopCache.has(id))
+      if (shopsToFetch.length > 0) {
+        await Promise.all(
+          shopsToFetch.map(async (shopId) => {
             try {
-              console.log('Fetching shop data for:', order.shopId)
-              const shopData = await getShopById(order.shopId)
+              const shopData = await getShopById(shopId)
               if (shopData) {
-                shopCache.set(order.shopId, shopData)
-                shopAvatar = shopData.logoUrl || null
-                console.log('Shop data loaded:', { shopId: order.shopId, hasAvatar: !!shopAvatar })
-              } else {
-                console.warn('Shop data not found for:', order.shopId)
+                shopCache.set(shopId, shopData)
               }
             } catch (err) {
-              console.error('Failed to fetch shop:', order.shopId, err)
+              console.error('Failed to fetch shop:', shopId, err)
             }
-          } else {
-            const shopData = shopCache.get(order.shopId)
-            shopAvatar = shopData?.logoUrl || null
-          }
-        }
-        
-        // Fetch product images for each item
-        const itemsWithImages = await Promise.all((order.items || []).map(async (item) => {
-          let productImage = null
-          const productId = item.gameId || item.productId
-          
-          if (productId) {
+          })
+        )
+      }
+
+      // Batch fetch products
+      const productCache = new Map<string, any>()
+      const productIdArray = Array.from(productIds)
+      
+      // Fetch in batches of 10
+      for (let i = 0; i < productIdArray.length; i += 10) {
+        const batch = productIdArray.slice(i, i + 10)
+        await Promise.all(
+          batch.map(async (productId) => {
             try {
               const productRes = await fetch(`/api/products/${productId}`)
               if (productRes.ok) {
                 const productData = await productRes.json()
-                productImage = productData.images?.[0] || productData.imageUrl || null
-                console.log('Product image loaded:', { productId, hasImage: !!productImage })
+                productCache.set(productId, productData)
               }
             } catch (err) {
-              console.error('Failed to fetch product image:', productId, err)
+              console.error('Failed to fetch product:', productId, err)
             }
-          }
+          })
+        )
+      }
+      
+      // Enrich orders with shop avatar and product images (using cache)
+      const enrichedOrders = (data.orders || []).map((order: Order) => {
+        // Get shop avatar from cache
+        const shopAvatar = order.shopId ? (shopCache.get(order.shopId)?.logoUrl || null) : null
+        
+        // Get product images from cache
+        const itemsWithImages = (order.items || []).map((item) => {
+          const productId = item.gameId || item.productId
+          const productData = productId ? productCache.get(productId) : null
+          const productImage = productData?.images?.[0] || productData?.imageUrl || null
           
           return {
             ...item,
             productImage
           }
-        }))
+        })
         
         // Add shopAvatar and enriched items to order
         return {
