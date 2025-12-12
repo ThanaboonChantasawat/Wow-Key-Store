@@ -1,10 +1,18 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Search, Package } from "lucide-react"
+import { Plus, Pencil, Trash2, Upload, X, Image as ImageIcon, Search, Package, AlertTriangle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { LoadingScreen, Loading } from "@/components/ui/loading"
 import { useUserProfile } from "@/hooks/useUserProfile"
 import {
@@ -71,6 +79,8 @@ export function SellerProducts() {
   const [loadingShop, setLoadingShop] = useState(true)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -357,12 +367,17 @@ export function SellerProducts() {
     }
   }
 
-  const handleDelete = async (productId: string) => {
-    if (!confirm("คุณต้องการลบสินค้านี้หรือไม่?")) return
+  const handleDelete = (productId: string) => {
+    setProductToDelete(productId)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return
 
     try {
       setLoadingProducts(true)
-      await deleteProduct(productId)
+      await deleteProduct(productToDelete)
       setMessage({ type: "success", text: "ลบสินค้าสำเร็จ" })
       await loadData()
     } catch (error) {
@@ -370,6 +385,8 @@ export function SellerProducts() {
       setMessage({ type: "error", text: "ลบไม่สำเร็จ" })
     } finally {
       setLoadingProducts(false)
+      setShowDeleteDialog(false)
+      setProductToDelete(null)
     }
   }
 
@@ -962,6 +979,45 @@ export function SellerProducts() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl">ยืนยันการลบสินค้า</DialogTitle>
+            </div>
+            <DialogDescription className="text-base pt-2">
+              คุณแน่ใจหรือไม่ที่จะลบสินค้านี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false)
+                setProductToDelete(null)
+              }}
+              disabled={loadingProducts}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={loadingProducts}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {loadingProducts ? "กำลังลบ..." : "ลบสินค้า"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

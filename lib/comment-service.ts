@@ -125,11 +125,16 @@ export async function getShopComments(
         repliesMap.get(parentId)!.push(reply)
       })
     
-    // Attach replies to parent comments
-    topLevel.forEach(comment => {
+    // Recursive function to attach nested replies
+    const attachReplies = (comment: ShopComment) => {
       comment.replies = repliesMap.get(comment.id) || []
       comment.replies.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    })
+      // Recursively attach replies to each reply
+      comment.replies.forEach(reply => attachReplies(reply))
+    }
+    
+    // Attach replies to all top-level comments
+    topLevel.forEach(comment => attachReplies(comment))
     
     // Sort top-level by newest first
     topLevel.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -182,11 +187,16 @@ export async function getProductComments(
         repliesMap.get(parentId)!.push(reply)
       })
     
-    // Attach replies to parent comments
-    topLevel.forEach(comment => {
+    // Recursive function to attach nested replies
+    const attachReplies = (comment: ProductComment) => {
       comment.replies = repliesMap.get(comment.id) || []
       comment.replies.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    })
+      // Recursively attach replies to each reply
+      comment.replies.forEach(reply => attachReplies(reply))
+    }
+    
+    // Attach replies to all top-level comments
+    topLevel.forEach(comment => attachReplies(comment))
     
     // Sort top-level by newest first
     topLevel.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
