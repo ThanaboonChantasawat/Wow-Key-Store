@@ -263,7 +263,7 @@ export function MyOrdersContent() {
           shopAvatar,
           items: itemsWithImages
         }
-      }))
+      })
       
       // Check for duplicates
       const orderIds = enrichedOrders?.map((o: Order) => o.id) || []
