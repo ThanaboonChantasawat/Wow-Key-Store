@@ -84,11 +84,55 @@ export async function GET(request: NextRequest) {
     
     console.log('[Orders API] After filtering:', filteredDocs.length, 'orders')
     
-    // Fetch orders with game names
+    // Collect all unique game IDs first for batch fetching
+    const allGameIds = new Set<string>()
+    filteredDocs.forEach(orderDoc => {
+      const data = orderDoc.data()
+      if (data.type === 'cart_checkout' && data.shops) {
+        data.shops.forEach((shop: any) => {
+          (shop.items || []).forEach((item: any) => {
+            const gameId = item.productId || item.gameId
+            if (gameId) allGameIds.add(gameId)
+          })
+        })
+      } else if (data.items) {
+        data.items.forEach((item: any) => {
+          if (item.gameId) allGameIds.add(item.gameId)
+        })
+      }
+    })
+
+    // Batch fetch all games
+    const gameCache = new Map<string, string>()
+    if (allGameIds.size > 0) {
+      const gameIdArray = Array.from(allGameIds)
+      // Firestore 'in' query限制10個，所以要分批
+      for (let i = 0; i < gameIdArray.length; i += 10) {
+        const batch = gameIdArray.slice(i, i + 10)
+        try {
+          const [gamesSnapshot, gamesListSnapshot] = await Promise.all([
+            adminDb.collection('games').where(admin.firestore.FieldPath.documentId(), 'in', batch).get(),
+            adminDb.collection('gamesList').where(admin.firestore.FieldPath.documentId(), 'in', batch).get()
+          ])
+          
+          gamesSnapshot.forEach(doc => {
+            gameCache.set(doc.id, doc.data()?.name || null)
+          })
+          gamesListSnapshot.forEach(doc => {
+            if (!gameCache.has(doc.id)) {
+              gameCache.set(doc.id, doc.data()?.name || null)
+            }
+          })
+        } catch (err) {
+          console.error('[Orders API] Error batch fetching games:', err)
+        }
+      }
+    }
+    
+    // Fetch orders with game names (using cache)
     const ordersWithGameNames = await Promise.all(
       filteredDocs.map(async (orderDoc) => {
         const data = orderDoc.data()
-        console.log('[Orders API] Processing order:', orderDoc.id, 'type:', data.type)
 
         // Normalize timestamps soแต่ละคำสั่งซื้อมีเวลาเป็นของตัวเอง ไม่ใช้ new Date() เดียวกันหมด
         let createdAtIso: string
@@ -135,74 +179,34 @@ export async function GET(request: NextRequest) {
         
         // Handle cart orders (with shops array)
         if (data.type === 'cart_checkout' && data.shops) {
-          console.log('[Orders API] Processing cart order with', data.shops.length, 'shops')
-          
-          // Flatten all items from all shops
+          // Flatten all items from all shops and use cache
           const allItems = data.shops.flatMap((shop: any) => shop.items || [])
           
-          itemsWithGameNames = await Promise.all(
-            allItems.map(async (item: any) => {
-              let gameName = null
-              
-              // Try to get game name from productId (cart items use productId)
-              const gameId = item.productId || item.gameId
-              if (gameId) {
-                try {
-                  let gameDoc = await adminDb.collection('games').doc(gameId).get()
-                  if (!gameDoc.exists) {
-                    gameDoc = await adminDb.collection('gamesList').doc(gameId).get()
-                  }
-                  if (gameDoc.exists) {
-                    gameName = gameDoc.data()?.name
-                  }
-                } catch (err) {
-                  console.error('[Orders API] Error fetching game:', gameId, err)
-                }
-              }
-              
-              return {
-                ...item,
-                gameId: gameId, // Normalize to gameId
-                gameName
-              }
-            })
-          )
+          itemsWithGameNames = allItems.map((item: any) => {
+            const gameId = item.productId || item.gameId
+            const gameName = gameId ? (gameCache.get(gameId) || null) : null
+            
+            return {
+              ...item,
+              gameId: gameId,
+              gameName
+            }
+          })
         } 
         // Handle direct orders (with items array)
         else if (data.items) {
-          console.log('[Orders API] Processing direct order with', data.items.length, 'items')
-          
-          itemsWithGameNames = await Promise.all(
-            data.items.map(async (item: any) => {
-              let gameName = null
-              
-              if (item.gameId) {
-                try {
-                  let gameDoc = await adminDb.collection('games').doc(item.gameId).get()
-                  if (!gameDoc.exists) {
-                    gameDoc = await adminDb.collection('gamesList').doc(item.gameId).get()
-                  }
-                  if (gameDoc.exists) {
-                    gameName = gameDoc.data()?.name
-                  }
-                } catch (err) {
-                  console.error('[Orders API] Error fetching game:', item.gameId, err)
-                }
-              }
-              
-              return {
-                ...item,
-                gameName
-              }
-            })
-          )
+          itemsWithGameNames = data.items.map((item: any) => {
+            const gameName = item.gameId ? (gameCache.get(item.gameId) || null) : null
+            
+            return {
+              ...item,
+              gameName
+            }
+          })
         }
         
         // Check dispute status
         const disputeStatus = disputeMap.get(orderDoc.id)
-        if (disputeStatus) {
-          console.log(`[Orders API] Order ${orderDoc.id} has dispute status: ${disputeStatus}`)
-        }
 
         return {
           id: orderDoc.id,
