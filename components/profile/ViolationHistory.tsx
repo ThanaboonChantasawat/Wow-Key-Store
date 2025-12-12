@@ -38,18 +38,24 @@ export function ViolationHistoryContent() {
   const itemsPerPage = 5
 
   useEffect(() => {
-    if (!user) return
+    console.log('🔍 ViolationHistory: Component mounted, user:', user?.uid)
+    if (!user) {
+      console.log('⚠️ ViolationHistory: No user, skipping fetch')
+      return
+    }
     fetchViolationHistory()
   }, [user])
 
   const fetchViolationHistory = async () => {
     if (!user) return
     
+    console.log('📡 ViolationHistory: Fetching data for user:', user.uid)
     setIsLoading(true)
     try {
       const token = await user.getIdToken()
       
       // Get user profile for ban status
+      console.log('📡 Fetching user profile...')
       const profileResponse = await fetch(`/api/users/${user.uid}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -58,14 +64,18 @@ export function ViolationHistoryContent() {
       
       if (profileResponse.ok) {
         const profile = await profileResponse.json()
+        console.log('✅ Profile fetched:', { violations: profile.violations, banned: profile.banned })
         setUserStats({
           totalViolations: profile.violations || 0,
           banned: profile.banned || false,
           bannedUntil: profile.bannedUntil ? new Date(profile.bannedUntil) : null,
         })
+      } else {
+        console.log('❌ Profile fetch failed:', profileResponse.status)
       }
 
       // Get violation history from admin activities (ดึงเฉพาะ targetType='user' ที่เกี่ยวกับผู้ใช้คนนี้)
+      console.log('📡 Fetching violation history...')
       const response = await fetch(`/api/admin/activities?targetUserId=${user.uid}&targetType=user&limit=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -74,16 +84,21 @@ export function ViolationHistoryContent() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Activities fetched:', data.activities?.length || 0, 'activities')
         // กรองเฉพาะกิจกรรมที่เกี่ยวกับผู้ใช้นี้โดยตรง
         const userViolations = (data.activities || []).filter((activity: ViolationRecord) => 
           activity.targetType === 'user' && activity.targetId === user.uid
         )
+        console.log('✅ Filtered violations:', userViolations.length)
         setViolations(userViolations)
+      } else {
+        console.log('❌ Activities fetch failed:', response.status, await response.text())
       }
     } catch (error) {
       console.error('❌ Error fetching violation history:', error)
     } finally {
       setIsLoading(false)
+      console.log('✅ ViolationHistory: Loading complete')
     }
   }
 
