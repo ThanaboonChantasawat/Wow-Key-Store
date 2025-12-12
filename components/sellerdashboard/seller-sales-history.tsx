@@ -61,6 +61,7 @@ interface OrderItem {
 interface DeliveredItem {
   index: number;
   itemName: string;
+  loginType?: 'email' | 'username';
   email?: string;
   username?: string;
   password?: string;
@@ -118,7 +119,6 @@ export default function SellerSalesHistory() {
   const [formAdditionalInfo, setFormAdditionalInfo] = useState("")
   const [formNotes, setFormNotes] = useState("")
   const [deliveredItems, setDeliveredItems] = useState<DeliveredItem[]>([])
-  const [loginType, setLoginType] = useState<"email" | "username">("email")
   const [has2FADisabled, setHas2FADisabled] = useState(false)
   const [updating, setUpdating] = useState(false)
   
@@ -248,7 +248,6 @@ export default function SellerSalesHistory() {
     setFormPassword("")
     setFormAdditionalInfo("")
     setFormNotes("")
-    setLoginType("email")
     setHas2FADisabled(false)
     
     // Initialize deliveredItems
@@ -271,6 +270,7 @@ export default function SellerSalesHistory() {
             items.push({
               index: currentIndex++,
               itemName: `${item.productName || item.name} #${i + 1}`,
+              loginType: "email",
               email: "",
               username: "",
               password: "",
@@ -301,12 +301,6 @@ export default function SellerSalesHistory() {
 
   const handleSendCode = () => {
     // Validate required fields for ALL items
-    let isValid = true;
-    
-    // Check if at least one item has password filled (or all items?)
-    // Requirement: "Separate by quantity purchased... seller must choose which code to send first"
-    // Usually all items should be filled before sending, or at least one.
-    // Let's enforce all items must have password.
     
     const missingPassword = deliveredItems.some(item => !item.password?.trim());
     if (missingPassword) {
@@ -318,36 +312,44 @@ export default function SellerSalesHistory() {
       return
     }
 
-    // Check email/username based on login type (if we want to enforce it per item, we need to know login type per item or global)
-    // Assuming global login type for now, or just check if either email or username is filled if password is filled.
+    // Check email/username based on login type per item
+    const missingLogin = deliveredItems.some(item => {
+      const type = item.loginType || "email";
+      if (type === "email") {
+        return !item.email?.trim();
+      } else {
+        return !item.username?.trim();
+      }
+    });
     
-    const missingLogin = deliveredItems.some(item => !item.email?.trim() && !item.username?.trim());
     if (missingLogin) {
        toast({
         title: "กรุณากรอกข้อมูล",
-        description: "กรุณากรอก Email หรือ Username ให้ครบทุกรายการ",
+        description: "กรุณากรอก Email หรือ Username ให้ครบทุกรายการตามประเภทที่เลือก",
         variant: "destructive",
       })
       return
     }
 
-    // Validate email format if login type is email
-    if (loginType === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const invalidEmailItem = deliveredItems.find(item => item.email && !emailRegex.test(item.email.trim()));
-      
-      if (invalidEmailItem) {
-        toast({
-          title: "รูปแบบอีเมลไม่ถูกต้อง",
-          description: `กรุณาตรวจสอบอีเมลในรายการที่ ${invalidEmailItem.index + 1}`,
-          variant: "destructive",
-        })
-        return
-      }
+    // Validate email format for items using email login
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmailItem = deliveredItems.find(item => {
+      const type = item.loginType || "email";
+      return type === "email" && item.email && !emailRegex.test(item.email.trim());
+    });
+    
+    if (invalidEmailItem) {
+      toast({
+        title: "รูปแบบอีเมลไม่ถูกต้อง",
+        description: `กรุณาตรวจสอบอีเมลในรายการที่ ${invalidEmailItem.index + 1}`,
+        variant: "destructive",
+      })
+      return
     }
 
-    // Check 2FA confirmation for email login (Global check)
-    if (loginType === "email" && !has2FADisabled) {
+    // Check 2FA confirmation for items using email login
+    const hasEmailLogin = deliveredItems.some(item => (item.loginType || "email") === "email");
+    if (hasEmailLogin && !has2FADisabled) {
       toast({
         title: "กรุณายืนยัน",
         description: "กรุณายืนยันว่าได้ปิด 2FA แล้วก่อนส่งรหัส",
@@ -830,31 +832,6 @@ export default function SellerSalesHistory() {
                   <h3 className="font-semibold">ข้อมูลบัญชีเกม</h3>
                 </div>
 
-                {/* Login Type Selection */}
-                <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <Label className="text-sm font-semibold">ประเภทการเข้าสู่ระบบ</Label>
-                  <RadioGroup value={loginType} onValueChange={(value: "email" | "username") => setLoginType(value)}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="email" id="login-email" />
-                      <Label htmlFor="login-email" className="cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          <span>ใช้ Email เข้าสู่ระบบ</span>
-                        </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="username" id="login-username" />
-                      <Label htmlFor="login-username" className="cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <UserIcon className="w-4 h-4" />
-                          <span>ใช้ Username เข้าสู่ระบบ</span>
-                        </div>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
                 {/* Delivered Items List */}
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -873,8 +850,40 @@ export default function SellerSalesHistory() {
                       </h4>
                       
                       <div className="space-y-4">
+                        {/* Login Type Selection per Item */}
+                        <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <Label className="text-sm font-semibold">ประเภทการเข้าสู่ระบบ</Label>
+                          <RadioGroup 
+                            value={item.loginType || "email"} 
+                            onValueChange={(value: "email" | "username") => {
+                              const newItems = [...deliveredItems];
+                              newItems[index] = { ...newItems[index], loginType: value };
+                              setDeliveredItems(newItems);
+                            }}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="email" id={`login-email-${index}`} />
+                              <Label htmlFor={`login-email-${index}`} className="cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4" />
+                                  <span>ใช้ Email เข้าสู่ระบบ</span>
+                                </div>
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="username" id={`login-username-${index}`} />
+                              <Label htmlFor={`login-username-${index}`} className="cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <UserIcon className="w-4 h-4" />
+                                  <span>ใช้ Username เข้าสู่ระบบ</span>
+                                </div>
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
                         {/* Email Login Fields */}
-                        {loginType === "email" && (
+                        {(item.loginType || "email") === "email" && (
                           <div className="space-y-4">
                             <div>
                               <Label htmlFor={`email-${index}`} className="flex items-center gap-1">
@@ -920,7 +929,7 @@ export default function SellerSalesHistory() {
                         )}
 
                         {/* Username Login Fields */}
-                        {loginType === "username" && (
+                        {(item.loginType || "email") === "username" && (
                           <div>
                             <Label htmlFor={`username-${index}`} className="flex items-center gap-1">
                               Username <span className="text-red-500">*</span>
@@ -983,14 +992,14 @@ export default function SellerSalesHistory() {
                   ))}
                 </div>
 
-                {/* 2FA Warning for Email */}
-                {loginType === "email" && (
+                {/* 2FA Warning for Email Login Items */}
+                {deliveredItems.some(item => (item.loginType || "email") === "email") && (
                   <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 space-y-2">
                       <p className="text-sm font-semibold text-orange-900">⚠️ สำคัญมาก: ปิด 2FA ก่อนส่งรหัส</p>
                       <p className="text-xs text-orange-800">
-                        กรุณาปิด Two-Factor Authentication (2FA) ในบัญชีเกมก่อนส่งข้อมูลให้ลูกค้า
+                        กรุณาปิด Two-Factor Authentication (2FA) ในบัญชีเกมที่ใช้ Email เข้าสู่ระบบก่อนส่งข้อมูลให้ลูกค้า
                         เพราะลูกค้าจะไม่สามารถเข้าสู่ระบบได้หากยังเปิด 2FA อยู่
                       </p>
                       <div className="flex items-start space-x-3 pt-2 p-3 bg-white border-2 border-orange-300 rounded-md">
