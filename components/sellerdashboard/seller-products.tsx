@@ -852,7 +852,7 @@ export function SellerProducts() {
               {/* Description */}
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  คำอธิบาย
+                  คำอธิบาย <span className="text-red-500">*</span>
                 </label>
                 <Textarea
                   value={formData.description}
@@ -861,6 +861,7 @@ export function SellerProducts() {
                   className="border-2 focus:border-[#ff9800] resize-none"
                   rows={4}
                   disabled={loadingProducts}
+                  required
                 />
               </div>
 
