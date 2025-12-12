@@ -44,6 +44,7 @@ export default function AccountPage() {
   }, [activeItem]);
 
   const renderContent = () => {
+    console.log('🎯 AccountPage: renderContent called with activeItem:', activeItem)
     switch (activeItem) {
       case "account":
         return <AccountContent />;
@@ -56,6 +57,7 @@ export default function AccountPage() {
       case "my-reports":
         return <MyReportsContent />;
       case "violation-history":
+        console.log('🔥 Rendering ViolationHistoryContent')
         return <ViolationHistoryContent />;
       case "support-messages":
         return <SupportMessagesContent />; // ✅ เพิ่มหน้าข้อความ

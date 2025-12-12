@@ -85,11 +85,9 @@ export function ViolationHistoryContent() {
       if (response.ok) {
         const data = await response.json()
         console.log('✅ Activities fetched:', data.activities?.length || 0, 'activities')
-        // กรองเฉพาะกิจกรรมที่เกี่ยวกับผู้ใช้นี้โดยตรง
-        const userViolations = (data.activities || []).filter((activity: ViolationRecord) => 
-          activity.targetType === 'user' && activity.targetId === user.uid
-        )
-        console.log('✅ Filtered violations:', userViolations.length)
+        // API ได้กรองให้แล้วตาม targetUserId ไม่ต้องกรองซ้ำ
+        const userViolations = data.activities || []
+        console.log('✅ Setting violations:', userViolations.length)
         setViolations(userViolations)
       } else {
         console.log('❌ Activities fetch failed:', response.status, await response.text())
